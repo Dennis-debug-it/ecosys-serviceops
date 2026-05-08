@@ -75,7 +75,7 @@ export const Sidebar = memo(function Sidebar({
     <>
       <aside
         data-testid="command-centre-sidebar"
-        className="bg-sidebar-shell border-app hidden md:flex md:min-h-screen md:w-64 md:shrink-0 md:border-r"
+        className="bg-sidebar-shell border-app hidden lg:flex lg:min-h-screen lg:w-64 lg:shrink-0 lg:border-r"
       >
         <div className="sticky top-0 h-screen w-full overflow-y-auto px-5 py-6">
           {content}
@@ -83,14 +83,16 @@ export const Sidebar = memo(function Sidebar({
       </aside>
 
       {mobileOpen ? (
-        <div data-ui-overlay="true" className="bg-overlay fixed inset-0 z-40 p-3 md:hidden" onClick={onCloseMobile}>
-          <div className="glass-panel h-full w-full max-w-[290px] rounded-[30px] p-5" onClick={(event) => event.stopPropagation()}>
+        <div data-ui-overlay="true" className="bg-overlay fixed inset-0 z-40 p-3 lg:hidden" onClick={onCloseMobile}>
+          <div className="glass-panel h-full w-full max-w-[320px] overflow-hidden rounded-[30px] p-5" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex justify-end">
               <button type="button" className="icon-button" onClick={onCloseMobile}>
                 <X className="h-4 w-4" />
               </button>
             </div>
-            {content}
+            <div className="h-[calc(100%-60px)] overflow-y-auto pr-1">
+              {content}
+            </div>
           </div>
         </div>
       ) : null}

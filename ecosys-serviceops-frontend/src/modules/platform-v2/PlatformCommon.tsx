@@ -48,14 +48,14 @@ export function TabLinks({
   links: Array<{ label: string; to: string }>
 }) {
   return (
-    <div className="flex flex-wrap gap-2 rounded-2xl border border-app bg-app/30 p-2">
+    <div className="flex gap-2 overflow-x-auto rounded-2xl border border-app bg-app/30 p-2">
       {links.map((link) => (
         <NavLink
           key={link.to}
           to={link.to}
           end={link.to.endsWith('/finance') || link.to.endsWith('/settings')}
           className={({ isActive }) =>
-            `rounded-xl px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-accent-strong text-black' : 'text-muted hover:text-app'}`
+            `shrink-0 rounded-xl px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-accent-strong text-black' : 'text-muted hover:text-app'}`
           }
         >
           {link.label}

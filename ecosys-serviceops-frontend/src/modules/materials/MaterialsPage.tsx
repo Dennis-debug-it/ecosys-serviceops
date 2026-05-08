@@ -152,14 +152,14 @@ export function MaterialsPage() {
         description="Track stock levels, replenishment needs, and material movements."
         actions={
           <>
-            <button type="button" className="button-secondary" onClick={() => materialService.downloadImportTemplate()}>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => materialService.downloadImportTemplate()}>
               <Download className="h-4 w-4" />
               Import template
             </button>
-            <button type="button" className="button-secondary" onClick={() => setImportOpen(true)}>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setImportOpen(true)}>
               Bulk import
             </button>
-            <button type="button" className="button-primary" onClick={() => openEditor()}>
+            <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
               <Plus className="h-4 w-4" />
               Add material
             </button>
@@ -207,6 +207,34 @@ export function MaterialsPage() {
             pageSize={10}
             emptyTitle="No materials found"
             emptyDescription={hasFilters ? 'Try clearing search or changing status filters.' : 'Create a material item to start stock tracking.'}
+            mobileCard={(row) => (
+              <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-app">{row.itemName}</p>
+                    <p className="mt-1 text-xs text-muted">{row.itemCode}</p>
+                  </div>
+                  <Badge tone={row.isLowStock ? 'warning' : 'success'}>{row.isLowStock ? 'Low' : 'Healthy'}</Badge>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Detail label="Branch" value={row.branchName || 'Global scope'} />
+                  <Detail label="On Hand" value={`${row.quantityOnHand} ${row.unitOfMeasure}`} />
+                  <Detail label="Reorder Level" value={String(row.reorderLevel)} />
+                  <Detail label="Created" value={formatDateOnly(row.createdAt)} />
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openEditor(row)}>Edit</button>
+                  <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openMovement('in', row)}>
+                    <ArrowDownToLine className="h-4 w-4" />
+                    Stock-in
+                  </button>
+                  <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openMovement('out', row)}>
+                    <ArrowUpFromLine className="h-4 w-4" />
+                    Stock-out
+                  </button>
+                </div>
+              </div>
+            )}
             columns={[
               {
                 key: 'item',
@@ -319,5 +347,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-sm font-medium text-app">{label}</span>
       {children}
     </label>
+  )
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-app bg-app/20 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-1 break-words text-sm text-app">{value}</p>
+    </div>
   )
 }

@@ -71,7 +71,7 @@ export function LoginPage() {
               imageClassName="drop-shadow-[0_6px_18px_rgba(12,47,51,0.08)]"
             />
             <div className="mt-8 max-w-xl">
-              <h1 className="text-4xl font-semibold tracking-[-0.03em] text-[#0C2F33] sm:text-[2.6rem]">
+              <h1 className="text-3xl font-semibold tracking-[-0.03em] text-[#0C2F33] sm:text-[2.6rem]">
                 Enterprise service operations, ready when your team is.
               </h1>
               <p className="mt-4 text-sm leading-7 text-[#46615f] sm:text-[0.95rem]">

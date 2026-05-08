@@ -233,7 +233,7 @@ export function WorkOrdersPage() {
         title="Work orders"
         description="Track live work orders, assignments, due dates, and field progress."
         actions={
-          <button type="button" className="button-primary" onClick={() => openCreateModal()}>
+          <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openCreateModal()}>
             <Plus className="h-4 w-4" />
             New work order
           </button>
@@ -290,6 +290,29 @@ export function WorkOrdersPage() {
             pageSize={10}
             emptyTitle={hasWorkOrders ? 'No matching work orders' : 'No records yet'}
             emptyDescription={hasWorkOrders ? 'Adjust the filters or search text to see more results.' : 'Create the first work order for this branch scope to get started.'}
+            mobileCard={(row) => (
+              <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link to={`/work-orders/${row.id}`} className="font-semibold text-accent-strong hover:underline">
+                      {row.workOrderNumber}
+                    </Link>
+                    <p className="mt-1 text-sm text-app">{row.title}</p>
+                    <p className="mt-1 text-xs text-muted">{row.clientName || 'No client'} • {row.branchName || 'No branch assigned'}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone={priorityTone(row.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{row.priority}</Badge>
+                    <Badge tone={statusTone(row.status as never)}>{row.status}</Badge>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Detail label="Asset" value={row.assetName || 'No asset linked'} />
+                  <Detail label="Assigned Group" value={resolveAssignedGroupName(row)} />
+                  <Detail label="Assigned To" value={resolveAssignedToName(row)} />
+                  <Detail label="Due Date" value={formatDateOnly(row.dueDate || undefined)} />
+                </div>
+              </div>
+            )}
             columns={[
               {
                 key: 'workOrder',
@@ -520,9 +543,9 @@ export function WorkOrdersPage() {
             <div className="panel-subtle rounded-2xl p-4 text-sm text-muted">No workforce users are available for assignment in the current branch scope yet.</div>
           ) : null}
           {saveError ? <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{saveError}</div> : null}
-          <div className="flex justify-end gap-3">
-            <button type="button" className="button-secondary" onClick={() => setEditorOpen(false)} disabled={saving}>Cancel</button>
-            <button type="button" className="button-primary" onClick={() => void createWorkOrder()} disabled={saving}>{saving ? 'Creating...' : 'Create'}</button>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setEditorOpen(false)} disabled={saving}>Cancel</button>
+            <button type="button" className="button-primary w-full sm:w-auto" onClick={() => void createWorkOrder()} disabled={saving}>{saving ? 'Creating...' : 'Create'}</button>
           </div>
         </div>
       </Modal>
@@ -554,5 +577,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-sm font-medium text-app">{label}</span>
       {children}
     </label>
+  )
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-app bg-app/20 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-1 break-words text-sm text-app">{value}</p>
+    </div>
   )
 }

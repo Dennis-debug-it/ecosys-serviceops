@@ -62,8 +62,8 @@ export const Topbar = memo(function Topbar({
   return (
     <header className="bg-topbar-shell border-app sticky top-0 z-20 w-full border-b backdrop-blur">
       <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <button type="button" className="icon-button md:hidden" onClick={onMenuClick}>
+        <div className="flex min-w-0 items-center gap-3">
+          <button type="button" className="icon-button lg:hidden" onClick={onMenuClick} aria-label="Open navigation menu">
             <Menu className="h-5 w-5" />
           </button>
           {mode === 'platform' ? (
@@ -75,7 +75,7 @@ export const Topbar = memo(function Topbar({
           )}
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-full lg:basis-auto">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-app">{tenantName}</p>
@@ -84,7 +84,7 @@ export const Topbar = memo(function Topbar({
 
             <div className="divider-app hidden h-7 w-px lg:block" />
 
-            <label className="panel-subtle hidden min-w-0 flex-1 items-center gap-3 rounded-2xl px-4 py-3 lg:flex lg:max-w-xl">
+            <label className="panel-subtle hidden min-w-0 flex-1 items-center gap-3 rounded-2xl px-4 py-3 xl:flex xl:max-w-xl">
               <Search className="h-4 w-4 text-muted" />
               <input
                 ref={searchInputRef}
@@ -101,7 +101,7 @@ export const Topbar = memo(function Topbar({
           <select
             value={selectedBranchId}
             onChange={(event) => setSelectedBranchId(event.target.value)}
-            className="field-input w-full sm:w-auto sm:min-w-[220px] sm:max-w-[220px]"
+            className="field-input min-w-0 flex-1 sm:flex-none sm:w-auto sm:min-w-[220px] sm:max-w-[220px]"
           >
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
@@ -205,7 +205,7 @@ export const Topbar = memo(function Topbar({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1600px] px-4 pb-4 sm:px-6 lg:hidden">
+      <div className="mx-auto w-full max-w-[1600px] px-4 pb-4 sm:px-6 xl:hidden">
         <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
           <Search className="h-4 w-4 text-muted" />
           <input

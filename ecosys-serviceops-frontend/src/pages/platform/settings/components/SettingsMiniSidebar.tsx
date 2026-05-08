@@ -51,7 +51,7 @@ export function SettingsMiniSidebar({ sections, activeSection, onSelect, mobileO
   return (
     <>
       <div className="flex items-center justify-between gap-2 md:hidden">
-        <button type="button" className="button-secondary" onClick={onOpenMobile}>
+        <button type="button" className="button-secondary w-full sm:w-auto" onClick={onOpenMobile}>
           <Menu className="h-4 w-4" />
           Sections
         </button>

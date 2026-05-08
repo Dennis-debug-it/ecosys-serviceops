@@ -169,6 +169,23 @@ export function DashboardPage() {
                 pageSize={6}
                 emptyTitle="No records yet"
                 emptyDescription="Create a work order to start operational tracking."
+                mobileCard={(row) => (
+                  <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link to={`/work-orders/${row.id}`} className="font-semibold text-accent-strong hover:underline">
+                          {row.workOrderNumber}
+                        </Link>
+                        <p className="mt-1 text-sm text-app">{row.title}</p>
+                      </div>
+                      <Badge tone={row.status === 'Completed' ? 'success' : row.status === 'Cancelled' ? 'danger' : 'info'}>{row.status}</Badge>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Detail label="Client" value={row.clientName || 'Unassigned client'} />
+                      <Detail label="Due" value={formatDateOnly(row.dueDate || undefined)} />
+                    </div>
+                  </div>
+                )}
                 columns={[
                   {
                     key: 'number',
@@ -304,6 +321,15 @@ export function DashboardPage() {
           </button>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-app bg-app/20 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-1 text-sm text-app">{value}</p>
     </div>
   )
 }

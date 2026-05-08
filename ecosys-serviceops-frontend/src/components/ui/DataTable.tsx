@@ -16,6 +16,7 @@ export function DataTable<T>({
   rowKey,
   pageSize = 8,
   minTableWidth = 'min-w-[900px] w-full',
+  mobileCard,
 }: {
   columns: DataTableColumn<T>[]
   rows?: T[] | null
@@ -24,6 +25,7 @@ export function DataTable<T>({
   rowKey?: (row: T, index: number) => string
   pageSize?: number
   minTableWidth?: string
+  mobileCard?: (row: T, index: number) => ReactNode
 }) {
   const safeRows = Array.isArray(rows) ? rows : []
   const [page, setPage] = useState(1)
@@ -46,7 +48,23 @@ export function DataTable<T>({
 
   return (
     <div className="table-shell w-full overflow-hidden rounded-[28px] border border-app">
-      <div className="w-full overflow-x-auto overscroll-x-contain rounded-[28px]">
+      <div className="divide-app md:hidden">
+        {visibleRows.map((row, index) => (
+          <article key={rowKey ? rowKey(row, index) : index} className="space-y-4 px-4 py-4">
+            {mobileCard ? mobileCard(row, index) : (
+              <div className="space-y-3">
+                {columns.map((column) => (
+                  <div key={column.key} className="rounded-2xl border border-app bg-subtle px-4 py-3">
+                    <p className="text-secondary text-[11px] font-semibold uppercase tracking-[0.18em]">{column.header}</p>
+                    <div className="mt-2 break-words text-sm text-app">{column.cell(row)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+      <div className="hidden w-full overflow-x-auto overscroll-x-contain rounded-[28px] md:block">
         <table className={`divide-app w-full ${minTableWidth}`}>
           <thead className="table-head">
             <tr>
@@ -74,18 +92,18 @@ export function DataTable<T>({
         </table>
       </div>
       {pageCount > 1 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-app px-4 py-3">
+        <div className="flex flex-col gap-3 border-t border-app px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted">
             Showing {(page - 1) * effectivePageSize + 1}-{Math.min(page * effectivePageSize, safeRows.length)} of {safeRows.length}
           </p>
-          <div className="flex items-center gap-2">
-            <button type="button" className="button-secondary px-3 py-2" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="button-secondary min-h-[40px] px-3 py-2" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
               Previous
             </button>
             <p className="text-xs text-muted">
               Page {page} of {pageCount}
             </p>
-            <button type="button" className="button-secondary px-3 py-2" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page === pageCount}>
+            <button type="button" className="button-secondary min-h-[40px] px-3 py-2" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page === pageCount}>
               Next
             </button>
           </div>

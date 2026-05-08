@@ -119,7 +119,7 @@ export function ClientsPage() {
         title="Client register"
         description="Search, filter, and manage active or inactive client accounts."
         actions={
-          <button type="button" className="button-primary" onClick={() => openEditor()}>
+          <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
             <Plus className="h-4 w-4" />
             Add client
           </button>
@@ -166,6 +166,34 @@ export function ClientsPage() {
             pageSize={10}
             emptyTitle={hasFilters ? 'No clients found' : 'No clients found'}
             emptyDescription={hasFilters ? 'Try clearing search or changing the status filter.' : 'Create the first client record to link work orders and assets.'}
+            mobileCard={(row) => (
+              <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className={`font-semibold ${row.isActive ? 'text-app' : 'text-muted'}`}>{row.clientName}</p>
+                    <p className="mt-1 text-xs text-muted">{row.clientType || 'Client'}</p>
+                  </div>
+                  <Badge tone={row.isActive ? 'success' : 'neutral'}>{row.isActive ? 'Active' : 'Inactive'}</Badge>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Detail label="Contact" value={row.contactPerson || row.email || 'Not set'} />
+                  <Detail label="Phone" value={row.contactPhone || row.phone || 'Not set'} />
+                  <Detail label="Location" value={row.location || 'Not set'} />
+                  <Detail label="Created" value={formatDateOnly(row.createdAt)} />
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openEditor(row)}>Edit</button>
+                  <button
+                    type="button"
+                    className="button-secondary w-full sm:w-auto"
+                    onClick={() => void toggleClientStatus(row)}
+                    disabled={actionClientId === row.id}
+                  >
+                    {actionClientId === row.id ? 'Saving...' : row.isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              </div>
+            )}
             columns={[
               {
                 key: 'name',
@@ -230,5 +258,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-sm font-medium text-app">{label}</span>
       {children}
     </label>
+  )
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-app bg-app/20 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-1 text-sm text-app">{value}</p>
+    </div>
   )
 }

@@ -54,20 +54,17 @@ export function Modal({
 
   return (
     <div data-ui-overlay="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className={`w-[95vw] ${maxWidth} max-h-[90vh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-4 dark:border-slate-800">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+      <div className={`glass-panel w-[95vw] ${maxWidth} max-h-[90vh] overflow-hidden rounded-[28px]`} onClick={(event) => event.stopPropagation()}>
+        <div className="border-app flex items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-app">{title}</h2>
+            <p className="mt-1 text-sm text-muted">{description}</p>
           </div>
           <button type="button" className="icon-button h-10 w-10" onClick={onClose} aria-label="Close modal">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="max-h-[calc(90vh-88px)] overflow-y-auto px-6 py-5">
+        <div className="max-h-[calc(90vh-88px)] overflow-y-auto px-4 py-5 sm:px-6">
           {children}
         </div>
       </div>

@@ -169,14 +169,14 @@ export function AssetsPage() {
         description="Manage client assets, service details, and preventive maintenance dates."
         actions={
           <>
-            <button type="button" className="button-secondary" onClick={() => assetService.downloadImportTemplate()}>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => assetService.downloadImportTemplate()}>
               <Download className="h-4 w-4" />
               Import template
             </button>
-            <button type="button" className="button-secondary" onClick={() => setImportOpen(true)}>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setImportOpen(true)}>
               Bulk import
             </button>
-            <button type="button" className="button-primary" onClick={() => openEditor()}>
+            <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
               <Plus className="h-4 w-4" />
               Add asset
             </button>
@@ -224,6 +224,24 @@ export function AssetsPage() {
             pageSize={10}
             emptyTitle="No assets found"
             emptyDescription={hasFilters ? 'Try clearing search or changing status filters.' : 'Create an asset or import your asset list to get started.'}
+            mobileCard={(row) => (
+              <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-app">{row.assetName}</p>
+                    <p className="mt-1 text-xs text-muted">{row.assetCode}</p>
+                  </div>
+                  <Badge tone={row.status === 'Active' ? 'success' : 'warning'}>{row.status}</Badge>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Detail label="Client" value={row.clientName || 'Not linked'} />
+                  <Detail label="Branch" value={row.branchName || 'Global'} />
+                  <Detail label="Type" value={row.assetType || 'Not set'} />
+                  <Detail label="Next PM" value={formatDateOnly(row.nextPmDate || undefined)} />
+                </div>
+                <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openEditor(row)}>Edit asset</button>
+              </div>
+            )}
             columns={[
               {
                 key: 'asset',
@@ -332,6 +350,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function FieldError({ message }: { message: string }) {
   return <p className="text-sm text-rose-200">{message}</p>
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-app bg-app/20 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className="mt-1 break-words text-sm text-app">{value}</p>
+    </div>
+  )
 }
 
 function extractAssetErrors(error: unknown): { formError: string; fieldErrors: AssetFieldErrors } {

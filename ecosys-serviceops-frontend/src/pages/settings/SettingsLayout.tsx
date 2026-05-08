@@ -95,6 +95,21 @@ export function SettingsLayout() {
         </div>
       </div>
 
+      <div className="surface-card md:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {settingsSections.map((section) => (
+            <NavLink
+              key={section.path}
+              to={section.path}
+              end
+              className={({ isActive }) => `shrink-0 rounded-2xl px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-subtle-strong text-app border border-app' : 'panel-subtle text-muted'}`}
+            >
+              {section.shortLabel}
+            </NavLink>
+          ))}
+        </div>
+      </div>
+
       <div className="flex w-full min-w-0 gap-0 overflow-hidden rounded-[32px] border border-app bg-[var(--app-card)]">
         <div className={`hidden shrink-0 border-r border-app md:block ${collapsed ? 'w-20' : 'w-72'}`}>
           {navContent}

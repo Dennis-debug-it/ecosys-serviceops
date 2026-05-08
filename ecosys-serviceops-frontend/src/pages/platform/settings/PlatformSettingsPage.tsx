@@ -38,7 +38,22 @@ export function PlatformSettingsPage() {
         </div>
       </div>
 
-      <div className="flex min-h-[680px] w-full min-w-0 overflow-hidden rounded-[32px] border border-app bg-[var(--app-card)]">
+      <div className="surface-card md:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {settingsSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              className={`shrink-0 rounded-2xl px-3 py-2 text-sm font-semibold transition ${activeSection === section.id ? 'bg-subtle-strong text-app border border-app' : 'panel-subtle text-muted'}`}
+            >
+              {section.shortLabel}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex min-h-[680px] w-full min-w-0 flex-col overflow-hidden rounded-[32px] border border-app bg-[var(--app-card)] md:flex-row">
         <aside className="w-full border-b border-app md:w-80 md:border-b-0 md:border-r">
           <SettingsMiniSidebar
             sections={settingsSections}

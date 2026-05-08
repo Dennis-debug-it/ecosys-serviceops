@@ -44,20 +44,20 @@ export function EmailIntakeLayout({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="button-secondary" onClick={onRunSync}>Run Sync</button>
-            <button data-testid="email-intake-simulate-button" type="button" className="button-secondary" onClick={onOpenSimulation}>Simulate Email</button>
-            <button type="button" className="button-secondary" onClick={onOpenManualReview}>View Manual Review</button>
-            <button type="button" className="button-secondary" onClick={onOpenMailbox}>Settings</button>
+          <div className="flex w-full flex-wrap gap-2 lg:w-auto">
+            <button type="button" className="button-secondary flex-1 sm:flex-none" onClick={onRunSync}>Run Sync</button>
+            <button data-testid="email-intake-simulate-button" type="button" className="button-secondary flex-1 sm:flex-none" onClick={onOpenSimulation}>Simulate Email</button>
+            <button type="button" className="button-secondary flex-1 sm:flex-none" onClick={onOpenManualReview}>View Manual Review</button>
+            <button type="button" className="button-secondary flex-1 sm:flex-none" onClick={onOpenMailbox}>Settings</button>
           </div>
         </div>
       </section>
 
       <EmailIntakeMetricCards metrics={metrics} />
 
-      <div className="grid gap-5 md:grid-cols-[280px_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
         <EmailIntakeSubNav activeSection={activeSection} onChange={onSectionChange} />
-        <div>{children}</div>
+        <div className="min-w-0">{children}</div>
       </div>
     </div>
   )

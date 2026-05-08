@@ -473,19 +473,19 @@ export function WorkOrderDetailPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-end gap-2 xl:max-w-[520px]">
-              <button type="button" className="button-primary" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end xl:max-w-[520px]">
+              <button type="button" className="button-primary w-full sm:w-auto" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
                 <MessageSquarePlus className="h-4 w-4" />
                 Save Changes
               </button>
-              <button type="button" className="button-secondary" onClick={openAssignmentWizard}>
+              <button type="button" className="button-secondary w-full sm:w-auto" onClick={openAssignmentWizard}>
                 {workOrder.assignmentGroupId || workOrder.technicianAssignments?.length ? 'Reassign' : 'Assign'}
               </button>
-              <button type="button" className="button-secondary" onClick={() => setMaterialsOpen(true)}>
+              <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setMaterialsOpen(true)}>
                 <PackagePlus className="h-4 w-4" />
                 Request Materials
               </button>
-              <button type="button" className="button-secondary" disabled={!stringEquals(workOrder.status, 'Completed')} onClick={() => void acknowledgeWorkOrder()}>
+              <button type="button" className="button-secondary w-full sm:w-auto" disabled={!stringEquals(workOrder.status, 'Completed')} onClick={() => void acknowledgeWorkOrder()}>
                 Close Work Order
               </button>
             </div>
@@ -493,12 +493,12 @@ export function WorkOrderDetailPage() {
         </section>
 
         <section className="surface-card space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {detailTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
-                className={activeTab === tab.id ? 'button-primary px-3 py-2' : 'button-secondary px-3 py-2'}
+                className={`${activeTab === tab.id ? 'button-primary' : 'button-secondary'} shrink-0 px-3 py-2`}
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
@@ -535,8 +535,8 @@ export function WorkOrderDetailPage() {
                     className="field-input min-h-[140px]"
                     placeholder="Add work update, findings, or action taken..."
                   />
-                  <div className="flex justify-end">
-                    <button type="button" className="button-primary" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button type="button" className="button-primary w-full sm:w-auto" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
                       <MessageSquarePlus className="h-4 w-4" />
                       Save Changes
                     </button>
@@ -636,8 +636,8 @@ export function WorkOrderDetailPage() {
                     className="field-input min-h-[140px]"
                     placeholder="Describe the work done, findings, materials used, and follow-up actions."
                   />
-                  <div className="flex justify-end">
-                    <button type="button" className="button-primary" onClick={() => void completeWorkOrder()}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button type="button" className="button-primary w-full sm:w-auto" onClick={() => void completeWorkOrder()}>
                       <CheckCircle2 className="h-4 w-4" />
                       Complete Work Order
                     </button>
@@ -651,8 +651,8 @@ export function WorkOrderDetailPage() {
                   <Field label="Comments">
                     <textarea value={ackComments} onChange={(event) => setAckComments(event.target.value)} className="field-input min-h-[110px]" />
                   </Field>
-                  <div className="flex justify-end">
-                    <button type="button" className="button-primary" disabled={!stringEquals(workOrder.status, 'Completed') || !ackName.trim()} onClick={() => void acknowledgeWorkOrder()}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button type="button" className="button-primary w-full sm:w-auto" disabled={!stringEquals(workOrder.status, 'Completed') || !ackName.trim()} onClick={() => void acknowledgeWorkOrder()}>
                       Close Work Order
                     </button>
                   </div>
@@ -682,8 +682,8 @@ export function WorkOrderDetailPage() {
 
           {activeTab === 'materials' ? (
             <Block title="Materials">
-              <div className="flex justify-end">
-                <button type="button" className="button-secondary" onClick={() => setMaterialsOpen(true)}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setMaterialsOpen(true)}>
                   <PackagePlus className="h-4 w-4" />
                   Request Materials
                 </button>
