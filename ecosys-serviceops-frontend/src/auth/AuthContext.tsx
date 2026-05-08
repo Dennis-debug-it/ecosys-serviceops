@@ -5,6 +5,7 @@ import type { ApiBranch, ApiPermissions, ApiRole } from '../types/api'
 import type { AppSession, AuthBranch, Role } from '../types/app'
 import { asBoolean, asNullableString, asString, normalizeBranches, normalizePermissions, pickRecord } from '../utils/apiDefaults'
 import { cleanupBodyInteractivity, clearTransientAppState, dispatchUiReset } from '../utils/appCleanup'
+import { isPlatformRole } from '../utils/constants'
 
 const SESSION_STORAGE_KEY = 'ecosys.serviceops.session'
 
@@ -19,7 +20,7 @@ type AuthContextValue = {
   isReady: boolean
   loading: boolean
   canAccess: (roles: Role[]) => boolean
-  login: (input: LoginInput) => Promise<AppSession>
+  login: (input: LoginInput, onStatusChange?: (status: 'signing-in' | 'loading-workspace') => void) => Promise<AppSession>
   signup: (input: SignupInput) => Promise<AppSession>
   logout: () => Promise<void>
 }
@@ -28,9 +29,9 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 function normalizeRole(role: string): ApiRole {
   const normalized = role.trim().toLowerCase()
-  if (normalized === 'superadmin' || normalized === 'super_admin') return 'superadmin'
-  if (normalized === 'admin') return 'admin'
-  return 'user'
+  if (!normalized) return 'user'
+  if (normalized === 'super_admin') return 'superadmin'
+  return normalized as ApiRole
 }
 
 function createAvatar(name: string) {
@@ -52,42 +53,69 @@ function mapBranches(branches: ApiBranch[]): AuthBranch[] {
   }))
 }
 
-function buildSessionFromMe(payload: unknown, token: string): AppSession {
+function unwrapMePayload(payload: unknown) {
   const root = pickRecord(payload) ?? {}
-  const user = pickRecord(root.user, payload) ?? {}
-  const tenant = pickRecord(root.tenant, payload) ?? {}
-  const role = normalizeRole(asString(user.role ?? root.role, 'user'))
-  const name = asString(user.fullName ?? user.name ?? root.fullName ?? root.name, 'Ecosys User')
-  const email = asString(user.email ?? user.emailAddress ?? root.email ?? root.emailAddress, '')
-  const permissions = normalizePermissions(user.permissions ?? root.permissions)
-  const branches = normalizeBranches(root.branches ?? tenant.branches)
-  const tenantId = asString(tenant.tenantId ?? root.tenantId)
-  const tenantName = asString(tenant.companyName ?? tenant.name ?? root.companyName ?? root.tenantName, role === 'superadmin' ? 'Ecosys Platform' : 'Workspace')
-  const jobTitle = asNullableString(user.jobTitle ?? root.jobTitle)
-  const department = asNullableString(user.department ?? root.department)
+  const container = pickRecord(root.data, root.result) ?? root
+  const user = pickRecord(container.user) ?? container
+  const tenant = pickRecord(container.tenant)
+  const branches = container.branches ?? tenant?.branches ?? root.branches
+
+  return { root, container, user, tenant: tenant ?? {}, branches }
+}
+
+function logSessionMappingFailure(payload: unknown) {
+  if (!import.meta.env.DEV) return
+
+  console.warn('[auth] Unable to map /api/auth/me response into a session.', payload)
+}
+
+function buildSessionFromMe(payload: unknown, token: string): AppSession {
+  const { root, container, user, tenant, branches } = unwrapMePayload(payload)
+  const role = normalizeRole(asString(user.role ?? container.role ?? root.role, 'user'))
+  const userId = asString(user.userId ?? user.id ?? container.userId ?? container.id ?? root.userId ?? root.id)
+  const fullName = asString(user.fullName ?? user.name ?? container.fullName ?? container.name ?? root.fullName ?? root.name, 'Ecosys User')
+  const email = asString(user.email ?? user.emailAddress ?? container.email ?? container.emailAddress ?? root.email ?? root.emailAddress, '')
+  const permissions = normalizePermissions(user.permissions ?? container.permissions ?? root.permissions)
+  const normalizedBranches = normalizeBranches(branches)
+  const tenantId = asString(tenant.tenantId ?? container.tenantId ?? root.tenantId)
+  const tenantName = asString(
+    tenant.companyName ?? tenant.name ?? container.companyName ?? container.tenantName ?? root.companyName ?? root.tenantName,
+    isPlatformRole(role) ? 'Ecosys Platform' : 'Workspace',
+  )
+  const jobTitle = asNullableString(user.jobTitle ?? container.jobTitle ?? root.jobTitle)
+  const department = asNullableString(user.department ?? container.department ?? root.department)
+  const defaultBranchId = asNullableString(user.defaultBranchId ?? container.defaultBranchId ?? root.defaultBranchId) ?? undefined
+
+  if (!userId || !email) {
+    logSessionMappingFailure(payload)
+  }
 
   return {
-    id: asString(user.userId ?? user.id ?? root.userId ?? root.id),
-    accountId: asString(user.userId ?? user.id ?? root.userId ?? root.id),
+    id: userId,
+    accountId: userId,
     token,
-    userId: asString(user.userId ?? user.id ?? root.userId ?? root.id),
+    userId,
     tenantId,
-    name,
+    fullName,
+    name: fullName,
     email,
     role,
     tenantName,
     tenantCode: '',
-    title: jobTitle || (role === 'superadmin' ? 'Platform Owner' : role === 'admin' ? 'Administrator' : 'User'),
-    branchId: asNullableString(user.defaultBranchId ?? root.defaultBranchId) ?? undefined,
-    avatar: createAvatar(name),
+    title: jobTitle || (isPlatformRole(role) ? 'Platform Administrator' : role === 'tenantadmin' || role === 'admin' ? 'Administrator' : 'User'),
+    branchId: defaultBranchId,
+    defaultBranchId,
+    avatar: createAvatar(fullName),
     sessionStartedAt: new Date().toISOString(),
     permissions,
-    branches: mapBranches(branches),
+    branches: mapBranches(normalizedBranches),
     department: department ?? undefined,
-    hasAllBranchAccess: asBoolean(user.hasAllBranchAccess ?? root.hasAllBranchAccess),
-    country: asNullableString(tenant.country ?? root.country) ?? undefined,
-    industry: asNullableString(tenant.industry ?? root.industry) ?? undefined,
-    logoUrl: asNullableString(tenant.logoUrl ?? root.logoUrl),
+    hasAllBranchAccess: asBoolean(user.hasAllBranchAccess ?? container.hasAllBranchAccess ?? root.hasAllBranchAccess),
+    country: asNullableString(tenant.country ?? container.country ?? root.country) ?? undefined,
+    industry: asNullableString(tenant.industry ?? container.industry ?? root.industry) ?? undefined,
+    logoUrl: asNullableString(tenant.logoUrl ?? container.logoUrl ?? root.logoUrl),
+    primaryColor: asNullableString(tenant.primaryColor ?? container.primaryColor ?? root.primaryColor) ?? undefined,
+    secondaryColor: asNullableString(tenant.secondaryColor ?? container.secondaryColor ?? root.secondaryColor) ?? undefined,
   }
 }
 
@@ -200,15 +228,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isReady,
       loading,
       canAccess: (roles) => Boolean(session && roles.includes(session.role)),
-      login: async (input) => {
+      login: async (input, onStatusChange) => {
         cleanupBodyInteractivity()
         dispatchUiReset()
         setLoading(true)
         setIsReady(false)
         try {
+          onStatusChange?.('signing-in')
           const loginResponse = await authService.login(input)
           persistAuthToken(loginResponse.token)
-          const me = await authService.getCurrentUser()
+          onStatusChange?.('loading-workspace')
+          let me: unknown
+          try {
+            me = await authService.getCurrentUser()
+          } catch {
+            clearLocalSessionState()
+            setSession(null)
+            setIsReady(true)
+            throw new Error('We could not load your session. Please try again.')
+          }
           const nextSession = buildSessionFromMe(me, loginResponse.token)
           setSession(nextSession)
           persistSession(nextSession)

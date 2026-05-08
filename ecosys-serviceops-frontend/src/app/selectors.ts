@@ -3,12 +3,12 @@ import type {
   AppDatabase,
   AssetRecord,
   InventoryItem,
-  Role,
   SearchItem,
   TenantData,
   TechnicianRecord,
   WorkOrderRecord,
 } from '../types/app'
+import { PLATFORM_ROLES, TENANT_USER_ROLES } from '../utils/constants'
 
 export type WorkOrderView = WorkOrderRecord & {
   assetName: string
@@ -29,9 +29,6 @@ export type DashboardMetrics = {
   priorityWorkOrders: WorkOrderView[]
   materialsIssues: InventoryItem[]
 }
-
-const tenantRoles: Role[] = ['admin', 'user']
-const platformRoles: Role[] = ['superadmin']
 
 function getSiteRecord(data: TenantData, siteId?: string) {
   if (!siteId) return undefined
@@ -106,28 +103,28 @@ function priorityRank(priority: WorkOrderRecord['priority']) {
 
 function buildTenantRouteItems(): SearchItem[] {
   return [
-    { id: 'route-dashboard', title: 'Dashboard', subtitle: 'Operational snapshot', path: '/dashboard', roles: tenantRoles },
-    { id: 'route-work-orders', title: 'Work Orders', subtitle: 'Dispatch and status tracking', path: '/work-orders', roles: tenantRoles },
-    { id: 'route-assets', title: 'Assets', subtitle: 'Asset register and PM actions', path: '/assets', roles: tenantRoles },
-    { id: 'route-field-operations', title: 'Field Operations', subtitle: 'Technician roster and workload', path: '/field-operations', roles: tenantRoles },
-    { id: 'route-inventory', title: 'Inventory', subtitle: 'Stores and requisitions', path: '/inventory', roles: tenantRoles },
-    { id: 'route-clients', title: 'Clients', subtitle: 'Client profiles and sites', path: '/clients', roles: tenantRoles },
-    { id: 'route-sla', title: 'SLA Management', subtitle: 'Rules, mappings, and watchlists', path: '/sla', roles: tenantRoles },
-    { id: 'route-reports', title: 'Reports', subtitle: 'Service and performance reporting', path: '/reports', roles: tenantRoles },
-    { id: 'route-settings', title: 'Settings', subtitle: 'Admin-only tenant configuration', path: '/settings', roles: ['admin'] },
+    { id: 'route-dashboard', title: 'Dashboard', subtitle: 'Operational snapshot', path: '/dashboard', roles: TENANT_USER_ROLES },
+    { id: 'route-work-orders', title: 'Work Orders', subtitle: 'Dispatch and status tracking', path: '/work-orders', roles: TENANT_USER_ROLES },
+    { id: 'route-assets', title: 'Assets', subtitle: 'Asset register and PM actions', path: '/assets', roles: TENANT_USER_ROLES },
+    { id: 'route-field-operations', title: 'Field Operations', subtitle: 'Technician roster and workload', path: '/field-operations', roles: TENANT_USER_ROLES },
+    { id: 'route-inventory', title: 'Inventory', subtitle: 'Stores and requisitions', path: '/inventory', roles: TENANT_USER_ROLES },
+    { id: 'route-clients', title: 'Clients', subtitle: 'Client profiles and sites', path: '/clients', roles: TENANT_USER_ROLES },
+    { id: 'route-sla', title: 'SLA Management', subtitle: 'Rules, mappings, and watchlists', path: '/sla', roles: TENANT_USER_ROLES },
+    { id: 'route-reports', title: 'Reports', subtitle: 'Service and performance reporting', path: '/reports', roles: TENANT_USER_ROLES },
+    { id: 'route-settings', title: 'Settings', subtitle: 'Admin-only tenant configuration', path: '/settings', roles: ['tenantadmin', 'admin'] },
   ]
 }
 
 export function buildSearchItems(database: AppDatabase, tenantId?: string): SearchItem[] {
   if (!tenantId) {
     return [
-      { id: 'platform-command-centre', title: 'Command Centre', subtitle: 'Platform-wide operations view', path: '/dashboard', roles: platformRoles },
+      { id: 'platform-command-centre', title: 'Command Centre', subtitle: 'Platform-wide operations view', path: '/platform', roles: PLATFORM_ROLES },
       ...database.tenants.slice(0, 8).map((tenant) => ({
         id: `tenant-${tenant.id}`,
         title: tenant.name,
         subtitle: `${tenant.code} • ${tenant.subscriptionStatus}`,
-        path: '/dashboard',
-        roles: platformRoles,
+        path: '/platform',
+        roles: PLATFORM_ROLES,
       })),
     ]
   }
@@ -140,7 +137,7 @@ export function buildSearchItems(database: AppDatabase, tenantId?: string): Sear
     title: workOrder.workOrderNumber,
     subtitle: `${workOrder.title} • ${getClientName(data, workOrder.clientId)}`,
     path: `/work-orders/${workOrder.id}`,
-    roles: tenantRoles,
+    roles: TENANT_USER_ROLES,
   }))
 
   const assets = data.assets.slice(0, 8).map((asset: AssetRecord) => ({
@@ -148,7 +145,7 @@ export function buildSearchItems(database: AppDatabase, tenantId?: string): Sear
     title: asset.name,
     subtitle: `${asset.assetCode} • ${getClientName(data, asset.clientId)}`,
     path: '/assets',
-    roles: tenantRoles,
+    roles: TENANT_USER_ROLES,
   }))
 
   const technicians = data.technicians.slice(0, 8).map((technician: TechnicianRecord) => ({
@@ -156,7 +153,7 @@ export function buildSearchItems(database: AppDatabase, tenantId?: string): Sear
     title: technician.fullName,
     subtitle: `${getTechnicianGroupName(data, technician.groupId)} • ${technician.status}`,
     path: '/field-operations',
-    roles: tenantRoles,
+    roles: TENANT_USER_ROLES,
   }))
 
   const clients = data.clients.slice(0, 8).map((client) => ({
@@ -164,7 +161,7 @@ export function buildSearchItems(database: AppDatabase, tenantId?: string): Sear
     title: client.name,
     subtitle: `${client.sites.length} sites • ${client.emailIntegrationStatus}`,
     path: '/clients',
-    roles: tenantRoles,
+    roles: TENANT_USER_ROLES,
   }))
 
   return [...buildTenantRouteItems(), ...workOrders, ...assets, ...technicians, ...clients]

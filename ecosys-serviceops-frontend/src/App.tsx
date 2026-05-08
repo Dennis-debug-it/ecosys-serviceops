@@ -26,6 +26,7 @@ import type { NotificationItem, SearchItem } from './types/app'
 import { SettingsLayout } from './pages/settings/SettingsLayout'
 import { defaultSettingsSegment, settingsLegacyRedirects, settingsPageRoutes } from './pages/settings/routes'
 import { installInteractionDebugLogger } from './utils/appCleanup'
+import { isPlatformRole, isTenantAdminRole, isTenantWorkspaceRole, PLATFORM_ROLES, TENANT_USER_ROLES } from './utils/constants'
 
 const LoginPage = lazy(async () => ({ default: (await import('./modules/auth/LoginPage')).LoginPage }))
 const SignupPage = lazy(async () => ({ default: (await import('./modules/auth/SignupPage')).SignupPage }))
@@ -49,23 +50,23 @@ const PlatformAuditLogsPage = lazy(async () => ({ default: (await import('./modu
 const PlatformSettingsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformOperationsPages')).PlatformSettingsPage }))
 
 const routeCatalog = [
-  { label: 'Dashboard', path: '/dashboard', roles: ['admin', 'user'] as const, permission: null, icon: LayoutDashboard },
-  { label: 'Work Orders', path: '/work-orders', roles: ['admin', 'user'] as const, permission: 'canViewWorkOrders' as const, icon: ClipboardList },
-  { label: 'Clients', path: '/clients', roles: ['admin', 'user'] as const, permission: null, icon: Building2 },
-  { label: 'Assets', path: '/assets', roles: ['admin', 'user'] as const, permission: 'canManageAssets' as const, icon: Boxes },
-  { label: 'Materials', path: '/materials', roles: ['admin', 'user'] as const, permission: null, icon: Package },
-  { label: 'Preventive Maintenance', path: '/preventive-maintenance', roles: ['admin', 'user'] as const, permission: null, icon: Wrench },
-  { label: 'Templates', path: '/templates', roles: ['admin', 'user'] as const, permission: null, icon: Activity },
-  { label: 'Reports', path: '/reports', roles: ['admin', 'user'] as const, permission: 'canViewReports' as const, icon: Activity },
-  { label: 'Settings', path: '/settings', roles: ['admin'] as const, permission: 'canManageSettings' as const, icon: Settings2 },
-  { label: 'Overview', path: '/platform', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: ShieldCheck },
-  { label: 'Tenants', path: '/platform/tenants', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: Building2 },
-  { label: 'Leads & Enquiries', path: '/platform/leads', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: Users },
-  { label: 'Licenses & Subscriptions', path: '/platform/licenses', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: FileText },
-  { label: 'Platform Users', path: '/platform/users', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: Users },
-  { label: 'Reports', path: '/platform/reports', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: Activity },
-  { label: 'Audit Logs', path: '/platform/audit-logs', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: FileText },
-  { label: 'Settings', path: '/platform/settings', roles: ['superadmin'] as const, permission: 'canViewPlatformTenants' as const, icon: Settings2 },
+  { label: 'Dashboard', path: '/dashboard', roles: TENANT_USER_ROLES, permission: null, icon: LayoutDashboard },
+  { label: 'Work Orders', path: '/work-orders', roles: TENANT_USER_ROLES, permission: 'canViewWorkOrders' as const, icon: ClipboardList },
+  { label: 'Clients', path: '/clients', roles: TENANT_USER_ROLES, permission: null, icon: Building2 },
+  { label: 'Assets', path: '/assets', roles: TENANT_USER_ROLES, permission: 'canManageAssets' as const, icon: Boxes },
+  { label: 'Materials', path: '/materials', roles: TENANT_USER_ROLES, permission: null, icon: Package },
+  { label: 'Preventive Maintenance', path: '/preventive-maintenance', roles: TENANT_USER_ROLES, permission: null, icon: Wrench },
+  { label: 'Templates', path: '/templates', roles: TENANT_USER_ROLES, permission: null, icon: Activity },
+  { label: 'Reports', path: '/reports', roles: TENANT_USER_ROLES, permission: 'canViewReports' as const, icon: Activity },
+  { label: 'Settings', path: '/settings', roles: ['tenantadmin', 'admin'] as const, permission: 'canManageSettings' as const, icon: Settings2 },
+  { label: 'Overview', path: '/platform', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: ShieldCheck },
+  { label: 'Tenants', path: '/platform/tenants', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Building2 },
+  { label: 'Leads & Enquiries', path: '/platform/leads', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Users },
+  { label: 'Licenses & Subscriptions', path: '/platform/licenses', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: FileText },
+  { label: 'Platform Users', path: '/platform/users', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Users },
+  { label: 'Reports', path: '/platform/reports', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Activity },
+  { label: 'Audit Logs', path: '/platform/audit-logs', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: FileText },
+  { label: 'Settings', path: '/platform/settings', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Settings2 },
 ] as const
 
 function RouteLoading({ label }: { label: string }) {
@@ -87,13 +88,13 @@ function HomeRedirect() {
     return <Navigate to="/login" replace />
   }
 
-  return <Navigate to={session.role === 'superadmin' ? '/platform' : '/dashboard'} replace />
+  return <Navigate to={isPlatformRole(session.role) ? '/platform' : '/dashboard'} replace />
 }
 
 function NotFoundPage() {
   const location = useLocation()
   const { session } = useAuth()
-  const fallbackPath = session?.role === 'superadmin' ? '/platform' : session ? '/dashboard' : '/login'
+  const fallbackPath = session ? (isPlatformRole(session.role) ? '/platform' : '/dashboard') : '/login'
 
   return (
     <div className="min-h-screen bg-app p-4 sm:p-6 lg:p-8">
@@ -125,7 +126,7 @@ function TenantOnlyRoute() {
     return <Navigate to="/login" replace />
   }
 
-  if (session.role === 'superadmin') {
+  if (isPlatformRole(session.role)) {
     return <Navigate to="/platform" replace />
   }
 
@@ -144,14 +145,14 @@ function AdminOnlyRoute() {
     return <Navigate to="/login" replace />
   }
 
-  if (session.role !== 'admin' || !session.permissions?.canManageSettings) {
+  if (!isTenantAdminRole(session.role) || !session.permissions?.canManageSettings) {
     return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet context={shellContext} />
 }
 
-function SuperadminOnlyRoute() {
+function PlatformOnlyRoute() {
   const { isReady, session } = useAuth()
   const shellContext = useOutletContext<ShellOutletContext>()
 
@@ -163,7 +164,7 @@ function SuperadminOnlyRoute() {
     return <Navigate to="/login" replace />
   }
 
-  if (session.role !== 'superadmin' || !session.permissions?.canViewPlatformTenants) {
+  if (!isPlatformRole(session.role) || !session.permissions?.canViewPlatformTenants) {
     return <Navigate to="/dashboard" replace />
   }
 
@@ -181,9 +182,15 @@ function AuthenticatedRouteBoundary() {
 function AuthenticatedShell() {
   const { isReady, session } = useAuth()
 
-  const routeAllowedForSession = (roles: readonly ('admin' | 'user' | 'superadmin')[], permission: string | null) => {
+  const routeAllowedForSession = (roles: readonly string[], permission: string | null) => {
     if (!session) return false
-    if (!roles.includes(session.role)) return false
+    if (roles === PLATFORM_ROLES) {
+      if (!isPlatformRole(session.role)) return false
+    } else if (roles === TENANT_USER_ROLES) {
+      if (!isTenantWorkspaceRole(session.role)) return false
+    } else if (!roles.includes(session.role)) {
+      return false
+    }
     if (!permission) return true
     return Boolean(session.permissions?.[permission as keyof NonNullable<typeof session.permissions>])
   }
@@ -213,7 +220,7 @@ function AuthenticatedShell() {
   const notifications = useMemo<NotificationItem[]>(() => [], [])
 
   const branches = useMemo(() => {
-    if (!session || session.role === 'superadmin') return []
+    if (!session || isPlatformRole(session.role)) return []
     const mapped = (session.branches ?? []).map((branch) => ({
       id: branch.id,
       name: branch.name,
@@ -235,10 +242,10 @@ function AuthenticatedShell() {
 
   return (
     <AppShell
-      mode={session.role === 'superadmin' ? 'platform' : 'tenant'}
+      mode={isPlatformRole(session.role) ? 'platform' : 'tenant'}
       navItems={navItems}
       session={session}
-      tenantName={session.role === 'superadmin' ? 'Ecosys Platform' : session.tenantName}
+      tenantName={isPlatformRole(session.role) ? 'Ecosys Platform' : session.tenantName}
       branches={branches}
       notifications={notifications}
       searchItems={searchItems}
@@ -290,7 +297,7 @@ function AppRoutes() {
                 </Route>
               </Route>
 
-              <Route element={<SuperadminOnlyRoute />}>
+              <Route element={<PlatformOnlyRoute />}>
                 <Route path="/platform" element={<PlatformLayout />}>
                   <Route index element={<PlatformOverviewPage />} />
                   <Route path="tenants" element={<PlatformTenantsPage />} />

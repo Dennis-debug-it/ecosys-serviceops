@@ -1,4 +1,12 @@
-export type ApiRole = 'admin' | 'user' | 'superadmin'
+export type ApiRole =
+  | 'superadmin'
+  | 'platformadmin'
+  | 'platformowner'
+  | 'tenantadmin'
+  | 'admin'
+  | 'technician'
+  | 'user'
+  | (string & {})
 
 export interface ApiPermissions {
   canViewWorkOrders: boolean
@@ -50,8 +58,8 @@ export interface ApiUserContext {
 
 export interface LoginResponse {
   token: string
-  user: ApiUserContext
-  tenant: ApiTenantContext
+  user?: ApiUserContext
+  tenant?: ApiTenantContext
 }
 
 export interface SignupResponse {

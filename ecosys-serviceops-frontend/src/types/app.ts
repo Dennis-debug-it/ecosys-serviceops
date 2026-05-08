@@ -1,4 +1,13 @@
-export type Role = 'superadmin' | 'admin' | 'user'
+export type KnownRole =
+  | 'superadmin'
+  | 'platformadmin'
+  | 'platformowner'
+  | 'tenantadmin'
+  | 'admin'
+  | 'technician'
+  | 'user'
+
+export type Role = KnownRole | (string & {})
 
 export type ThemeMode = 'dark' | 'light'
 
@@ -65,6 +74,7 @@ export interface AppSession {
   token?: string
   userId?: string
   tenantId?: string
+  fullName: string
   name: string
   email: string
   role: Role
@@ -72,6 +82,7 @@ export interface AppSession {
   tenantCode: string
   title: string
   branchId?: string
+  defaultBranchId?: string
   avatar: string
   sessionStartedAt: string
   permissions?: UserPermissions
@@ -81,6 +92,8 @@ export interface AppSession {
   country?: string
   industry?: string
   logoUrl?: string | null
+  primaryColor?: string
+  secondaryColor?: string
 }
 
 export interface UserPermissions {

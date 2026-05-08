@@ -1,5 +1,6 @@
 import type {
   AssetStatus,
+  KnownRole,
   MaterialRequestUrgency,
   Priority,
   Role,
@@ -61,8 +62,24 @@ export const TENANT_STATUSES: TenantStatus[] = ['Active', 'Suspended']
 
 export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['Trial', 'Active', 'Past Due', 'Suspended']
 
+export const PLATFORM_ROLES: KnownRole[] = ['superadmin', 'platformadmin', 'platformowner']
+export const TENANT_ADMIN_ROLES: KnownRole[] = ['tenantadmin', 'admin']
+export const TENANT_USER_ROLES: KnownRole[] = ['tenantadmin', 'admin', 'technician', 'user']
+
+export function isPlatformRole(role: Role) {
+  return PLATFORM_ROLES.includes(role as KnownRole)
+}
+
+export function isTenantAdminRole(role: Role) {
+  return TENANT_ADMIN_ROLES.includes(role as KnownRole)
+}
+
+export function isTenantWorkspaceRole(role: Role) {
+  return !isPlatformRole(role)
+}
+
 export function roleHomePath(role: Role) {
-  return role === 'superadmin' ? '/command-centre' : '/dashboard'
+  return isPlatformRole(role) ? '/platform' : '/dashboard'
 }
 
 export const KEYBOARD_SHORTCUTS = {
