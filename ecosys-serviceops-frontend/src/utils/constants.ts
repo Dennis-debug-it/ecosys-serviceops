@@ -11,6 +11,7 @@ import type {
   WorkOrderStatus,
   WorkOrderType,
 } from '../types/app'
+import { isPlatformRole as isPlatformRoleValue, roleHomePath as roleHomePathValue } from './roles'
 
 export const WORK_ORDER_TYPES: WorkOrderType[] = [
   'Preventive Maintenance',
@@ -62,12 +63,12 @@ export const TENANT_STATUSES: TenantStatus[] = ['Active', 'Suspended']
 
 export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['Trial', 'Active', 'Past Due', 'Suspended']
 
-export const PLATFORM_ROLES: KnownRole[] = ['superadmin', 'platformadmin', 'platformowner']
+export const PLATFORM_ROLES: KnownRole[] = ['superadmin', 'platformsuperadmin', 'platformowner', 'platformadmin', 'supportadmin']
 export const TENANT_ADMIN_ROLES: KnownRole[] = ['tenantadmin', 'admin']
 export const TENANT_USER_ROLES: KnownRole[] = ['tenantadmin', 'admin', 'technician', 'user']
 
 export function isPlatformRole(role: Role) {
-  return PLATFORM_ROLES.includes(role as KnownRole)
+  return isPlatformRoleValue(role)
 }
 
 export function isTenantAdminRole(role: Role) {
@@ -79,7 +80,7 @@ export function isTenantWorkspaceRole(role: Role) {
 }
 
 export function roleHomePath(role: Role) {
-  return isPlatformRole(role) ? '/platform' : '/dashboard'
+  return roleHomePathValue(role)
 }
 
 export const KEYBOARD_SHORTCUTS = {

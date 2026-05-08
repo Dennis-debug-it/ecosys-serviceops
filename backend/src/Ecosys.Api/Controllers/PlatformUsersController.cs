@@ -379,13 +379,15 @@ public sealed class PlatformUsersController(
     {
         ValidateRequired(role, "Role is required.");
 
-        return role!.Trim() switch
+        return role!.Trim().Replace(" ", string.Empty, StringComparison.Ordinal).ToLowerInvariant() switch
         {
-            "PlatformOwner" => "PlatformOwner",
-            "PlatformAdmin" => "PlatformAdmin",
-            "SupportAdmin" => "SupportAdmin",
-            "FinanceAdmin" => "FinanceAdmin",
-            "ReadOnlyAuditor" => "ReadOnlyAuditor",
+            "platformowner" => "PlatformOwner",
+            "superadmin" => "PlatformOwner",
+            "platformsuperadmin" => "PlatformOwner",
+            "platformadmin" => "PlatformAdmin",
+            "supportadmin" => "SupportAdmin",
+            "financeadmin" => "FinanceAdmin",
+            "readonlyauditor" => "ReadOnlyAuditor",
             _ => throw new BusinessRuleException("Role must be PlatformOwner, PlatformAdmin, SupportAdmin, FinanceAdmin, or ReadOnlyAuditor.")
         };
     }
@@ -403,6 +405,11 @@ public sealed class PlatformUsersController(
     private static string ToPublicRole(string role)
     {
         if (role.Equals(AppRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase) || role.Equals(AppRoles.PlatformOwner, StringComparison.OrdinalIgnoreCase))
+        {
+            return "PlatformOwner";
+        }
+
+        if (role.Equals(AppRoles.PlatformSuperAdmin, StringComparison.OrdinalIgnoreCase))
         {
             return "PlatformOwner";
         }

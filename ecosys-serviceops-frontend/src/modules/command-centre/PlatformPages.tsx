@@ -257,7 +257,7 @@ export function PlatformReportsPage() {
 }
 
 export function PlatformUsersPage() {
-  return <PlatformModulePage title="Platform Users" description="Manage superadmin accounts and platform-facing access only." icon={Users} />
+  return <PlatformModulePage title="Platform Users" description="Manage Platform Owner, Platform Admin, and Support Admin access for Ecosys." icon={Users} />
 }
 
 export function PlatformAuditLogsPage() {

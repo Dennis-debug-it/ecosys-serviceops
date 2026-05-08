@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { clearStoredAuth, getStoredAuth, onUnauthorized, persistAuthToken } from '../lib/api'
 import { authService, type LoginInput, type SignupInput } from '../services/authService'
-import type { ApiBranch, ApiPermissions, ApiRole } from '../types/api'
+import type { ApiBranch, ApiPermissions } from '../types/api'
 import type { AppSession, AuthBranch, Role } from '../types/app'
 import { asBoolean, asNullableString, asString, normalizeBranches, normalizePermissions, pickRecord } from '../utils/apiDefaults'
 import { cleanupBodyInteractivity, clearTransientAppState, dispatchUiReset } from '../utils/appCleanup'
 import { isPlatformRole } from '../utils/constants'
+import { getPlatformRoleLabel, normalizeAppRole } from '../utils/roles'
 
 const SESSION_STORAGE_KEY = 'ecosys.serviceops.session'
 
@@ -26,13 +27,6 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
-
-function normalizeRole(role: string): ApiRole {
-  const normalized = role.trim().toLowerCase()
-  if (!normalized) return 'user'
-  if (normalized === 'super_admin') return 'superadmin'
-  return normalized as ApiRole
-}
 
 function createAvatar(name: string) {
   return name
@@ -71,7 +65,7 @@ function logSessionMappingFailure(payload: unknown) {
 
 function buildSessionFromMe(payload: unknown, token: string): AppSession {
   const { root, container, user, tenant, branches } = unwrapMePayload(payload)
-  const role = normalizeRole(asString(user.role ?? container.role ?? root.role, 'user'))
+  const role = normalizeAppRole(asString(user.role ?? container.role ?? root.role, 'user'))
   const userId = asString(user.userId ?? user.id ?? container.userId ?? container.id ?? root.userId ?? root.id)
   const fullName = asString(user.fullName ?? user.name ?? container.fullName ?? container.name ?? root.fullName ?? root.name, 'Ecosys User')
   const email = asString(user.email ?? user.emailAddress ?? container.email ?? container.emailAddress ?? root.email ?? root.emailAddress, '')
@@ -102,7 +96,7 @@ function buildSessionFromMe(payload: unknown, token: string): AppSession {
     role,
     tenantName,
     tenantCode: '',
-    title: jobTitle || (isPlatformRole(role) ? 'Platform Administrator' : role === 'tenantadmin' || role === 'admin' ? 'Administrator' : 'User'),
+    title: jobTitle || (isPlatformRole(role) ? getPlatformRoleLabel(role) : role === 'tenantadmin' || role === 'admin' ? 'Tenant Admin' : role === 'technician' ? 'Technician' : 'User'),
     branchId: defaultBranchId,
     defaultBranchId,
     avatar: createAvatar(fullName),

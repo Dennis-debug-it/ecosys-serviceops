@@ -12,10 +12,11 @@ import { useAsyncData } from '../../hooks/useAsyncData'
 import { generateId, platformService, toServiceError } from '../../services/platformService'
 import type { AuditLog, PlatformRole, PlatformUser, PlatformUserStatus, ReportSummary, ReportsMeta } from '../../types/platform'
 import { formatDateTime } from '../../utils/date'
+import { getPlatformRoleDescription, getPlatformRoleLabel, normalizePlatformRole, PLATFORM_ROLE_OPTIONS } from '../../utils/roles'
 import { Field, SectionTitle, userStatusBadge } from './PlatformCommon'
 import { PlatformSettingsPage as PlatformSettingsModulePage } from '../../pages/platform/settings/PlatformSettingsPage'
 
-const platformRoles: PlatformRole[] = ['PlatformOwner', 'PlatformAdmin', 'SupportAdmin', 'FinanceAdmin', 'ReadOnlyAuditor']
+const platformRoles: PlatformRole[] = ['PlatformOwner', 'PlatformAdmin', 'SupportAdmin']
 
 export function PlatformUsersPage() {
   const { data, loading, error, reload } = useAsyncData(async () => platformService.platformUsersApi.list(), { data: [] as PlatformUser[], backendAvailable: true, message: '' }, [])
@@ -114,7 +115,7 @@ export function PlatformUsersPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Platform Command Centre" title="Platform Users" description="Manage platform owner accounts, roles, and activation status." />
+      <PageHeader eyebrow="Platform Command Centre" title="Platform Users" description="Manage Platform Owner, Platform Admin, and Support Admin access for the Ecosys platform." />
 
       {loading ? <LoadingState label="Loading platform users" /> : null}
       {!loading && error ? (
@@ -134,7 +135,7 @@ export function PlatformUsersPage() {
             <Field label="Role">
               <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as typeof roleFilter)} className="field-input">
                 <option value="All">All roles</option>
-                {platformRoles.map((item) => <option key={item} value={item}>{item}</option>)}
+                {platformRoles.map((item) => <option key={item} value={item}>{getPlatformRoleLabel(item)}</option>)}
               </select>
             </Field>
             <Field label="Status">
@@ -156,7 +157,7 @@ export function PlatformUsersPage() {
                 { key: 'name', header: 'Name', cell: (row) => <span className="font-semibold text-app">{row.fullName}</span> },
                 { key: 'email', header: 'Email', cell: (row) => row.email },
                 { key: 'phone', header: 'Phone', cell: (row) => row.phone || '-' },
-                { key: 'role', header: 'Role', cell: (row) => row.role },
+                { key: 'role', header: 'Role', cell: (row) => getPlatformRoleLabel(row.role) },
                 { key: 'status', header: 'Status', cell: (row) => userStatusBadge(row.status) },
                 { key: 'lastLogin', header: 'Last Login', cell: (row) => row.lastLogin ? formatDateTime(row.lastLogin) : 'Never' },
                 { key: 'lastCredentialSentAt', header: 'Last Credentials Sent', cell: (row) => row.lastCredentialSentAt ? formatDateTime(row.lastCredentialSentAt) : 'Never' },
@@ -180,15 +181,16 @@ export function PlatformUsersPage() {
         </section>
       ) : null}
 
-      <Modal open={open} title="Platform User" description="Create or update platform user details." onClose={() => !saving && setOpen(false)}>
+      <Modal open={open} title="Platform User" description="Create or update platform-side access for Ecosys operations." onClose={() => !saving && setOpen(false)}>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Full Name"><input value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} className="field-input" /></Field>
           <Field label="Email"><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} className="field-input" /></Field>
           <Field label="Phone"><input value={form.phone || ''} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} className="field-input" /></Field>
           <Field label="Role">
-            <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as PlatformRole }))} className="field-input">
-              {platformRoles.map((item) => <option key={item} value={item}>{item}</option>)}
+            <select value={normalizePlatformRole(form.role)} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as PlatformRole }))} className="field-input">
+              {PLATFORM_ROLE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
+            <p className="text-xs text-muted">{getPlatformRoleDescription(form.role)}</p>
           </Field>
           <Field label="Status">
             <select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as PlatformUserStatus }))} className="field-input">
@@ -196,6 +198,12 @@ export function PlatformUsersPage() {
               <option value="Inactive">Inactive</option>
             </select>
           </Field>
+        </div>
+        <div className="panel-subtle mt-4 rounded-2xl p-4">
+          <p className="text-sm font-semibold text-app">Platform role scope</p>
+          <p className="mt-2 text-sm text-muted">
+            These roles are for Ecosys platform operations only and route to <span className="font-mono">/platform</span> after login. Tenant-side roles such as Tenant Admin, Supervisor/Manager, Technician, Stores User, and Viewer/User should be managed in tenant user administration.
+          </p>
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button type="button" className="button-secondary" onClick={() => setOpen(false)} disabled={saving}>Cancel</button>

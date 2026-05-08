@@ -33,6 +33,7 @@ import type {
   TenantNotificationSetting,
   TenantStatus,
 } from '../types/platform'
+import { normalizePlatformRole } from '../utils/roles'
 
 function safeMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError || error instanceof Error) return error.message
@@ -237,18 +238,18 @@ function buildTenantPayload(input: Partial<Tenant> & { name: string; slug: strin
 }
 
 function mapPlatformRole(role: string): PlatformRole {
-  if (role === 'PlatformOwner') return 'PlatformOwner'
-  if (role === 'PlatformAdmin') return 'PlatformAdmin'
-  if (role === 'SupportAdmin') return 'SupportAdmin'
+  if (normalizePlatformRole(role) === 'PlatformOwner') return 'PlatformOwner'
+  if (normalizePlatformRole(role) === 'PlatformAdmin') return 'PlatformAdmin'
+  if (normalizePlatformRole(role) === 'SupportAdmin') return 'SupportAdmin'
   if (role === 'FinanceAdmin') return 'FinanceAdmin'
   if (role === 'ReadOnlyAuditor') return 'ReadOnlyAuditor'
   return 'PlatformAdmin'
 }
 
 function toPlatformRole(role: PlatformRole): 'PlatformOwner' | 'PlatformAdmin' | 'SupportAdmin' | 'FinanceAdmin' | 'ReadOnlyAuditor' {
-  if (role === 'PlatformOwner' || role === 'Platform SuperAdmin') return 'PlatformOwner'
-  if (role === 'PlatformAdmin' || role === 'Platform Admin') return 'PlatformAdmin'
-  if (role === 'SupportAdmin' || role === 'Support') return 'SupportAdmin'
+  if (normalizePlatformRole(role) === 'PlatformOwner') return 'PlatformOwner'
+  if (normalizePlatformRole(role) === 'PlatformAdmin') return 'PlatformAdmin'
+  if (normalizePlatformRole(role) === 'SupportAdmin') return 'SupportAdmin'
   if (role === 'FinanceAdmin' || role === 'Finance') return 'FinanceAdmin'
   return 'ReadOnlyAuditor'
 }

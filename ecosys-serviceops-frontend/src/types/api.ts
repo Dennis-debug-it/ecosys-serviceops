@@ -1,7 +1,9 @@
 export type ApiRole =
   | 'superadmin'
+  | 'platformsuperadmin'
   | 'platformadmin'
   | 'platformowner'
+  | 'supportadmin'
   | 'tenantadmin'
   | 'admin'
   | 'technician'

@@ -125,6 +125,7 @@ export type PlatformRole =
   | 'ReadOnlyAuditor'
   | 'Platform SuperAdmin'
   | 'Platform Admin'
+  | 'SuperAdmin'
   | 'Support'
   | 'Finance'
   | 'Auditor'

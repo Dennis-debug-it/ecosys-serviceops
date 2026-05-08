@@ -1,7 +1,9 @@
 export type KnownRole =
   | 'superadmin'
+  | 'platformsuperadmin'
   | 'platformadmin'
   | 'platformowner'
+  | 'supportadmin'
   | 'tenantadmin'
   | 'admin'
   | 'technician'

@@ -83,7 +83,9 @@ public sealed class AuthController(
             .SingleOrDefaultAsync(x => x.Id == userId, cancellationToken)
             ?? throw new UnauthorizedAccessException("User context was not found.");
 
-        if (tenantContext.IsSuperAdmin)
+        var isPlatformUser = IsPlatformRole(user.Role);
+
+        if (isPlatformUser)
         {
             return Ok(new AuthenticatedContextResponse(
                 new AuthenticatedUserDto(
@@ -129,7 +131,7 @@ public sealed class AuthController(
                 user.Department,
                 user.HasAllBranchAccess,
                 user.DefaultBranchId,
-                MapPermissions(user.Permission, false)),
+                MapPermissions(user.Permission, isPlatformUser)),
             new AuthenticatedTenantDto(
                 user.TenantId,
                 user.Tenant?.CompanyName ?? string.Empty,

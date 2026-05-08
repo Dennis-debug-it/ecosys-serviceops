@@ -9,6 +9,7 @@ import type { TenantLicenseSnapshot } from '../../types/api'
 import type { ShellNavItem } from './Sidebar'
 import { KEYBOARD_SHORTCUTS } from '../../utils/constants'
 import { cleanupBodyInteractivity, dispatchUiReset } from '../../utils/appCleanup'
+import { isPlatformRole } from '../../utils/roles'
 
 export type ShellOutletContext = {
   selectedBranchId: string
@@ -84,7 +85,7 @@ export function AppShell({
   }, [mode, navigate])
 
   useEffect(() => {
-    if (mode !== 'tenant' || session.role === 'superadmin') {
+    if (mode !== 'tenant' || isPlatformRole(session.role)) {
       setLicense(null)
       return
     }
