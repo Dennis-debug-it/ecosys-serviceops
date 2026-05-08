@@ -310,6 +310,8 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
       <SectionTitle title="Email & Notifications" description="Tenant-specific delivery settings, module notification rules, and recipient routing." />
 
       <section data-testid="tenant-email-delivery-card" className="surface-card space-y-4">
+        <InfoAlert title="Outbound delivery only" description="This panel manages tenant SMTP delivery and notification routing. IMAP mailbox intake for work order creation and email thread processing is configured separately under Email Intake." tone="info" />
+        <InfoAlert title="Tenant notification rollout status" description="User credentials, resend credentials, onboarding, and template test emails are active. Work order, PM, material, escalation, and security alert lists can be configured here, but some event dispatch automation is still staged and should be treated as pending until the backend hooks are completed." tone="warning" />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-lg font-semibold text-app">Email Delivery</p>
@@ -413,9 +415,10 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
               <option value="StartTls">STARTTLS</option>
               <option value="SslOnConnect">SSL on Connect</option>
             </select>
+            <p className="text-xs text-muted">Port 465 uses SSL/TLS. Port 587 uses STARTTLS.</p>
           </Field>
           <Field label="SMTP host"><input data-testid="tenant-smtp-host-input" value={form.emailSettings.smtpHost} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, smtpHost: event.target.value } }))} className="field-input" /></Field>
-          <Field label="SMTP port"><input data-testid="tenant-smtp-port-input" type="number" min={1} value={form.emailSettings.smtpPort} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, smtpPort: Number(event.target.value) || 0 } }))} className="field-input" /></Field>
+          <Field label="SMTP port"><input data-testid="tenant-smtp-port-input" type="number" min={1} value={form.emailSettings.smtpPort} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => applyRecommendedTenantPort(current, Number(event.target.value) || 0))} className="field-input" /></Field>
           <Field label="SMTP username"><input value={form.emailSettings.smtpUsername} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, smtpUsername: event.target.value } }))} className="field-input" /></Field>
           <Field label="SMTP password / masked secret"><input type="password" placeholder={form.emailSettings.smtpPasswordMasked || '********'} value={form.emailSettings.smtpPasswordSecret || ''} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, smtpPasswordSecret: event.target.value } }))} className="field-input" /></Field>
           <Field label="Delivery endpoint"><input value={form.emailSettings.apiEndpoint || ''} disabled={apiFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, apiEndpoint: event.target.value } }))} className="field-input" /></Field>
@@ -507,4 +510,16 @@ function splitEmails(value: string) {
     .split(',')
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean)
+}
+
+function applyRecommendedTenantPort(current: TenantCommunicationSettings, port: number): TenantCommunicationSettings {
+  if (port === 465) {
+    return { ...current, emailSettings: { ...current.emailSettings, smtpPort: port, enableSslTls: true, secureMode: 'SslOnConnect' } }
+  }
+
+  if (port === 587) {
+    return { ...current, emailSettings: { ...current.emailSettings, smtpPort: port, enableSslTls: true, secureMode: 'StartTls' } }
+  }
+
+  return { ...current, emailSettings: { ...current.emailSettings, smtpPort: port } }
 }

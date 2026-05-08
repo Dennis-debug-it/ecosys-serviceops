@@ -18,6 +18,7 @@ import {
 } from '../../modules/settings/AdvancedSettingsPages'
 import {
   EmailNotificationsSettingsPage,
+  EmailTemplatesSettingsPage,
   MonitoringToolIntakeSettingsPage,
   NumberingRulesAdminPage,
 } from '../../modules/settings/AdminSettingsPages'
@@ -66,6 +67,7 @@ export const settingsSections: SettingsSection[] = [
   section('branches', 'Branches / Outlets', 'Branches', 'Branch structure, outlet details, and activation.', Workflow),
   section('numbering-rules', 'Numbering Rules', 'Numbers', 'Prefixes, counters, and document numbering behavior.', FileDigit),
   section('email-notifications', 'Email Notifications', 'Email', 'SMTP and outbound notification sender settings.', Mail),
+  section('email-templates', 'Email Templates', 'Templates', 'Edit tenant override templates for invites, onboarding, and operational emails.', Mail),
   section('email-intake', 'Email Intake', 'Email', 'Build intake protocols for automated work order generation from email and monitoring sources.', Mail),
   section('monitoring-intake', 'Monitoring Tool Intake', 'Monitor', 'Webhook intake and automated monitoring work creation.', MonitorCog),
   section('notifications', 'Notifications', 'Alerts', 'Tenant notifications, alerts, and digest preferences.', Bell),
@@ -82,6 +84,7 @@ export const settingsPageRoutes: SettingsRouteDefinition[] = [
   { path: 'branches', element: <SettingsBranchesPage /> },
   { path: 'numbering-rules', element: <NumberingRulesAdminPage /> },
   { path: 'email-notifications', element: <EmailNotificationsSettingsPage /> },
+  { path: 'email-templates', element: <EmailTemplatesSettingsPage /> },
   { path: 'email-intake', element: <IntakeProtocolsPage /> },
   { path: 'monitoring-intake', element: <MonitoringToolIntakeSettingsPage /> },
   { path: 'notifications', element: <LiveNotificationsSettingsPage /> },

@@ -151,6 +151,9 @@ export function LoginPage() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
+              <div className="mt-4 rounded-2xl border border-[#d5e4de] bg-white/75 px-4 py-3 text-sm text-[#4f6764]">
+                Self-service password reset is not enabled yet. If you need a password reset email or new credentials, contact your workspace administrator.
+              </div>
 
               <p className="mt-6 text-sm text-muted">
                 New to Ecosys?{' '}

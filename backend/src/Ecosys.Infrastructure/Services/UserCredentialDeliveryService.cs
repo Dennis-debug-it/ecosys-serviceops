@@ -20,6 +20,7 @@ public interface IUserCredentialDeliveryService
 }
 
 public sealed record UserCredentialDeliveryRequest(
+    string TemplateEventKey,
     string LoginUrl,
     string? TemporaryPassword,
     string? InviteLink,
@@ -34,6 +35,7 @@ internal sealed class UserCredentialDeliveryService(
     AppDbContext dbContext,
     IHttpContextAccessor httpContextAccessor,
     IEmailSender emailSender,
+    IEmailTemplateService emailTemplateService,
     ISecretEncryptionService secretEncryptionService,
     ILogger<UserCredentialDeliveryService> logger) : IUserCredentialDeliveryService
 {
@@ -60,6 +62,11 @@ internal sealed class UserCredentialDeliveryService(
         var tenant = await dbContext.Tenants.SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
         var tenantSettings = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken);
         var effectiveSettings = await ResolveEffectiveEmailSettingsAsync(tenantId, tenantSettings, cancellationToken);
+        var supportEmail = effectiveSettings?.ReplyToEmail
+            ?? effectiveSettings?.SenderAddress
+            ?? tenant?.ContactEmail
+            ?? tenant?.Email
+            ?? "support@ecosys.local";
 
         if (effectiveSettings is null)
         {
@@ -79,14 +86,38 @@ internal sealed class UserCredentialDeliveryService(
 
         try
         {
+            var template = await emailTemplateService.RenderTenantTemplateAsync(
+                tenantId,
+                request.TemplateEventKey,
+                new Dictionary<string, string?>
+                {
+                    ["FullName"] = user.FullName,
+                    ["Email"] = user.Email,
+                    ["TemporaryPassword"] = request.TemporaryPassword,
+                    ["InviteLink"] = request.InviteLink,
+                    ["ResetPasswordLink"] = request.InviteLink,
+                    ["LoginUrl"] = request.LoginUrl,
+                    ["CompanyName"] = tenant?.CompanyName ?? tenant?.Name ?? "Ecosys",
+                    ["WorkspaceName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
+                    ["TenantName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
+                    ["SupportEmail"] = supportEmail,
+                },
+                cancellationToken);
+
+            if (!template.Enabled)
+            {
+                return new UserCredentialDeliveryResult(false, "Disabled", "Credential email is disabled for this template.");
+            }
+
             await emailSender.SendAsync(
                 new EmailMessage(
                     user.Email,
-                    "Your Ecosys account is ready",
-                    BuildMessageBody(user, request),
-                    effectiveSettings.SenderName,
+                    template.Subject,
+                    template.HtmlBody,
+                    template.SenderNameOverride ?? effectiveSettings.SenderName,
                     effectiveSettings.SenderAddress,
-                    effectiveSettings.ReplyToEmail),
+                    template.ReplyToOverride ?? effectiveSettings.ReplyToEmail,
+                    IsHtml: true),
                 delivery,
                 cancellationToken);
 
@@ -146,7 +177,7 @@ internal sealed class UserCredentialDeliveryService(
             settings.SenderAddress,
             settings.ReplyToEmail,
             settings.UseSsl,
-            settings.UseSsl ? EmailSecureMode.StartTls : EmailSecureMode.None,
+            EmailDeliveryModeResolver.ResolveSecureMode(settings.Port, settings.UseSsl),
             null,
             null,
             null,
@@ -163,42 +194,6 @@ internal sealed class UserCredentialDeliveryService(
 
         return EmailDeliveryMode.Smtp;
     }
-
-    private static string BuildMessageBody(User user, UserCredentialDeliveryRequest request)
-    {
-        var lines = new List<string>
-        {
-            $"Hello {user.FullName},",
-            string.Empty,
-            "Your Ecosys account has been created.",
-            string.Empty,
-            $"Login URL: {request.LoginUrl}",
-            $"Username: {user.Email}"
-        };
-
-        if (!string.IsNullOrWhiteSpace(request.TemporaryPassword))
-        {
-            lines.Add($"Temporary Password: {request.TemporaryPassword}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.InviteLink))
-        {
-            lines.Add($"Secure Access Link: {request.InviteLink}");
-        }
-
-        lines.Add(string.Empty);
-        lines.Add(request.RequirePasswordChange
-            ? "For security, you will be asked to change your password after signing in."
-            : "Use the secure access link above to finish setting your password.");
-        lines.Add(string.Empty);
-        lines.Add("If you need help, please contact your Ecosys administrator.");
-        lines.Add(string.Empty);
-        lines.Add("Regards,");
-        lines.Add("Ecosys Support");
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
     private string ResolveBaseUrl()
     {
         var request = httpContextAccessor.HttpContext?.Request;

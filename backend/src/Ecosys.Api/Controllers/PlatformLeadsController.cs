@@ -6,11 +6,9 @@ using Ecosys.Infrastructure.Services;
 using Ecosys.Shared.Auth;
 using Ecosys.Shared.Contracts.Integration;
 using Ecosys.Shared.Errors;
-using Ecosys.Shared.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Ecosys.Api.Controllers;
 
@@ -19,8 +17,8 @@ public sealed class PlatformLeadsController(
     AppDbContext dbContext,
     IAuditLogService auditLogService,
     IEmailSender emailSender,
-    IOptions<SmtpOptions> smtpOptions,
-    IOptions<PlatformAdminOptions> platformAdminOptions,
+    ISecretEncryptionService secretEncryptionService,
+    IEmailTemplateService emailTemplateService,
     ITenantContext tenantContext,
     ILogger<PlatformLeadsController> logger) : ControllerBase
 {
@@ -164,8 +162,8 @@ public sealed class PlatformLeadsController(
 
     private async Task TryNotifyPlatformOwnerAsync(PlatformLead lead, CancellationToken cancellationToken)
     {
-        var smtp = smtpOptions.Value;
-        var ownerEmail = NormalizeOptional(platformAdminOptions.Value.Email);
+        var platformEmail = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == PlatformConstants.RootTenantId, cancellationToken);
+        var ownerEmail = NormalizeOptional(platformEmail?.ReplyToEmail) ?? NormalizeOptional(platformEmail?.SenderAddress);
         if (string.IsNullOrWhiteSpace(ownerEmail))
         {
             return;
@@ -173,41 +171,46 @@ public sealed class PlatformLeadsController(
 
         try
         {
+            if (platformEmail is null || string.IsNullOrWhiteSpace(platformEmail.Host))
+            {
+                return;
+            }
+
             var delivery = new EmailDeliverySettings(
-                EmailDeliveryMode.Smtp,
-                smtp.Host,
-                smtp.Port,
-                smtp.Username,
-                smtp.Password,
-                "Ecosys Platform",
-                ownerEmail,
+                Enum.TryParse<EmailDeliveryMode>(platformEmail.Provider, true, out var deliveryMode) ? deliveryMode : EmailDeliveryMode.Smtp,
+                platformEmail.Host,
+                platformEmail.Port,
+                platformEmail.Username,
+                secretEncryptionService.Decrypt(platformEmail.EncryptedSecret) ?? platformEmail.Password,
+                platformEmail.SenderName,
+                platformEmail.SenderAddress,
                 lead.Email,
-                smtp.UseSsl,
-                smtp.UseSsl ? EmailSecureMode.StartTls : EmailSecureMode.None);
+                platformEmail.UseSsl,
+                EmailDeliveryModeResolver.ResolveSecureMode(platformEmail.Port, platformEmail.UseSsl));
 
-            var body = $"""
-                A new Ecosys lead has been submitted.
-
-                Company: {lead.CompanyName}
-                Contact: {lead.ContactPersonName}
-                Email: {lead.Email}
-                Phone: {lead.Phone}
-                Country: {lead.Country ?? "Not provided"}
-                Industry: {lead.Industry ?? "Not provided"}
-                Company size: {lead.CompanySize ?? "Not provided"}
-                Preferred contact method: {lead.PreferredContactMethod ?? "Not provided"}
-                Message: {lead.Message ?? "Not provided"}
-                Submitted at: {lead.CreatedAt:O}
-                """;
+            var template = await emailTemplateService.RenderPlatformTemplateAsync(
+                "workspace-request-received",
+                new Dictionary<string, string?>
+                {
+                    ["CompanyName"] = lead.CompanyName,
+                    ["FullName"] = lead.ContactPersonName,
+                    ["Email"] = lead.Email,
+                    ["Phone"] = lead.Phone,
+                    ["Country"] = lead.Country ?? "Not provided",
+                    ["Industry"] = lead.Industry ?? "Not provided",
+                    ["Message"] = lead.Message ?? "Not provided",
+                },
+                cancellationToken);
 
             await emailSender.SendAsync(
                 new EmailMessage(
                     ownerEmail,
-                    $"New Ecosys lead: {lead.CompanyName}",
-                    body,
-                    "Ecosys Platform",
-                    ownerEmail,
-                    lead.Email),
+                    template.Subject,
+                    template.HtmlBody,
+                    template.SenderNameOverride ?? platformEmail.SenderName,
+                    platformEmail.SenderAddress,
+                    template.ReplyToOverride ?? lead.Email,
+                    IsHtml: true),
                 delivery,
                 cancellationToken);
         }

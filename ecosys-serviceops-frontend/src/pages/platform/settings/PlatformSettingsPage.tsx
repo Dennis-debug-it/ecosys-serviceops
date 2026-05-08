@@ -3,6 +3,7 @@ import { PageHeader } from '../../../components/ui/PageHeader'
 import type { PlatformSettingsSection } from '../../../services/platformSettingsService'
 import { BrandingSettingsPanel } from './components/BrandingSettingsPanel'
 import { EmailNotificationSettingsPanel } from './components/EmailNotificationSettingsPanel'
+import { EmailTemplatesSettingsPanel } from './components/EmailTemplatesSettingsPanel'
 import { GeneralSettingsPanel } from './components/GeneralSettingsPanel'
 import { NumberingSettingsPanel } from './components/NumberingSettingsPanel'
 import { SecuritySettingsPanel } from './components/SecuritySettingsPanel'
@@ -14,6 +15,7 @@ function renderPanel(activeSection: PlatformSettingsSection) {
   if (activeSection === 'general') return <div data-testid="settings-panel-general"><GeneralSettingsPanel /></div>
   if (activeSection === 'branding') return <div data-testid="settings-panel-branding"><BrandingSettingsPanel /></div>
   if (activeSection === 'email') return <div data-testid="settings-panel-email-notifications"><EmailNotificationSettingsPanel /></div>
+  if (activeSection === 'templates') return <div data-testid="settings-panel-email-templates"><EmailTemplatesSettingsPanel /></div>
   if (activeSection === 'numbering') return <div data-testid="settings-panel-numbering"><NumberingSettingsPanel /></div>
   if (activeSection === 'security') return <div data-testid="settings-panel-security"><SecuritySettingsPanel /></div>
   return <div data-testid="settings-panel-system-preferences"><SystemPreferencesPanel /></div>

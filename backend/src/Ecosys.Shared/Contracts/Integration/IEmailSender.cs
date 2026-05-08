@@ -33,7 +33,8 @@ public sealed record EmailMessage(
     string Body,
     string? FromName,
     string? FromAddress,
-    string? ReplyToEmail = null);
+    string? ReplyToEmail = null,
+    bool IsHtml = false);
 
 public sealed record EmailDeliverySettings(
     EmailDeliveryMode DeliveryMode,

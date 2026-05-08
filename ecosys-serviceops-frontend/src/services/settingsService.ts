@@ -3,6 +3,9 @@ import type {
   AssignmentGroupRecord,
   EmailIntakeSettings,
   EmailNotificationSettings,
+  EmailTemplatePreviewResponse,
+  EmailTemplateRecord,
+  EmailTemplateTestResponse,
   IntakeProtocolRecord,
   IntakeProtocolTestResponse,
   MonitoringWebhookIntegrationRecord,
@@ -13,6 +16,7 @@ import type {
   UpsertIntakeProtocolInput,
   UpdateEmailIntakeSettingsInput,
   UpdateEmailNotificationSettingsInput,
+  UpdateEmailTemplateInput,
   UpdateNumberingRuleInput,
   UpsertMonitoringWebhookIntegrationInput,
   UpsertAssignmentGroupInput,
@@ -75,6 +79,27 @@ export const settingsService = {
   },
   testEmailNotifications(testRecipientEmail: string) {
     return api.post<{ success: boolean; lastTestedAt?: string | null; lastError?: string | null }>('/api/settings/email-notifications/test', { testRecipientEmail })
+  },
+  listEmailTemplates(signal?: AbortSignal) {
+    return api.get<EmailTemplateRecord[]>('/api/settings/email-templates', { signal })
+  },
+  getEmailTemplate(eventKey: string, signal?: AbortSignal) {
+    return api.get<EmailTemplateRecord>(`/api/settings/email-templates/${eventKey}`, { signal })
+  },
+  updateEmailTemplate(eventKey: string, input: UpdateEmailTemplateInput) {
+    return api.put<EmailTemplateRecord>(`/api/settings/email-templates/${eventKey}`, input)
+  },
+  previewEmailTemplate(eventKey: string, sampleData?: Record<string, string | null>) {
+    return api.post<EmailTemplatePreviewResponse>(`/api/settings/email-templates/${eventKey}/preview`, { sampleData: sampleData || null })
+  },
+  testEmailTemplate(eventKey: string, testRecipientEmail?: string, sampleData?: Record<string, string | null>) {
+    return api.post<EmailTemplateTestResponse>(`/api/settings/email-templates/${eventKey}/test`, {
+      testRecipientEmail: testRecipientEmail || null,
+      sampleData: sampleData || null,
+    })
+  },
+  resetEmailTemplate(eventKey: string) {
+    return api.post<EmailTemplateRecord>(`/api/settings/email-templates/${eventKey}/reset`, {})
   },
   getEmailIntake(signal?: AbortSignal) {
     return api.get<EmailIntakeSettings>('/api/settings/email-intake', { signal })

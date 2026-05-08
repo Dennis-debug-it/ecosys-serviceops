@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<ILicenseGuardService, LicenseGuardService>();
         services.AddScoped<ISecretEncryptionService, SecretEncryptionService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<IEmailTemplateService, EmailTemplateService>();
         services.AddScoped<IUserCredentialDeliveryService, UserCredentialDeliveryService>();
         services.AddScoped<ITenantSecurityPolicyService, TenantSecurityPolicyService>();
         services.AddScoped<IWorkOrderLifecycleService, WorkOrderLifecycleService>();

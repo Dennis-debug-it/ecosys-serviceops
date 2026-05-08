@@ -191,6 +191,47 @@ export type PlatformEmailActionResponse = {
   lastError?: string | null
 }
 
+export type PlatformEmailTemplate = {
+  eventKey: string
+  templateName: string
+  subject: string
+  htmlBody: string
+  textBody: string
+  enabled: boolean
+  senderNameOverride?: string | null
+  replyToOverride?: string | null
+  availablePlaceholders: string[]
+  requiredPlaceholders: string[]
+  supportsTenantOverride: boolean
+  isOverride: boolean
+  source: string
+  lastUpdatedBy?: string | null
+  lastUpdatedAt?: string | null
+}
+
+export type PlatformEmailTemplatePreview = {
+  eventKey: string
+  templateName: string
+  subject: string
+  htmlBody: string
+  textBody: string
+}
+
+export type PlatformEmailTemplateTestResponse = {
+  success: boolean
+  message?: string | null
+}
+
+export type PlatformEmailTemplatePayload = {
+  templateName: string
+  subject: string
+  htmlBody: string
+  textBody?: string | null
+  enabled: boolean
+  senderNameOverride?: string | null
+  replyToOverride?: string | null
+}
+
 type PlatformTemplatePayload = {
   name: string
   type: string
@@ -248,6 +289,27 @@ export const platformSettingsService = {
   },
   verifySmtpConnection() {
     return api.post<PlatformEmailActionResponse>('/api/platform/settings/email/verify', {})
+  },
+  listEmailTemplates() {
+    return api.get<PlatformEmailTemplate[]>('/api/platform/settings/email-templates')
+  },
+  getEmailTemplate(eventKey: string) {
+    return api.get<PlatformEmailTemplate>(`/api/platform/settings/email-templates/${eventKey}`)
+  },
+  updateEmailTemplate(eventKey: string, input: PlatformEmailTemplatePayload) {
+    return api.put<PlatformEmailTemplate>(`/api/platform/settings/email-templates/${eventKey}`, input)
+  },
+  previewEmailTemplate(eventKey: string, sampleData?: Record<string, string | null>) {
+    return api.post<PlatformEmailTemplatePreview>(`/api/platform/settings/email-templates/${eventKey}/preview`, { sampleData: sampleData || null })
+  },
+  testEmailTemplate(eventKey: string, testRecipientEmail?: string, sampleData?: Record<string, string | null>) {
+    return api.post<PlatformEmailTemplateTestResponse>(`/api/platform/settings/email-templates/${eventKey}/test`, {
+      testRecipientEmail: testRecipientEmail || null,
+      sampleData: sampleData || null,
+    })
+  },
+  resetEmailTemplate(eventKey: string) {
+    return api.post<PlatformEmailTemplate>(`/api/platform/settings/email-templates/${eventKey}/reset`, {})
   },
 
   getNumberingRules() {

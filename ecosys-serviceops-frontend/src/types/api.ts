@@ -986,6 +986,47 @@ export interface UpdateNumberingRuleInput {
   isActive: boolean
 }
 
+export interface EmailTemplateRecord {
+  eventKey: string
+  templateName: string
+  subject: string
+  htmlBody: string
+  textBody: string
+  enabled: boolean
+  senderNameOverride?: string | null
+  replyToOverride?: string | null
+  availablePlaceholders: string[]
+  requiredPlaceholders: string[]
+  supportsTenantOverride: boolean
+  isOverride: boolean
+  source: string
+  lastUpdatedBy?: string | null
+  lastUpdatedAt?: string | null
+}
+
+export interface UpdateEmailTemplateInput {
+  templateName: string
+  subject: string
+  htmlBody: string
+  textBody?: string | null
+  enabled: boolean
+  senderNameOverride?: string | null
+  replyToOverride?: string | null
+}
+
+export interface EmailTemplatePreviewResponse {
+  eventKey: string
+  templateName: string
+  subject: string
+  htmlBody: string
+  textBody: string
+}
+
+export interface EmailTemplateTestResponse {
+  success: boolean
+  message?: string | null
+}
+
 export interface PmTemplateQuestionRecord {
   id: string
   sectionName?: string | null

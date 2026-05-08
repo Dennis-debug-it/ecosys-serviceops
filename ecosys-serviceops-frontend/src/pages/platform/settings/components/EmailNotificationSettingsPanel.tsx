@@ -181,6 +181,8 @@ export function EmailNotificationSettingsPanel() {
   return (
     <section data-testid="platform-email-settings-form" className="surface-card space-y-4">
       <SectionTitle title="Email & Notifications Settings" description="Manage email delivery and alert preferences for platform activity." />
+      <InfoAlert title="SMTP sends mail only" description="Outbound SMTP covers test emails, user credentials, resend credentials, onboarding, lead notifications, and template test sends. Email intake for creating or updating work orders is a separate IMAP workflow and must be configured independently." tone="info" />
+      <InfoAlert title="Notification rollout status" description="Platform lead notifications, user credential delivery, resend credentials, tenant onboarding, and SMTP test delivery are live. Work order, PM, material, license, SMTP failure, and security alert toggles are available for configuration, but some automated dispatch hooks are still pending and should not be treated as fully active until workflow jobs are added." tone="warning" />
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Delivery Method">
           <select value={form.deliveryMode} onChange={(event) => setForm((current) => ({ ...current, deliveryMode: event.target.value as PlatformEmailSettings['deliveryMode'] }))} className="field-input">
@@ -196,9 +198,10 @@ export function EmailNotificationSettingsPanel() {
             <option value="StartTls">STARTTLS</option>
             <option value="SslOnConnect">SSL on Connect</option>
           </select>
+          <p className="text-xs text-muted">Port 465 uses SSL/TLS. Port 587 uses STARTTLS.</p>
         </Field>
         <Field label="SMTP Host"><input data-testid="smtp-host-input" disabled={!smtpMode || disabledMode} value={form.smtpHost || ''} onChange={(event) => setForm((current) => ({ ...current, smtpHost: event.target.value }))} className="field-input" /></Field>
-        <Field label="SMTP Port"><input data-testid="smtp-port-input" disabled={!smtpMode || disabledMode} type="number" min={1} value={form.smtpPort || 0} onChange={(event) => setForm((current) => ({ ...current, smtpPort: Number(event.target.value) || 1 }))} className="field-input" /></Field>
+        <Field label="SMTP Port"><input data-testid="smtp-port-input" disabled={!smtpMode || disabledMode} type="number" min={1} value={form.smtpPort || 0} onChange={(event) => setForm((current) => applyRecommendedPlatformPort(current, Number(event.target.value) || 1))} className="field-input" /></Field>
         <Field label="SMTP Username"><input data-testid="smtp-username-input" disabled={!smtpMode || disabledMode} value={form.smtpUsername || ''} onChange={(event) => setForm((current) => ({ ...current, smtpUsername: event.target.value }))} className="field-input" /></Field>
         <Field label="SMTP Password / Secret"><input data-testid="smtp-password-input" disabled={!smtpMode || disabledMode} type="password" placeholder={form.smtpPasswordMasked || '********'} value={form.smtpPasswordSecret || ''} onChange={(event) => setForm((current) => ({ ...current, smtpPasswordSecret: event.target.value }))} className="field-input" /></Field>
         <Field label="Delivery Endpoint"><input disabled={!apiMode || disabledMode} value={form.apiEndpoint || ''} onChange={(event) => setForm((current) => ({ ...current, apiEndpoint: event.target.value }))} className="field-input" /></Field>
@@ -250,4 +253,16 @@ export function EmailNotificationSettingsPanel() {
       </div>
     </section>
   )
+}
+
+function applyRecommendedPlatformPort(current: PlatformEmailSettings, port: number): PlatformEmailSettings {
+  if (port === 465) {
+    return { ...current, smtpPort: port, enableSslTls: true, secureMode: 'SslOnConnect' }
+  }
+
+  if (port === 587) {
+    return { ...current, smtpPort: port, enableSslTls: true, secureMode: 'StartTls' }
+  }
+
+  return { ...current, smtpPort: port }
 }

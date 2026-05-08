@@ -44,6 +44,7 @@ export function SecuritySettingsPanel() {
   return (
     <section className="surface-card space-y-4">
       <SectionTitle title="Security Settings" description="Password strength, lockout behavior, and session controls." />
+      <InfoAlert title="Email verification and self-service reset status" description="Policy settings are available here, but public email verification links and self-service forgot-password reset screens are not exposed yet. Until those flows are implemented, workspace users should contact an administrator for password assistance." tone="warning" />
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Minimum Password Length"><input type="number" min={8} value={form.minimumPasswordLength} onChange={(event) => setForm((current) => ({ ...current, minimumPasswordLength: Number(event.target.value) || 8 }))} className="field-input" /></Field>
         <Field label="Session Timeout (Minutes)"><input type="number" min={5} value={form.sessionTimeoutMinutes} onChange={(event) => setForm((current) => ({ ...current, sessionTimeoutMinutes: Number(event.target.value) || 5 }))} className="field-input" /></Field>

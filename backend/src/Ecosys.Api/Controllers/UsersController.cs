@@ -129,6 +129,7 @@ public sealed class UsersController(
                 TenantId,
                 user,
                 new UserCredentialDeliveryRequest(
+                    "user-credentials",
                     credentialDeliveryService.BuildLoginUrl(),
                     RequiresTemporaryPassword(deliveryMethod) ? bootstrapPassword : null,
                     inviteLink,
@@ -304,6 +305,7 @@ public sealed class UsersController(
             TenantId,
             user,
             new UserCredentialDeliveryRequest(
+                "resend-credentials",
                 credentialDeliveryService.BuildLoginUrl(),
                 temporaryPassword,
                 inviteLink,
@@ -348,6 +350,7 @@ public sealed class UsersController(
             TenantId,
             user,
             new UserCredentialDeliveryRequest(
+                "password-reset",
                 credentialDeliveryService.BuildLoginUrl(),
                 password,
                 null,

@@ -61,7 +61,7 @@ internal sealed class SmtpEmailSender(IOptions<SmtpOptions> smtpOptions, ILogger
         }
 
         mimeMessage.Subject = message.Subject;
-        mimeMessage.Body = new TextPart("plain") { Text = message.Body };
+        mimeMessage.Body = new TextPart(message.IsHtml ? "html" : "plain") { Text = message.Body };
 
         try
         {

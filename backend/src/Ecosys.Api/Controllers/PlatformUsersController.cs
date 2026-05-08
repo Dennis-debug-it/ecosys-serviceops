@@ -88,6 +88,7 @@ public sealed class PlatformUsersController(
             PlatformConstants.RootTenantId,
             user,
             new UserCredentialDeliveryRequest(
+                "user-credentials",
                 credentialDeliveryService.BuildLoginUrl(),
                 initialPassword,
                 null,
@@ -198,6 +199,7 @@ public sealed class PlatformUsersController(
             PlatformConstants.RootTenantId,
             user,
             new UserCredentialDeliveryRequest(
+                "password-reset",
                 credentialDeliveryService.BuildLoginUrl(),
                 nextPassword,
                 null,
@@ -251,6 +253,7 @@ public sealed class PlatformUsersController(
             PlatformConstants.RootTenantId,
             user,
             new UserCredentialDeliveryRequest(
+                "resend-credentials",
                 credentialDeliveryService.BuildLoginUrl(),
                 nextPassword,
                 null,

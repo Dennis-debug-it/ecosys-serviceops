@@ -4,6 +4,7 @@ using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Infrastructure.Services;
 using Ecosys.Shared.Auth;
+using Ecosys.Shared.Contracts.Integration;
 using Ecosys.Shared.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +19,10 @@ public sealed class PlatformTenantsController(
     AppDbContext dbContext,
     ITenantContext tenantContext,
     ILicenseGuardService licenseGuardService,
-    IAuditLogService auditLogService) : ControllerBase
+    IAuditLogService auditLogService,
+    IEmailTemplateService emailTemplateService,
+    IEmailSender emailSender,
+    ISecretEncryptionService secretEncryptionService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<PlatformTenantListResponse>>> GetAll(CancellationToken cancellationToken)
@@ -76,6 +80,7 @@ public sealed class PlatformTenantsController(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await WriteAuditAsync(tenant, "TenantCreated", $"Tenant '{tenant.Name}' was created.", cancellationToken);
+        await TrySendOnboardingEmailAsync(tenant, cancellationToken);
 
         var response = await BuildDetailResponseAsync(tenant, cancellationToken);
         return CreatedAtAction(nameof(Get), new { tenantId = tenant.Id }, response);
@@ -322,6 +327,71 @@ public sealed class PlatformTenantsController(
         {
             dbContext.TenantSecurityPolicies.Add(new TenantSecurityPolicy { TenantId = tenant.Id });
         }
+    }
+
+    private async Task TrySendOnboardingEmailAsync(Tenant tenant, CancellationToken cancellationToken)
+    {
+        var recipient = NormalizeOptional(tenant.ContactEmail) ?? NormalizeOptional(tenant.Email);
+        if (string.IsNullOrWhiteSpace(recipient))
+        {
+            return;
+        }
+
+        var platformEmail = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == PlatformConstants.RootTenantId, cancellationToken);
+        if (platformEmail is null || string.IsNullOrWhiteSpace(platformEmail.Host))
+        {
+            return;
+        }
+
+        var template = await emailTemplateService.RenderPlatformTemplateAsync(
+            "tenant-onboarding",
+            new Dictionary<string, string?>
+            {
+                ["FullName"] = tenant.ContactName ?? tenant.Name,
+                ["WorkspaceName"] = tenant.Name,
+                ["Email"] = recipient,
+                ["LoginUrl"] = BuildLoginUrl(),
+                ["SupportEmail"] = platformEmail.ReplyToEmail ?? platformEmail.SenderAddress,
+            },
+            cancellationToken);
+
+        if (!template.Enabled)
+        {
+            return;
+        }
+
+        await emailSender.SendAsync(
+            new EmailMessage(
+                recipient,
+                template.Subject,
+                template.HtmlBody,
+                template.SenderNameOverride ?? platformEmail.SenderName,
+                platformEmail.SenderAddress,
+                template.ReplyToOverride ?? platformEmail.ReplyToEmail,
+                IsHtml: true),
+            new EmailDeliverySettings(
+                Enum.TryParse<EmailDeliveryMode>(platformEmail.Provider, true, out var deliveryMode) ? deliveryMode : EmailDeliveryMode.Smtp,
+                platformEmail.Host,
+                platformEmail.Port,
+                platformEmail.Username,
+                secretEncryptionService.Decrypt(platformEmail.EncryptedSecret) ?? platformEmail.Password,
+                platformEmail.SenderName,
+                platformEmail.SenderAddress,
+                platformEmail.ReplyToEmail,
+                platformEmail.UseSsl,
+                EmailDeliveryModeResolver.ResolveSecureMode(platformEmail.Port, platformEmail.UseSsl)),
+            cancellationToken);
+    }
+
+    private string BuildLoginUrl()
+    {
+        var origin = Request.Headers.Origin.FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(origin))
+        {
+            return $"{origin.TrimEnd('/')}/login";
+        }
+
+        return $"{Request.Scheme}://{Request.Host.Value}".TrimEnd('/') + "/login";
     }
 
     private async Task<Tenant> SetTenantStatusAsync(Guid tenantId, string status, string? reason, CancellationToken cancellationToken)
