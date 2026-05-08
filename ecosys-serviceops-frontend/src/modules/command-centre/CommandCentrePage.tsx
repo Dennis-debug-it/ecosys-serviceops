@@ -23,6 +23,7 @@ import type {
   UpsertPlatformTenantInput,
 } from '../../types/api'
 import { formatDateOnly, formatDateTime } from '../../utils/date'
+import { getSlugValidationMessage, slugifyName } from '../../utils/slug'
 
 type CommandCentrePayload = {
   summary: PlatformSummary | null
@@ -217,7 +218,7 @@ export function CommandCentrePage() {
     setTenantForm((current) => ({
       ...current,
       name: value,
-      slug: slugTouched ? current.slug : slugify(value),
+      slug: slugTouched ? current.slug : slugifyName(value),
     }))
   }
 
@@ -227,8 +228,10 @@ export function CommandCentrePage() {
       return
     }
 
-    if (!tenantForm.slug.trim()) {
-      pushToast({ title: 'Slug required', description: 'Enter a unique tenant slug before saving.', tone: 'warning' })
+    const normalizedSlug = slugifyName(tenantForm.slug)
+    const slugError = getSlugValidationMessage(normalizedSlug)
+    if (slugError) {
+      pushToast({ title: 'Workspace URL name required', description: slugError, tone: 'warning' })
       return
     }
 
@@ -236,7 +239,7 @@ export function CommandCentrePage() {
     try {
       const payload = {
         ...tenantForm,
-        slug: slugify(tenantForm.slug),
+        slug: normalizedSlug,
         name: tenantForm.name.trim(),
       }
 
@@ -457,7 +460,17 @@ export function CommandCentrePage() {
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Company / Tenant Details</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <Field label="Tenant Name"><input value={tenantForm.name} onChange={(event) => handleNameChange(event.target.value)} className="field-input" /></Field>
-              <Field label="Slug"><input value={tenantForm.slug} onChange={(event) => { setSlugTouched(true); updateTenantForm('slug', slugify(event.target.value)) }} className="field-input font-mono" /></Field>
+              <Field label="Workspace URL slug">
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input value={tenantForm.slug} onChange={(event) => { setSlugTouched(true); updateTenantForm('slug', slugifyName(event.target.value)) }} className="field-input font-mono" />
+                    <button type="button" className="button-secondary px-3 py-2" onClick={() => { setSlugTouched(false); updateTenantForm('slug', slugifyName(tenantForm.name)) }}>
+                      Regenerate
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted">Auto-generated from the company name. You can edit it if needed.</p>
+                </div>
+              </Field>
               <Field label="Contact Name"><input value={tenantForm.contactName || ''} onChange={(event) => updateTenantForm('contactName', event.target.value)} className="field-input" /></Field>
               <Field label="Contact Email"><input type="email" value={tenantForm.contactEmail || ''} onChange={(event) => updateTenantForm('contactEmail', event.target.value)} className="field-input" /></Field>
               <Field label="Contact Phone"><input value={tenantForm.contactPhone || ''} onChange={(event) => updateTenantForm('contactPhone', event.target.value)} className="field-input" /></Field>
@@ -631,14 +644,6 @@ function licenseTone(status: PlatformLicenseStatus) {
   if (status === 'Trial') return 'info'
   if (status === 'Expired') return 'warning'
   return 'danger'
-}
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
 
 function toDateInputValue(value?: string | null) {

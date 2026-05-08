@@ -141,6 +141,13 @@ export interface PlatformUser {
   lastLogin?: string | null
   createdAt?: string
   updatedAt?: string | null
+  mustChangePassword?: boolean
+  lastCredentialSentAt?: string | null
+  credentialDelivery?: {
+    success: boolean
+    status: string
+    message?: string | null
+  } | null
 }
 
 export type QuoteStatus = 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired' | 'Converted'

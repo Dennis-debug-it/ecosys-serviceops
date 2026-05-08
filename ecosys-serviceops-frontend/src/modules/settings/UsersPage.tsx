@@ -1,4 +1,4 @@
-import { KeyRound, Plus, Power, Search, Trash2 } from 'lucide-react'
+import { KeyRound, Plus, Power, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
@@ -124,6 +124,7 @@ export function SettingsUsersPage() {
   const [resetPasswordUser, setResetPasswordUser] = useState<UserRecord | null>(null)
   const [temporaryPassword, setTemporaryPassword] = useState('')
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [resendingCredentialsUserId, setResendingCredentialsUserId] = useState<string | null>(null)
   const [groupDrawerOpen, setGroupDrawerOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<AssignmentGroupRecord | null>(null)
   const [groupForm, setGroupForm] = useState<GroupEditorState>(defaultGroupForm)
@@ -279,11 +280,6 @@ export function SettingsUsersPage() {
       return
     }
 
-    if (!editingUser && !userForm.password?.trim()) {
-      pushToast({ title: 'Password required', description: 'Enter a temporary password when creating a user.', tone: 'warning' })
-      return
-    }
-
     if (editingUser && isCurrentUser(editingUser) && session?.role !== 'superadmin' && editingUser.role !== userForm.role) {
       pushToast({ title: 'Role change blocked', description: 'You cannot change your own role from this account.', tone: 'warning' })
       return
@@ -295,8 +291,12 @@ export function SettingsUsersPage() {
         await userService.update(editingUser.id, userForm)
         pushToast({ title: 'User updated', description: 'Workforce settings were saved successfully.', tone: 'success' })
       } else {
-        await userService.create(userForm)
-        pushToast({ title: 'User created', description: 'The new workforce user is ready for branch and group assignment.', tone: 'success' })
+        const created = await userService.create(userForm)
+        pushToast({
+          title: 'User created',
+          description: created.credentialDelivery?.success ? 'User created and credentials sent.' : 'User created, but credential email failed. Please resend credentials.',
+          tone: created.credentialDelivery?.success ? 'success' : 'warning',
+        })
       }
       closeUserEditor(true)
       await reload()
@@ -351,11 +351,11 @@ export function SettingsUsersPage() {
 
     setIsResettingPassword(true)
     try {
-      await userService.resetPassword(resetPasswordUser.id, temporaryPassword)
+      const response = await userService.resetPassword(resetPasswordUser.id, temporaryPassword)
       pushToast({
         title: 'Password reset',
-        description: `A temporary password was saved for ${resetPasswordUser.fullName}.`,
-        tone: 'success',
+        description: response.success ? 'Password reset and credential email sent.' : response.message || 'Password reset, but credential email failed. Please resend credentials.',
+        tone: response.success ? 'success' : 'warning',
       })
       closeResetPassword(true)
       await reload()
@@ -363,6 +363,25 @@ export function SettingsUsersPage() {
       pushToast({ title: 'Reset failed', description: toErrorMessage(error, 'Unable to reset the user password.'), tone: 'danger' })
     } finally {
       setIsResettingPassword(false)
+    }
+  }
+
+  async function resendCredentials(user: UserRecord) {
+    if (resendingCredentialsUserId) return
+
+    setResendingCredentialsUserId(user.id)
+    try {
+      const response = await userService.resendCredentials(user.id)
+      pushToast({
+        title: response.success ? 'Credentials sent' : 'Credential email failed',
+        description: response.success ? `Credentials were sent to ${user.fullName}.` : response.message || 'Please verify email settings and try again.',
+        tone: response.success ? 'success' : 'warning',
+      })
+      await reload()
+    } catch (error) {
+      pushToast({ title: 'Resend failed', description: toErrorMessage(error, 'Unable to resend credentials.'), tone: 'danger' })
+    } finally {
+      setResendingCredentialsUserId(null)
     }
   }
 
@@ -541,6 +560,8 @@ export function SettingsUsersPage() {
                 cell: (row) => <span>{formatBranchLabel(row, data.branches)}</span>,
               },
               { key: 'status', header: 'Status', cell: (row) => <Badge tone={row.isActive ? 'success' : 'danger'}>{row.isActive ? 'Active' : 'Inactive'}</Badge> },
+              { key: 'credentialSent', header: 'Last Credentials Sent', cell: (row) => row.lastCredentialSentAt ? new Date(row.lastCredentialSentAt).toLocaleString() : 'Never' },
+              { key: 'mustChangePassword', header: 'Password Change', cell: (row) => <Badge tone={row.mustChangePassword ? 'warning' : 'neutral'}>{row.mustChangePassword ? 'Required' : 'Not required'}</Badge> },
               {
                 key: 'groups',
                 header: 'Assigned Groups',
@@ -560,11 +581,15 @@ export function SettingsUsersPage() {
               {
                 key: 'actions',
                 header: 'Actions',
-                className: 'min-w-[360px]',
+                className: 'min-w-[470px]',
                 cell: (row) => (
                   <div className="flex flex-wrap gap-2">
                     <button type="button" className="button-secondary px-3 py-2" onClick={() => openUserEditor(row)}>
                       Edit
+                    </button>
+                    <button type="button" className="button-secondary px-3 py-2" onClick={() => void resendCredentials(row)} disabled={resendingCredentialsUserId === row.id}>
+                      <RefreshCw className="h-4 w-4" />
+                      {resendingCredentialsUserId === row.id ? 'Sending...' : 'Resend Credentials'}
                     </button>
                     <button type="button" className="button-secondary px-3 py-2" onClick={() => openResetPassword(row)}>
                       <KeyRound className="h-4 w-4" />
@@ -831,9 +856,15 @@ export function SettingsUsersPage() {
             <Field label="Job title"><input value={userForm.jobTitle || ''} onChange={(event) => setUserForm((current) => ({ ...current, jobTitle: event.target.value }))} className="field-input" /></Field>
             <Field label="Department"><input value={userForm.department || ''} onChange={(event) => setUserForm((current) => ({ ...current, department: event.target.value }))} className="field-input" /></Field>
             {!editingUser ? (
-              <Field label="Temporary password"><input type="password" value={userForm.password || ''} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} className="field-input" /></Field>
+              <Field label="Temporary password override"><input type="password" value={userForm.password || ''} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} className="field-input" placeholder="Optional" /></Field>
             ) : null}
           </div>
+
+          {!editingUser ? (
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 px-4 py-3 text-sm text-muted">
+              Leave the password blank to let Ecosys generate a temporary password and email it automatically.
+            </div>
+          ) : null}
 
           {editingSelf && session?.role !== 'superadmin' ? (
             <div className="rounded-2xl border border-amber-400/20 bg-amber-500/5 px-4 py-3 text-sm text-muted">

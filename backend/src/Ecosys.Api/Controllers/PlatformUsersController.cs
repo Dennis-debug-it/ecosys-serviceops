@@ -18,7 +18,8 @@ public sealed class PlatformUsersController(
     AppDbContext dbContext,
     ITenantContext tenantContext,
     IAuditLogService auditLogService,
-    IPasswordHasher<User> passwordHasher) : ControllerBase
+    IPasswordHasher<User> passwordHasher,
+    IUserCredentialDeliveryService credentialDeliveryService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<PlatformUserResponse>>> GetAll(CancellationToken cancellationToken)
@@ -83,6 +84,22 @@ public sealed class PlatformUsersController(
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        var delivery = await credentialDeliveryService.SendAsync(
+            PlatformConstants.RootTenantId,
+            user,
+            new UserCredentialDeliveryRequest(
+                credentialDeliveryService.BuildLoginUrl(),
+                initialPassword,
+                null,
+                true),
+            cancellationToken);
+
+        if (delivery.Success)
+        {
+            user.LastCredentialSentAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         await auditLogService.LogAsync(
             PlatformConstants.RootTenantId,
             tenantContext.GetRequiredUserId(),
@@ -93,7 +110,20 @@ public sealed class PlatformUsersController(
             severity: "Info",
             cancellationToken: cancellationToken);
 
-        return CreatedAtAction(nameof(Get), new { id = user.Id }, MapUser(user, null));
+        if (delivery.Success)
+        {
+            await auditLogService.LogAsync(
+                PlatformConstants.RootTenantId,
+                tenantContext.GetRequiredUserId(),
+                "User credentials sent",
+                nameof(User),
+                user.Id.ToString(),
+                $"User credentials sent to '{user.Email}'.",
+                severity: "Info",
+                cancellationToken: cancellationToken);
+        }
+
+        return CreatedAtAction(nameof(Get), new { id = user.Id }, MapUser(user, null, new PlatformCredentialDeliverySummaryResponse(delivery.Success, delivery.Status, delivery.Message)));
     }
 
     [HttpPut("{id:guid}")]
@@ -164,6 +194,21 @@ public sealed class PlatformUsersController(
         user.PasswordHash = passwordHasher.HashPassword(user, nextPassword);
         user.MustChangePassword = true;
 
+        var delivery = await credentialDeliveryService.SendAsync(
+            PlatformConstants.RootTenantId,
+            user,
+            new UserCredentialDeliveryRequest(
+                credentialDeliveryService.BuildLoginUrl(),
+                nextPassword,
+                null,
+                true),
+            cancellationToken);
+
+        if (delivery.Success)
+        {
+            user.LastCredentialSentAt = DateTime.UtcNow;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
@@ -176,7 +221,63 @@ public sealed class PlatformUsersController(
             severity: "Warning",
             cancellationToken: cancellationToken);
 
-        return Ok(new PlatformResetPasswordResponse(user.Id, user.Email, nextPassword));
+        if (delivery.Success)
+        {
+            await auditLogService.LogAsync(
+                PlatformConstants.RootTenantId,
+                tenantContext.GetRequiredUserId(),
+                "User credentials sent",
+                nameof(User),
+                user.Id.ToString(),
+                $"User credentials sent to '{user.Email}'.",
+                severity: "Info",
+                cancellationToken: cancellationToken);
+        }
+
+        return Ok(new PlatformResetPasswordResponse(user.Id, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, delivery.Message));
+    }
+
+    [HttpPost("{id:guid}/resend-credentials")]
+    public async Task<ActionResult<PlatformResetPasswordResponse>> ResendCredentials(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await QueryPlatformUsers().SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NotFoundException("Platform user was not found.");
+
+        var nextPassword = GenerateTemporaryPassword();
+        user.PasswordHash = passwordHasher.HashPassword(user, nextPassword);
+        user.MustChangePassword = true;
+
+        var delivery = await credentialDeliveryService.SendAsync(
+            PlatformConstants.RootTenantId,
+            user,
+            new UserCredentialDeliveryRequest(
+                credentialDeliveryService.BuildLoginUrl(),
+                nextPassword,
+                null,
+                true),
+            cancellationToken);
+
+        if (delivery.Success)
+        {
+            user.LastCredentialSentAt = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (delivery.Success)
+        {
+            await auditLogService.LogAsync(
+                PlatformConstants.RootTenantId,
+                tenantContext.GetRequiredUserId(),
+                "User credentials sent",
+                nameof(User),
+                user.Id.ToString(),
+                $"User credentials sent to '{user.Email}'.",
+                severity: "Info",
+                cancellationToken: cancellationToken);
+        }
+
+        return Ok(new PlatformResetPasswordResponse(user.Id, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, delivery.Message));
     }
 
     [HttpPost("{id:guid}/assign-role")]
@@ -239,7 +340,7 @@ public sealed class PlatformUsersController(
     private IQueryable<User> QueryPlatformUsers() =>
         dbContext.Users.Where(x => x.TenantId == PlatformConstants.RootTenantId && !x.Role.Equals(AppRoles.Admin));
 
-    private static PlatformUserResponse MapUser(User user, DateTime? lastLoginAt) =>
+    private static PlatformUserResponse MapUser(User user, DateTime? lastLoginAt, PlatformCredentialDeliverySummaryResponse? credentialDelivery = null) =>
         new(
             user.Id,
             user.FullName,
@@ -249,7 +350,10 @@ public sealed class PlatformUsersController(
             user.IsActive ? "Active" : "Inactive",
             lastLoginAt,
             user.CreatedAt,
-            user.UpdatedAt);
+            user.UpdatedAt,
+            user.MustChangePassword,
+            user.LastCredentialSentAt,
+            credentialDelivery);
 
     private static void ValidateRequired(string? value, string message)
     {
@@ -337,7 +441,18 @@ public sealed record PlatformAssignRoleRequest(string Role);
 
 public sealed record PlatformResetPasswordRequest(string? TemporaryPassword);
 
-public sealed record PlatformResetPasswordResponse(Guid Id, string Email, string TemporaryPassword);
+public sealed record PlatformResetPasswordResponse(
+    Guid Id,
+    string Email,
+    bool Success,
+    DateTime? LastCredentialSentAt,
+    string Status,
+    string? Message);
+
+public sealed record PlatformCredentialDeliverySummaryResponse(
+    bool Success,
+    string Status,
+    string? Message);
 
 public sealed record PlatformUserResponse(
     Guid Id,
@@ -348,4 +463,7 @@ public sealed record PlatformUserResponse(
     string Status,
     DateTime? LastLoginAt,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    bool MustChangePassword,
+    DateTime? LastCredentialSentAt,
+    PlatformCredentialDeliverySummaryResponse? CredentialDelivery);

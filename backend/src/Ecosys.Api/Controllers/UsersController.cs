@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Ecosys.Api.Controllers;
 
@@ -25,8 +24,7 @@ public sealed class UsersController(
     ILicenseGuardService licenseGuardService,
     ITenantSecurityPolicyService tenantSecurityPolicyService,
     IAuditLogService auditLogService,
-    IEmailSender emailSender,
-    ISecretEncryptionService secretEncryptionService) : TenantAwareControllerBase(tenantContext)
+    IUserCredentialDeliveryService credentialDeliveryService) : TenantAwareControllerBase(tenantContext)
 {
     private const int InviteExpiryHours = 72;
     [HttpGet]
@@ -123,18 +121,28 @@ public sealed class UsersController(
         await dbContext.SaveChangesAsync(cancellationToken);
         await SyncWorkforceProfileAsync(user, request.AssignmentGroupIds, NormalizeOptional(request.PhoneNumber), cancellationToken);
 
-        var inviteEmailSent = false;
-        if (inviteToken is not null)
+        var credentialDelivery = new CredentialDeliverySummaryResponse(false, "NotRequested", null);
+        if (RequiresTemporaryPassword(deliveryMethod) || inviteToken is not null)
         {
-            inviteLink = BuildInviteLink(inviteToken);
-            if (user.IsActive)
-            {
-                inviteEmailSent = await TrySendInviteEmailAsync(user, inviteLink, cancellationToken);
-            }
+            inviteLink = inviteToken is not null ? credentialDeliveryService.BuildInviteUrl(inviteToken) : null;
+            var deliveryResult = await credentialDeliveryService.SendAsync(
+                TenantId,
+                user,
+                new UserCredentialDeliveryRequest(
+                    credentialDeliveryService.BuildLoginUrl(),
+                    RequiresTemporaryPassword(deliveryMethod) ? bootstrapPassword : null,
+                    inviteLink,
+                    RequiresTemporaryPassword(deliveryMethod)),
+                cancellationToken);
+            credentialDelivery = new CredentialDeliverySummaryResponse(deliveryResult.Success, deliveryResult.Status, deliveryResult.Message);
 
-            user.LastCredentialSentAt = inviteEmailSent ? DateTime.UtcNow : user.LastCredentialSentAt;
-            await dbContext.SaveChangesAsync(cancellationToken);
+            if (credentialDelivery.Success)
+            {
+                user.LastCredentialSentAt = DateTime.UtcNow;
+            }
         }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
             TenantId,
@@ -145,20 +153,20 @@ public sealed class UsersController(
             $"Created user '{user.Email}'.",
             cancellationToken);
 
-        if (inviteToken is not null)
+        if (credentialDelivery.Success)
         {
             await auditLogService.LogAsync(
                 TenantId,
                 UserId,
-                inviteEmailSent ? "Invite sent" : "Invite generated",
+                "User credentials sent",
                 nameof(User),
                 user.Id.ToString(),
-                $"{(inviteEmailSent ? "Sent" : "Generated")} invite for '{user.Email}'.",
+                $"User credentials sent to '{user.Email}'.",
                 cancellationToken);
         }
 
         var workforceProfiles = await LoadWorkforceProfilesAsync([user], cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id = user.Id }, Map(user, workforceProfiles, inviteEmailSent, generatedTemporaryPassword, inviteLink));
+        return CreatedAtAction(nameof(Get), new { id = user.Id }, Map(user, workforceProfiles, credentialDelivery));
     }
 
     [HttpPut("{id:guid}")]
@@ -262,33 +270,66 @@ public sealed class UsersController(
         return Ok(Map(user, workforceProfiles));
     }
 
+    [HttpPost("{id:guid}/resend-credentials")]
     [HttpPost("{id:guid}/resend-invite")]
-    public async Task<ActionResult<CredentialDeliveryResponse>> ResendInvite(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<CredentialDeliveryResponse>> ResendCredentials(Guid id, CancellationToken cancellationToken)
     {
         userAccessService.EnsureAdmin();
 
         var user = await dbContext.Users.SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == id, cancellationToken)
             ?? throw new NotFoundException("User was not found.");
 
-        var inviteToken = GenerateInviteToken();
-        user.InviteTokenHash = HashInviteToken(inviteToken);
-        user.InviteTokenExpiresAt = DateTime.UtcNow.AddHours(InviteExpiryHours);
+        var sendInvite = !string.IsNullOrWhiteSpace(user.InviteTokenHash);
+        var sendTemporaryPassword = user.MustChangePassword || !sendInvite;
+        string? temporaryPassword = null;
+        string? inviteToken = null;
 
-        var inviteLink = BuildInviteLink(inviteToken);
-        var inviteEmailSent = user.IsActive && await TrySendInviteEmailAsync(user, inviteLink, cancellationToken);
-        user.LastCredentialSentAt = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (sendTemporaryPassword)
+        {
+            temporaryPassword = GenerateTemporaryPassword();
+            await tenantSecurityPolicyService.ValidatePasswordAsync(TenantId, temporaryPassword, cancellationToken);
+            user.PasswordHash = passwordHasher.HashPassword(user, temporaryPassword);
+            user.MustChangePassword = true;
+        }
 
-        await auditLogService.LogAsync(
+        if (sendInvite)
+        {
+            inviteToken = GenerateInviteToken();
+            user.InviteTokenHash = HashInviteToken(inviteToken);
+            user.InviteTokenExpiresAt = DateTime.UtcNow.AddHours(InviteExpiryHours);
+        }
+
+        var inviteLink = inviteToken is not null ? credentialDeliveryService.BuildInviteUrl(inviteToken) : null;
+        var delivery = await credentialDeliveryService.SendAsync(
             TenantId,
-            UserId,
-            inviteEmailSent ? "Invite resent" : "Invite regenerated",
-            nameof(User),
-            user.Id.ToString(),
-            $"{(inviteEmailSent ? "Resent" : "Regenerated")} invite for '{user.Email}'.",
+            user,
+            new UserCredentialDeliveryRequest(
+                credentialDeliveryService.BuildLoginUrl(),
+                temporaryPassword,
+                inviteLink,
+                user.MustChangePassword),
             cancellationToken);
 
-        return Ok(new CredentialDeliveryResponse(user.Id, user.FullName, user.Email, inviteEmailSent, null, inviteLink));
+        if (delivery.Success)
+        {
+            user.LastCredentialSentAt = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (delivery.Success)
+        {
+            await auditLogService.LogAsync(
+                TenantId,
+                UserId,
+                "User credentials sent",
+                nameof(User),
+                user.Id.ToString(),
+                $"User credentials sent to '{user.Email}'.",
+                cancellationToken);
+        }
+
+        return Ok(new CredentialDeliveryResponse(user.Id, user.FullName, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, delivery.Message));
     }
 
     [HttpPost("{id:guid}/reset-password")]
@@ -303,7 +344,21 @@ public sealed class UsersController(
 
         user.PasswordHash = passwordHasher.HashPassword(user, password);
         user.MustChangePassword = true;
-        user.LastCredentialSentAt = DateTime.UtcNow;
+        var delivery = await credentialDeliveryService.SendAsync(
+            TenantId,
+            user,
+            new UserCredentialDeliveryRequest(
+                credentialDeliveryService.BuildLoginUrl(),
+                password,
+                null,
+                true),
+            cancellationToken);
+
+        if (delivery.Success)
+        {
+            user.LastCredentialSentAt = DateTime.UtcNow;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
@@ -315,12 +370,19 @@ public sealed class UsersController(
             $"Password reset for '{user.Email}'.",
             cancellationToken);
 
-        if (user.IsActive)
+        if (delivery.Success)
         {
-            await TrySendPasswordResetEmailAsync(user, password, cancellationToken);
+            await auditLogService.LogAsync(
+                TenantId,
+                UserId,
+                "User credentials sent",
+                nameof(User),
+                user.Id.ToString(),
+                $"User credentials sent to '{user.Email}'.",
+                cancellationToken);
         }
 
-        return Ok(new CredentialDeliveryResponse(user.Id, user.FullName, user.Email, false, password, null));
+        return Ok(new CredentialDeliveryResponse(user.Id, user.FullName, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, delivery.Message));
     }
 
     [HttpDelete("{id:guid}")]
@@ -577,9 +639,7 @@ public sealed class UsersController(
     private UserResponse Map(
         User user,
         IReadOnlyDictionary<Guid, Technician> workforceProfiles,
-        bool? inviteEmailSent = null,
-        string? temporaryPassword = null,
-        string? inviteLink = null)
+        CredentialDeliverySummaryResponse? credentialDelivery = null)
     {
         workforceProfiles.TryGetValue(user.Id, out var workforceProfile);
 
@@ -628,9 +688,8 @@ public sealed class UsersController(
             user.UpdatedAt,
             permissions,
             user.MustChangePassword,
-            inviteEmailSent,
-            temporaryPassword,
-            inviteLink);
+            user.LastCredentialSentAt,
+            credentialDelivery);
     }
 
     private static string NormalizeCredentialDeliveryMethod(string? value)
@@ -666,154 +725,8 @@ public sealed class UsersController(
 
     private static string HashInviteToken(string token)
     {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(hash);
-    }
-
-    private string BuildInviteLink(string token)
-    {
-        var origin = Request.Headers.Origin.FirstOrDefault();
-        var baseUrl = !string.IsNullOrWhiteSpace(origin)
-            ? origin.TrimEnd('/')
-            : $"{Request.Scheme}://{Request.Host.Value}".TrimEnd('/');
-
-        return $"{baseUrl}/accept-invite?token={Uri.EscapeDataString(token)}";
-    }
-
-    private async Task<bool> TrySendInviteEmailAsync(User user, string inviteLink, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            return false;
-        }
-
-        var emailSettings = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == TenantId, cancellationToken);
-        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(x => x.Id == TenantId, cancellationToken);
-
-        try
-        {
-            var subject = "Welcome to Ecosys ServiceOps";
-            var body = $@"Hello {user.FullName},
-
-Your Ecosys ServiceOps account has been created.
-
-Click the link below to set your password and activate your account:
-
-{inviteLink}
-
-This link will expire in {InviteExpiryHours} hours.
-
-If you did not expect this invitation, please ignore this email.
-
-Regards,
-{tenant?.CompanyName ?? "Ecosys"} Team";
-
-            var delivery = CreateEmailDeliveryOptions(emailSettings);
-            if (delivery is null)
-            {
-                return false;
-            }
-
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    user.Email,
-                    subject,
-                    body,
-                    emailSettings?.SenderName,
-                    emailSettings?.SenderAddress,
-                    emailSettings?.ReplyToEmail),
-                delivery,
-                cancellationToken);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private async Task<bool> TrySendPasswordResetEmailAsync(User user, string temporaryPassword, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            return false;
-        }
-
-        var emailSettings = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == TenantId, cancellationToken);
-        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(x => x.Id == TenantId, cancellationToken);
-
-        try
-        {
-            var subject = "Your Ecosys ServiceOps password was reset";
-            var body = $@"Hello {user.FullName},
-
-Your Ecosys ServiceOps password has been reset.
-
-Temporary password: {temporaryPassword}
-
-You will be prompted to change this password after you sign in.
-
-Regards,
-{tenant?.CompanyName ?? "Ecosys"} Team";
-
-            var delivery = CreateEmailDeliveryOptions(emailSettings);
-            if (delivery is null)
-            {
-                return false;
-            }
-
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    user.Email,
-                    subject,
-                    body,
-                    emailSettings?.SenderName,
-                    emailSettings?.SenderAddress,
-                    emailSettings?.ReplyToEmail),
-                delivery,
-                cancellationToken);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static EmailDeliveryMode ParseDeliveryMode(string? value)
-    {
-        if (Enum.TryParse<EmailDeliveryMode>(value, true, out var parsed))
-        {
-            return parsed;
-        }
-
-        return EmailDeliveryMode.Smtp;
-    }
-
-    private EmailDeliverySettings? CreateEmailDeliveryOptions(EmailSetting? settings)
-    {
-        if (settings is null)
-        {
-            return null;
-        }
-
-        var secret = secretEncryptionService.Decrypt(settings.EncryptedSecret) ?? settings.Password;
-        return new EmailDeliverySettings(
-            ParseDeliveryMode(settings.Provider),
-            settings.Host,
-            settings.Port,
-            settings.Username,
-            secret,
-            settings.SenderName,
-            settings.SenderAddress,
-            settings.ReplyToEmail,
-            settings.UseSsl,
-            settings.UseSsl ? EmailSecureMode.StartTls : EmailSecureMode.None,
-            null,
-            null,
-            null,
-            30,
-            0);
     }
 
     private static string? NormalizeOptional(string? value) =>
@@ -896,17 +809,22 @@ public sealed record UserResponse(
     DateTime? UpdatedAt,
     PermissionResponse Permissions,
     bool MustChangePassword,
-    bool? InviteEmailSent,
-    string? TemporaryPassword,
-    string? InviteLink);
+    DateTime? LastCredentialSentAt,
+    CredentialDeliverySummaryResponse? CredentialDelivery);
+
+public sealed record CredentialDeliverySummaryResponse(
+    bool Success,
+    string Status,
+    string? Message);
 
 public sealed record CredentialDeliveryResponse(
     Guid Id,
     string FullName,
     string Email,
-    bool InviteEmailSent,
-    string? TemporaryPassword,
-    string? InviteLink);
+    bool Success,
+    DateTime? LastCredentialSentAt,
+    string Status,
+    string? Message);
 
 public sealed record UpdateUserStatusRequest(bool IsActive);
 

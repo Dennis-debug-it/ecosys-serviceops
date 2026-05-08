@@ -14,6 +14,7 @@ import { platformLeadService } from '../../services/platformLeadService'
 import { platformService, toServiceError } from '../../services/platformService'
 import type { LicenseStatus, Tenant, TenantStatus } from '../../types/platform'
 import { formatDateOnly, formatDateTime } from '../../utils/date'
+import { getSlugValidationMessage, slugifyName } from '../../utils/slug'
 import { Field, SectionTitle, licenseStatusBadge, tenantStatusBadge } from './PlatformCommon'
 import { TenantCommunicationSettingsPanel } from './TenantCommunicationSettingsPanel'
 
@@ -73,6 +74,7 @@ export function PlatformTenantsPage() {
   const [pendingStatus, setPendingStatus] = useState<{ tenant: Tenant; nextStatus: TenantStatus } | null>(null)
   const [saving, setSaving] = useState(false)
   const [prefillLeadId, setPrefillLeadId] = useState<string | null>(null)
+  const [slugTouched, setSlugTouched] = useState(false)
 
   const plans = useMemo(() => ['All', ...Array.from(new Set(data.data.map((item) => item.plan).filter(Boolean)))], [data.data])
 
@@ -95,33 +97,44 @@ export function PlatformTenantsPage() {
     setMode('create')
     setForm(defaultTenantForm)
     setPrefillLeadId(null)
+    setSlugTouched(false)
     setModalOpen(true)
   }
 
   function openEdit(tenant: Tenant) {
     setMode('edit')
     setForm(tenant)
+    setSlugTouched(true)
     setModalOpen(true)
   }
 
   async function saveTenant() {
-    if (!form.name.trim() || !form.slug.trim()) {
-      pushToast({ title: 'Missing fields', description: 'Tenant name and slug are required.', tone: 'warning' })
+    if (!form.name.trim()) {
+      pushToast({ title: 'Missing fields', description: 'Tenant name is required.', tone: 'warning' })
+      return
+    }
+
+    const normalizedSlug = slugifyName(form.slug)
+    const slugError = getSlugValidationMessage(normalizedSlug)
+    if (slugError) {
+      pushToast({ title: 'Workspace URL name required', description: slugError, tone: 'warning' })
       return
     }
 
     setSaving(true)
     try {
+      const payload = { ...form, slug: normalizedSlug }
       if (mode === 'create') {
-        await platformService.tenantsApi.create(form)
+        await platformService.tenantsApi.create(payload)
       } else {
-        await platformService.tenantsApi.update(form.tenantId, form)
+        await platformService.tenantsApi.update(form.tenantId, payload)
       }
       pushToast({ title: mode === 'create' ? 'Tenant created' : 'Tenant updated', description: `${form.name} saved successfully.`, tone: 'success' })
       setModalOpen(false)
       setPrefillLeadId(null)
+      setSlugTouched(false)
       if (selectedTenant?.tenantId === form.tenantId) {
-        setSelectedTenant((current) => (current ? { ...current, ...form } : current))
+        setSelectedTenant((current) => (current ? { ...current, ...payload } : current))
       }
       await reload()
     } catch (saveError) {
@@ -143,12 +156,7 @@ export function PlatformTenantsPage() {
         const lead = await platformLeadService.getLead(requestedLeadId)
         if (cancelled) return
 
-        const generatedSlug = lead.companyName
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 60)
+        const generatedSlug = slugifyName(lead.companyName)
 
         setMode('create')
         setForm({
@@ -158,6 +166,7 @@ export function PlatformTenantsPage() {
           contactPerson: lead.contactPersonName,
           contactEmail: lead.email,
         })
+        setSlugTouched(false)
         setPrefillLeadId(lead.id)
         setModalOpen(true)
         pushToast({
@@ -297,8 +306,19 @@ export function PlatformTenantsPage() {
           </div>
         ) : null}
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Company Name"><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="field-input" /></Field>
-          <Field label="Slug"><input value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} className="field-input font-mono" /></Field>
+          <Field label="Company Name"><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value, slug: slugTouched ? current.slug : slugifyName(event.target.value) }))} className="field-input" /></Field>
+          <Field label="Workspace URL slug">
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input value={form.slug} onChange={(event) => { setSlugTouched(true); setForm((current) => ({ ...current, slug: slugifyName(event.target.value) })) }} className="field-input font-mono" />
+                <button type="button" className="button-secondary px-3 py-2" onClick={() => { setSlugTouched(false); setForm((current) => ({ ...current, slug: slugifyName(current.name) })) }}>
+                  <RefreshCw className="h-4 w-4" />
+                  Regenerate
+                </button>
+              </div>
+              <p className="text-xs text-muted">Auto-generated from the company name. You can edit it if needed.</p>
+            </div>
+          </Field>
           <Field label="Contact Person"><input value={form.contactPerson} onChange={(event) => setForm((current) => ({ ...current, contactPerson: event.target.value }))} className="field-input" /></Field>
           <Field label="Contact Email"><input type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} className="field-input" /></Field>
           <Field label="Plan"><input value={String(form.plan)} onChange={(event) => setForm((current) => ({ ...current, plan: event.target.value }))} className="field-input" /></Field>

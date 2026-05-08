@@ -177,7 +177,7 @@ public sealed class PlatformTenantsController(
         var now = DateTime.UtcNow;
         var todayUtc = StartOfUtcDay(now);
         var trimmedName = NormalizeRequired(request.Name ?? request.CompanyName, "Company name is required.");
-        var slug = await BuildUniqueSlugAsync(request.Slug, trimmedName, tenant.Id, cancellationToken);
+        var slug = await NormalizeAndValidateSlugAsync(request.Slug, trimmedName, tenant.Id, cancellationToken);
         var normalizedStatus = NormalizeTenantStatus(request.Status);
         var normalizedLicenseStatus = NormalizeLicenseStatus(request.LicenseStatus);
         var normalizedContactEmail = NormalizeEmail(request.ContactEmail);
@@ -277,16 +277,13 @@ public sealed class PlatformTenantsController(
         }
     }
 
-    private async Task<string> BuildUniqueSlugAsync(string? requestedSlug, string companyName, Guid currentTenantId, CancellationToken cancellationToken)
+    private async Task<string> NormalizeAndValidateSlugAsync(string? requestedSlug, string companyName, Guid currentTenantId, CancellationToken cancellationToken)
     {
-        var baseSlug = NormalizeSlug(string.IsNullOrWhiteSpace(requestedSlug) ? companyName : requestedSlug);
-        var slug = baseSlug;
-        var counter = 1;
-
-        while (await dbContext.Tenants.AnyAsync(x => x.Slug == slug && x.Id != currentTenantId, cancellationToken))
+        var slug = NormalizeSlug(string.IsNullOrWhiteSpace(requestedSlug) ? companyName : requestedSlug);
+        var exists = await dbContext.Tenants.AnyAsync(x => x.Slug == slug && x.Id != currentTenantId, cancellationToken);
+        if (exists)
         {
-            slug = $"{baseSlug}-{counter}";
-            counter += 1;
+            throw new BusinessRuleException("This workspace URL name is already in use. Please choose another.");
         }
 
         return slug;
@@ -607,13 +604,31 @@ public sealed class PlatformTenantsController(
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new BusinessRuleException("Slug is required.");
+            throw new BusinessRuleException("Workspace URL name is required.");
         }
 
-        var normalized = Regex.Replace(value.Trim().ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        var normalized = value
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("&", "-")
+            .Replace("'", string.Empty);
+
+        normalized = Regex.Replace(normalized, "[^a-z0-9-]+", "-");
+        normalized = Regex.Replace(normalized, "-{2,}", "-").Trim('-');
+
         if (string.IsNullOrWhiteSpace(normalized))
         {
-            throw new BusinessRuleException("Slug is required.");
+            throw new BusinessRuleException("Workspace URL name is required.");
+        }
+
+        if (normalized.Length < 3)
+        {
+            throw new BusinessRuleException("Workspace URL name must be at least 3 characters long.");
+        }
+
+        if (!Regex.IsMatch(normalized, "^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+        {
+            throw new BusinessRuleException("Workspace URL name can only contain lowercase letters, numbers, and hyphens.");
         }
 
         return normalized;

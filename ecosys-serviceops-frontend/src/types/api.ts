@@ -363,6 +363,13 @@ export interface UserRecord {
   createdAt: string
   updatedAt?: string | null
   permissions: ApiPermissions
+  mustChangePassword: boolean
+  lastCredentialSentAt?: string | null
+  credentialDelivery?: {
+    success: boolean
+    status: string
+    message?: string | null
+  } | null
 }
 
 export interface UpsertUserInput {

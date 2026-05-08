@@ -2,6 +2,16 @@ import { api } from '../lib/api'
 import type { ApiPermissions, UpsertUserInput, UserRecord } from '../types/api'
 import { asArray } from '../utils/apiDefaults'
 
+type CredentialDeliveryResponse = {
+  id: string
+  fullName: string
+  email: string
+  success: boolean
+  lastCredentialSentAt?: string | null
+  status: string
+  message?: string | null
+}
+
 export const userService = {
   async list(signal?: AbortSignal): Promise<UserRecord[]> {
     const response = await api.get<unknown>('/api/users', { signal })
@@ -28,10 +38,10 @@ export const userService = {
     return api.patch<UserRecord>(`/api/users/${id}/status`, { isActive })
   },
   resetPassword(id: string, temporaryPassword: string) {
-    return api.post<null>(`/api/users/${id}/reset-password`, { temporaryPassword })
+    return api.post<CredentialDeliveryResponse>(`/api/users/${id}/reset-password`, { temporaryPassword })
   },
-  resendInvite(id: string) {
-    return api.post<null>(`/api/users/${id}/resend-invite`, {})
+  resendCredentials(id: string) {
+    return api.post<CredentialDeliveryResponse>(`/api/users/${id}/resend-credentials`, {})
   },
   remove(id: string) {
     return api.delete<null>(`/api/users/${id}`)

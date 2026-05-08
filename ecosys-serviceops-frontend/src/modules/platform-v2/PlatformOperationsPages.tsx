@@ -26,6 +26,7 @@ export function PlatformUsersPage() {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<PlatformUser>({ id: '', fullName: '', email: '', phone: '', role: 'PlatformAdmin', status: 'Active', lastLogin: null })
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null)
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -51,8 +52,12 @@ export function PlatformUsersPage() {
         lastLogin: form.lastLogin || null,
         createdAt: form.createdAt || new Date().toISOString(),
       }
-      await platformService.platformUsersApi.save(payload)
-      pushToast({ title: 'Platform user saved', description: `${payload.fullName} was saved.`, tone: 'success' })
+      const response = await platformService.platformUsersApi.save(payload)
+      pushToast({
+        title: 'Platform user saved',
+        description: response.data.credentialDelivery?.success ? 'User created and credentials sent.' : `${payload.fullName} was saved${form.id ? '.' : ', but credential email failed. Please resend credentials.'}`,
+        tone: response.data.credentialDelivery?.success || form.id ? 'success' : 'warning',
+      })
       setOpen(false)
       setForm({ id: '', fullName: '', email: '', phone: '', role: 'PlatformAdmin', status: 'Active', lastLogin: null })
       await reload()
@@ -76,14 +81,34 @@ export function PlatformUsersPage() {
 
   async function resetPassword(user: PlatformUser) {
     try {
-      await platformService.platformUsersApi.resetPassword(user.id)
+      const response = await platformService.platformUsersApi.resetPassword(user.id)
       pushToast({
         title: 'Password reset',
-        description: `${user.fullName} can now complete the next sign-in step with refreshed access.`,
-        tone: 'success',
+        description: response.data.success ? `${user.fullName} was emailed fresh credentials.` : response.data.message || 'Password reset, but credential email failed. Please resend credentials.',
+        tone: response.data.success ? 'success' : 'warning',
       })
+      await reload()
     } catch (resetError) {
       pushToast({ title: 'Reset failed', description: toServiceError(resetError, 'Unable to reset password.'), tone: 'danger' })
+    }
+  }
+
+  async function resendCredentials(user: PlatformUser) {
+    if (resendingUserId) return
+
+    setResendingUserId(user.id)
+    try {
+      const response = await platformService.platformUsersApi.resendCredentials(user.id)
+      pushToast({
+        title: response.data.success ? 'Credentials sent' : 'Credential email failed',
+        description: response.data.success ? `${user.fullName} was emailed new credentials.` : response.data.message || 'Please verify email settings and try again.',
+        tone: response.data.success ? 'success' : 'warning',
+      })
+      await reload()
+    } catch (error) {
+      pushToast({ title: 'Resend failed', description: toServiceError(error, 'Unable to resend credentials.'), tone: 'danger' })
+    } finally {
+      setResendingUserId(null)
     }
   }
 
@@ -134,14 +159,17 @@ export function PlatformUsersPage() {
                 { key: 'role', header: 'Role', cell: (row) => row.role },
                 { key: 'status', header: 'Status', cell: (row) => userStatusBadge(row.status) },
                 { key: 'lastLogin', header: 'Last Login', cell: (row) => row.lastLogin ? formatDateTime(row.lastLogin) : 'Never' },
+                { key: 'lastCredentialSentAt', header: 'Last Credentials Sent', cell: (row) => row.lastCredentialSentAt ? formatDateTime(row.lastCredentialSentAt) : 'Never' },
+                { key: 'mustChangePassword', header: 'Password Change', cell: (row) => row.mustChangePassword ? 'Required' : 'Not required' },
                 {
                   key: 'actions',
                   header: 'Actions',
-                  className: 'min-w-[300px]',
+                  className: 'min-w-[430px]',
                   cell: (row) => (
                     <div className="flex flex-wrap gap-2">
                       <button type="button" className="button-secondary px-3 py-2" onClick={() => { setOpen(true); setForm(row) }}>Edit</button>
                       <button type="button" className="button-secondary px-3 py-2" onClick={() => void toggleStatus(row)}>{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+                      <button type="button" className="button-secondary px-3 py-2" onClick={() => void resendCredentials(row)} disabled={resendingUserId === row.id}>{resendingUserId === row.id ? 'Sending...' : 'Resend Credentials'}</button>
                       <button type="button" className="button-secondary px-3 py-2" onClick={() => void resetPassword(row)}>Reset Password</button>
                     </div>
                   ),

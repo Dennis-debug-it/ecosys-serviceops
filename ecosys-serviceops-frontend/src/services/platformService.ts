@@ -264,6 +264,9 @@ function mapPlatformUser(item: PlatformUserResponse): PlatformUser {
     lastLogin: item.lastLoginAt,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    mustChangePassword: item.mustChangePassword,
+    lastCredentialSentAt: item.lastCredentialSentAt,
+    credentialDelivery: item.credentialDelivery ?? null,
   }
 }
 
@@ -601,6 +604,13 @@ type PlatformUserResponse = {
   lastLoginAt?: string | null
   createdAt: string
   updatedAt?: string | null
+  mustChangePassword: boolean
+  lastCredentialSentAt?: string | null
+  credentialDelivery?: {
+    success: boolean
+    status: string
+    message?: string | null
+  } | null
 }
 
 type PlatformAuditLogResponse = {
@@ -1022,10 +1032,14 @@ export const platformUsersApi = {
     const response = await api.post<PlatformUserResponse>(`/api/platform/users/${id}/assign-role`, { role: toPlatformRole(role) })
     return { data: mapPlatformUser(response), backendAvailable: true }
   },
-  async resetPassword(id: string, temporaryPassword?: string): Promise<ServiceResult<{ id: string; email: string; temporaryPassword: string }>> {
-    const response = await api.post<{ id: string; email: string; temporaryPassword: string }>(`/api/platform/users/${id}/reset-password`, {
+  async resetPassword(id: string, temporaryPassword?: string): Promise<ServiceResult<{ id: string; email: string; success: boolean; lastCredentialSentAt?: string | null; status: string; message?: string | null }>> {
+    const response = await api.post<{ id: string; email: string; success: boolean; lastCredentialSentAt?: string | null; status: string; message?: string | null }>(`/api/platform/users/${id}/reset-password`, {
       temporaryPassword: temporaryPassword || null,
     })
+    return { data: response, backendAvailable: true }
+  },
+  async resendCredentials(id: string): Promise<ServiceResult<{ id: string; email: string; success: boolean; lastCredentialSentAt?: string | null; status: string; message?: string | null }>> {
+    const response = await api.post<{ id: string; email: string; success: boolean; lastCredentialSentAt?: string | null; status: string; message?: string | null }>(`/api/platform/users/${id}/resend-credentials`, {})
     return { data: response, backendAvailable: true }
   },
 }
