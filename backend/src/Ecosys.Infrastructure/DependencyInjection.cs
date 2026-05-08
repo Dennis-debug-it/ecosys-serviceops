@@ -1,0 +1,51 @@
+using Ecosys.Domain.Entities;
+using Ecosys.Infrastructure.Data;
+using Ecosys.Infrastructure.Integrations;
+using Ecosys.Infrastructure.Security;
+using Ecosys.Infrastructure.Services;
+using Ecosys.Shared.Auth;
+using Ecosys.Shared.Contracts.Integration;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Ecosys.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' was not found.");
+
+        services.AddHttpContextAccessor();
+        services.AddDataProtection();
+        services.AddScoped<ITenantContext, HttpTenantContext>();
+        services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("postgres");
+
+        services.AddScoped<IMvpAuthService, MvpAuthService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<IDocumentNumberingService, DocumentNumberingService>();
+        services.AddScoped<IPreventiveMaintenancePlanService, PreventiveMaintenancePlanService>();
+        services.AddScoped<IUserPermissionTemplateService, UserPermissionTemplateService>();
+        services.AddScoped<IUserAccessService, UserAccessService>();
+        services.AddScoped<IBranchAccessService, BranchAccessService>();
+        services.AddScoped<IStockLedgerService, StockLedgerService>();
+        services.AddScoped<IUserSessionService, UserSessionService>();
+        services.AddScoped<IPlatformBootstrapService, PlatformBootstrapService>();
+        services.AddScoped<ILicenseGuardService, LicenseGuardService>();
+        services.AddScoped<ISecretEncryptionService, SecretEncryptionService>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<ITenantSecurityPolicyService, TenantSecurityPolicyService>();
+        services.AddScoped<IWorkOrderLifecycleService, WorkOrderLifecycleService>();
+        services.AddScoped<IWorkOrderAssignmentWorkflowService, WorkOrderAssignmentWorkflowService>();
+        services.AddScoped<IPmWorkOrderChecklistService, PmWorkOrderChecklistService>();
+
+        return services;
+    }
+}
