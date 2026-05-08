@@ -1,0 +1,72 @@
+import type {
+  AssetStatus,
+  MaterialRequestUrgency,
+  Priority,
+  Role,
+  SubscriptionStatus,
+  TechnicianAvailability,
+  TechnicianStatus,
+  TenantStatus,
+  WorkOrderStatus,
+  WorkOrderType,
+} from '../types/app'
+
+export const WORK_ORDER_TYPES: WorkOrderType[] = [
+  'Preventive Maintenance',
+  'Reactive Maintenance',
+  'New Projects',
+  'Emergency Escalations',
+]
+
+export const WORK_ORDER_STATUSES: WorkOrderStatus[] = [
+  'Open',
+  'Assigned',
+  'In Progress',
+  'Pending Materials',
+  'Acknowledged',
+  'Closed',
+  'On Hold',
+  'Completed',
+  'Cancelled',
+]
+
+export const PRIORITIES: Priority[] = ['Critical', 'High', 'Medium', 'Low']
+
+export const MATERIAL_URGENCIES: MaterialRequestUrgency[] = ['Routine', 'Priority', 'Critical']
+
+export const TECHNICIAN_STATUSES: TechnicianStatus[] = [
+  'Online',
+  'Offline',
+  'In Transit',
+  'On Site',
+  'Idle',
+  'Overloaded',
+]
+
+export const TECHNICIAN_AVAILABILITY: TechnicianAvailability[] = [
+  'Available',
+  'Assigned',
+  'Leave',
+  'Offline',
+]
+
+export const ASSET_STATUSES: AssetStatus[] = [
+  'Operational',
+  'Needs Attention',
+  'Under Maintenance',
+  'Offline',
+]
+
+export const TENANT_STATUSES: TenantStatus[] = ['Active', 'Suspended']
+
+export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['Trial', 'Active', 'Past Due', 'Suspended']
+
+export function roleHomePath(role: Role) {
+  return role === 'superadmin' ? '/command-centre' : '/dashboard'
+}
+
+export const KEYBOARD_SHORTCUTS = {
+  search: '/',
+  newWorkOrder: 'n',
+  close: 'Escape',
+}
