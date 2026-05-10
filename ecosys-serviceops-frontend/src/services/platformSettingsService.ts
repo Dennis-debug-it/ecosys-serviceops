@@ -87,6 +87,12 @@ export type PlatformEmailSettings = {
   enableWorkOrderNotificationEmails: boolean
   enableSlaEscalationEmails: boolean
   enableTenantOnboardingEmails: boolean
+  subjectPrefix: string
+  subjectSuffix: string
+  includeEnvironmentInSubject: boolean
+  environmentLabel: string
+  includeTenantNameInSubject: boolean
+  enableEventSubjectTags: boolean
   notificationPreferences: PlatformNotificationPreference[]
   lastTestedAt?: string | null
   lastError?: string | null
@@ -188,6 +194,7 @@ export type PlatformEmailActionResponse = {
   success: boolean
   lastTestedAt?: string | null
   lastError?: string | null
+  message?: string | null
 }
 
 export type PlatformEmailTemplate = {
@@ -211,7 +218,8 @@ export type PlatformEmailTemplate = {
 export type PlatformEmailTemplatePreview = {
   eventKey: string
   templateName: string
-  subject: string
+  templateSubject: string
+  finalSubject: string
   htmlBody: string
   textBody: string
 }
@@ -241,6 +249,9 @@ export type PlatformEmailDeliveryLog = {
   recipientEmail: string
   subject: string
   status: string
+  attemptCount?: number | null
+  lastAttemptAt?: string | null
+  nextAttemptAt?: string | null
   errorCategory?: string | null
   errorMessage?: string | null
   triggeredByUserId?: string | null
@@ -309,6 +320,8 @@ export const platformSettingsService = {
       apiEndpoint: input.apiEndpoint || null,
       apiKeySecret: input.apiKeySecret || null,
       apiProviderName: input.apiProviderName || null,
+      subjectSuffix: input.subjectSuffix || null,
+      environmentLabel: input.environmentLabel || null,
     })
   },
   sendTestEmail(testRecipientEmail?: string) {

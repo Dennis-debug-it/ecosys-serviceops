@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { InfoAlert } from '../../../../components/ui/InfoAlert'
 import { LoadingState } from '../../../../components/ui/LoadingState'
 import { useToast } from '../../../../components/ui/ToastProvider'
+import { FormSection, PageTabs, SectionCard, StickyActionFooter } from '../../../../components/ui/Workspace'
 import { useAsyncData } from '../../../../hooks/useAsyncData'
 import { Field, SectionTitle } from '../../../../modules/platform-v2/PlatformCommon'
 import { platformSettingsService, type PlatformEmailSettings, type PlatformNotificationPreference } from '../../../../services/platformSettingsService'
@@ -52,6 +53,12 @@ const defaultSettings: PlatformEmailSettings = {
   enableWorkOrderNotificationEmails: true,
   enableSlaEscalationEmails: true,
   enableTenantOnboardingEmails: true,
+  subjectPrefix: '[Ecosys]',
+  subjectSuffix: '',
+  includeEnvironmentInSubject: false,
+  environmentLabel: 'Production',
+  includeTenantNameInSubject: false,
+  enableEventSubjectTags: true,
   notificationPreferences: Object.keys(preferenceLabels).map((key) => ({
     notificationKey: key,
     emailEnabled: true,
@@ -147,8 +154,8 @@ export function EmailNotificationSettingsPanel() {
     try {
       const response = await platformSettingsService.sendTestEmail(testEmail || undefined)
       pushToast({
-        title: response.success ? 'Test email sent' : 'Test email failed',
-        description: response.success ? 'Test email was sent successfully.' : describeEmailError(response.lastError),
+        title: response.success ? 'Test email queued' : 'Test email failed',
+        description: response.success ? response.message || 'Test email queued. Check Delivery Logs for status.' : describeEmailError(response.lastError),
         tone: response.success ? 'success' : 'danger',
       })
       await reload()
@@ -196,26 +203,14 @@ export function EmailNotificationSettingsPanel() {
     <section data-testid="platform-email-settings-form" className="space-y-4">
       <SectionTitle title="Email & Notifications" description="Manage outbound delivery, governed templates, dispatch rules, and delivery visibility for platform activity." />
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            data-testid={`platform-email-tab-${tab.id}`}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${activeTab === tab.id ? 'border border-app bg-app text-app' : 'panel-subtle text-muted'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <PageTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'smtp' ? (
-        <div className="space-y-4 rounded-[32px] border border-app bg-[var(--app-card)] p-5">
+        <SectionCard title="SMTP Settings" description="Use SMTP for outbound credentials, onboarding, and governed notification delivery.">
           <InfoAlert title="SMTP sends mail only" description="Outbound SMTP covers test emails, user credentials, resend credentials, onboarding, lead notifications, and template test sends. Email intake for creating or updating work orders is configured separately." tone="info" />
           <InfoAlert title="Notification rollout" description="Some notification categories are configurable now, while automated dispatch hooks will be activated as each workflow is completed." tone="warning" />
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <FormSection title="Delivery Configuration" description="Connection, sender identity, and subject behavior.">
             <Field label="Delivery Method">
               <select value={form.deliveryMode} onChange={(event) => setForm((current) => ({ ...current, deliveryMode: event.target.value as PlatformEmailSettings['deliveryMode'] }))} className="field-input">
                 <option value="Smtp">SMTP</option>
@@ -258,7 +253,12 @@ export function EmailNotificationSettingsPanel() {
             <Field label="Reply-to Email"><input data-testid="reply-to-email-input" type="email" value={form.replyToEmail || ''} onChange={(event) => setForm((current) => ({ ...current, replyToEmail: event.target.value }))} className="field-input" /></Field>
             <Field label="Timeout Seconds"><input type="number" min={5} value={form.timeoutSeconds || 30} onChange={(event) => setForm((current) => ({ ...current, timeoutSeconds: Number(event.target.value) || 30 }))} className="field-input" /></Field>
             <Field label="Max Retries"><input type="number" min={0} value={form.maxRetries || 0} onChange={(event) => setForm((current) => ({ ...current, maxRetries: Number(event.target.value) || 0 }))} className="field-input" /></Field>
-          </div>
+            <Field label="Subject Prefix"><input value={form.subjectPrefix || ''} onChange={(event) => setForm((current) => ({ ...current, subjectPrefix: event.target.value }))} className="field-input" placeholder="[Ecosys]" /></Field>
+            <Field label="Subject Suffix"><input value={form.subjectSuffix || ''} onChange={(event) => setForm((current) => ({ ...current, subjectSuffix: event.target.value }))} className="field-input" placeholder="Optional" /></Field>
+            <Field label="Environment Label"><input value={form.environmentLabel || ''} onChange={(event) => setForm((current) => ({ ...current, environmentLabel: event.target.value }))} className="field-input" placeholder="Production" /></Field>
+          </FormSection>
+
+          <InfoAlert title="Subject rules" description="Subject rules help identify Ecosys emails in inboxes and delivery logs. Example: [Ecosys] [Security] Reset your password." tone="info" />
 
           {portGuidance ? <InfoAlert title="Connection check" description={portGuidance} tone="warning" /> : null}
 
@@ -267,6 +267,9 @@ export function EmailNotificationSettingsPanel() {
             <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-app">Enable system alerts</span><input type="checkbox" checked={form.enableSystemAlerts} onChange={(event) => setForm((current) => ({ ...current, enableSystemAlerts: event.target.checked }))} /></label>
             <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-app">Enable work order emails</span><input type="checkbox" checked={form.enableWorkOrderNotificationEmails} onChange={(event) => setForm((current) => ({ ...current, enableWorkOrderNotificationEmails: event.target.checked }))} /></label>
             <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-app">Enable tenant onboarding emails</span><input type="checkbox" checked={form.enableTenantOnboardingEmails} onChange={(event) => setForm((current) => ({ ...current, enableTenantOnboardingEmails: event.target.checked }))} /></label>
+            <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-app">Include environment label</span><input type="checkbox" checked={form.includeEnvironmentInSubject} onChange={(event) => setForm((current) => ({ ...current, includeEnvironmentInSubject: event.target.checked }))} /></label>
+            <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-app">Include tenant name</span><input type="checkbox" checked={form.includeTenantNameInSubject} onChange={(event) => setForm((current) => ({ ...current, includeTenantNameInSubject: event.target.checked }))} /></label>
+            <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-app">Enable event subject tags</span><input type="checkbox" checked={form.enableEventSubjectTags} onChange={(event) => setForm((current) => ({ ...current, enableEventSubjectTags: event.target.checked }))} /></label>
           </div>
 
           <section className="space-y-3">
@@ -298,11 +301,13 @@ export function EmailNotificationSettingsPanel() {
 
           <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
             <Field label="Test recipient email"><input type="email" value={testEmail} onChange={(event) => setTestEmail(event.target.value)} className="field-input" placeholder="name@example.com" /></Field>
-            <button data-testid="send-test-email-button" type="button" className="button-secondary self-end" onClick={() => void sendTest()} disabled={testing}>{testing ? 'Sending...' : 'Send Test Email'}</button>
+            <button data-testid="send-test-email-button" type="button" className="button-secondary self-end" onClick={() => void sendTest()} disabled={testing}>{testing ? 'Queueing...' : 'Send Test Email'}</button>
             <button data-testid="verify-smtp-button" type="button" className="button-secondary self-end" onClick={() => void verify()} disabled={verifying}>{verifying ? 'Verifying...' : 'Verify Delivery Connection'}</button>
-            <button data-testid="save-email-settings-button" type="button" className="button-primary self-end" onClick={() => void save()} disabled={saving}>{saving ? 'Saving...' : 'Save Email Settings'}</button>
           </div>
-        </div>
+          <StickyActionFooter>
+            <button data-testid="save-email-settings-button" type="button" className="button-primary" onClick={() => void save()} disabled={saving}>{saving ? 'Saving...' : 'Save Email Settings'}</button>
+          </StickyActionFooter>
+        </SectionCard>
       ) : null}
 
       {activeTab === 'templates' ? <EmailTemplatesSettingsPanel /> : null}

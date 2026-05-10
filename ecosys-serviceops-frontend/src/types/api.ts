@@ -1022,7 +1022,8 @@ export interface UpdateEmailTemplateInput {
 export interface EmailTemplatePreviewResponse {
   eventKey: string
   templateName: string
-  subject: string
+  templateSubject: string
+  finalSubject: string
   htmlBody: string
   textBody: string
 }

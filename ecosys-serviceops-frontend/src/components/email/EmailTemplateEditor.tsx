@@ -167,7 +167,7 @@ export function EmailTemplateEditor({
             </button>
             <button type="button" className="button-secondary" onClick={() => void handleSendTest()} disabled={sendingTest}>
               <Send className="h-4 w-4" />
-              {sendingTest ? 'Sending...' : 'Send Test Email'}
+              {sendingTest ? 'Queueing...' : 'Send Test Email'}
             </button>
             <button type="button" className="button-secondary" onClick={() => void handleReset()} disabled={resetting}>
               <RotateCcw className="h-4 w-4" />
@@ -252,8 +252,12 @@ export function EmailTemplateEditor({
             {preview ? (
               <div className="space-y-3">
                 <div className="rounded-2xl border border-app bg-app/50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Subject</p>
-                  <p className="mt-2 text-sm font-semibold text-app">{preview.subject}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Template Subject</p>
+                  <p className="mt-2 text-sm font-semibold text-app">{preview.templateSubject}</p>
+                </div>
+                <div className="rounded-2xl border border-app bg-app/50 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Final Subject</p>
+                  <p className="mt-2 text-sm font-semibold text-app">{preview.finalSubject}</p>
                 </div>
                 <div className="rounded-2xl border border-app bg-white px-4 py-4 text-sm text-slate-800">
                   <div dangerouslySetInnerHTML={{ __html: preview.htmlBody }} />
@@ -310,8 +314,8 @@ export function EmailTemplateEditor({
     try {
       const result = await onSendTest(activeTemplate.eventKey, testRecipientEmail || undefined, sampleData)
       onToast({
-        title: result.success ? 'Test email sent' : 'Test email failed',
-        description: result.success ? 'Template test email was sent successfully.' : result.message || 'Unable to send the template test email.',
+        title: result.success ? 'Test email queued' : 'Test email failed',
+        description: result.success ? result.message || 'Template test email queued. Check Delivery Logs for status.' : result.message || 'Unable to send the template test email.',
         tone: result.success ? 'success' : 'danger',
       })
     } catch (testError) {

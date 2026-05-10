@@ -10,6 +10,8 @@ const statusTone: Record<string, string> = {
   Failed: 'bg-rose-500/15 text-rose-700',
   Skipped: 'bg-amber-500/15 text-amber-700',
   Pending: 'bg-slate-500/15 text-slate-700',
+  Sending: 'bg-sky-500/15 text-sky-700',
+  Retrying: 'bg-orange-500/15 text-orange-700',
 }
 
 export function EmailDeliveryLogsPanel() {
@@ -37,6 +39,8 @@ export function EmailDeliveryLogsPanel() {
             <option value="Failed">Failed</option>
             <option value="Skipped">Skipped</option>
             <option value="Pending">Pending</option>
+            <option value="Sending">Sending</option>
+            <option value="Retrying">Retrying</option>
           </select>
         </label>
         <label className="block space-y-2">
@@ -64,6 +68,10 @@ export function EmailDeliveryLogsPanel() {
                 <LogMeta label="Event" value={row.eventKey} mono />
                 <LogMeta label="Template" value={row.templateKey} mono />
                 <LogMeta label="Triggered By" value={row.triggeredByUserId || 'System'} mono={!row.triggeredByUserId} />
+                <LogMeta label="Attempts" value={String(row.attemptCount ?? 0)} />
+                <LogMeta label="Last Attempt" value={row.lastAttemptAt ? new Date(row.lastAttemptAt).toLocaleString() : 'Not yet attempted'} />
+                <LogMeta label="Next Attempt" value={row.nextAttemptAt ? new Date(row.nextAttemptAt).toLocaleString() : 'None scheduled'} />
+                <LogMeta label="Sent Time" value={row.sentAt ? new Date(row.sentAt).toLocaleString() : 'Not sent'} />
               </div>
               {row.errorMessage ? <p className="mt-4 text-sm text-rose-700">{row.errorMessage}</p> : null}
             </article>
