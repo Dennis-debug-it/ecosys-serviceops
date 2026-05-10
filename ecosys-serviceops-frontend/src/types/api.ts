@@ -658,6 +658,9 @@ export interface UpsertPlatformTenantInput {
   subscriptionEndsAt?: string | null
   status: PlatformTenantStatus
   licenseStatus: PlatformLicenseStatus
+  createDefaultAdmin?: boolean
+  adminFullName?: string | null
+  adminEmail?: string | null
 }
 
 export interface UpdatePlatformTenantStatusInput {

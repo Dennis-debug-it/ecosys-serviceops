@@ -21,6 +21,7 @@ const string EcosysCorsPolicyName = "EcosysCors";
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
 builder.Services.Configure<PlatformAdminOptions>(builder.Configuration.GetSection(PlatformAdminOptions.SectionName));
+builder.Services.Configure<PublicAppOptions>(builder.Configuration.GetSection(PublicAppOptions.SectionName));
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var allowedCorsOrigins = builder.Configuration

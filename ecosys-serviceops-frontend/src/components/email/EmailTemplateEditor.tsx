@@ -16,21 +16,22 @@ type Props = {
   onToast: (input: { title: string; description: string; tone: 'success' | 'danger' | 'warning' | 'info' }) => void
 }
 
-const defaultSampleDataText = `FullName=Jane Doe
-Email=jane.doe@example.com
-TemporaryPassword=Eco!TempPass9
-InviteLink=https://app.example.com/accept-invite?token=sample
-ResetPasswordLink=https://app.example.com/reset-password?token=sample
-LoginUrl=https://app.example.com/login
-CompanyName=Acme Facilities Ltd
-WorkspaceName=Acme Facilities Ltd
-TenantName=Acme Facilities Ltd
-WorkOrderNumber=WO-000123
-AssetName=Generator 250kVA
-AssignedTo=Alex Kimani
-Priority=High
-DueDate=2026-05-10
-SupportEmail=support@ecosysdigital.co.ke`
+const defaultSampleDataText = `fullName=Jane Doe
+email=jane.doe@example.com
+temporaryPassword=Eco!TempPass9
+loginUrl=https://app.ecosysdigital.co.ke/login
+resetLink=https://app.ecosysdigital.co.ke/reset-password?token=sample
+companyName=Acme Facilities Ltd
+tenantName=Acme Facilities Ltd
+platformName=Ecosys ServiceOps
+workOrderNumber=WO-000123
+assetName=Generator 250kVA
+assignedTo=Alex Kimani
+priority=High
+dueDate=2026-05-10
+supportEmail=support@ecosysdigital.co.ke
+senderName=Ecosys ServiceOps
+sentAt=2026-05-10 09:00 UTC`
 
 function parseSampleData(value: string) {
   return value
@@ -120,7 +121,7 @@ export function EmailTemplateEditor({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-lg font-semibold text-app">{scopeLabel}</p>
-            <p className="mt-1 text-sm text-muted">Choose an event and edit its delivery template.</p>
+            <p className="mt-1 text-sm text-muted">Choose an event and edit its governed delivery template.</p>
           </div>
           <button type="button" className="button-secondary" onClick={() => void onReload()}>
             <RefreshCw className="h-4 w-4" />
@@ -155,8 +156,9 @@ export function EmailTemplateEditor({
           <div>
             <p className="text-lg font-semibold text-app">{selectedTemplate.templateName}</p>
             <p className="mt-1 text-sm text-muted">
-              Event key: <span className="font-mono">{selectedTemplate.eventKey}</span>
+              Template key: <span className="font-mono">{selectedTemplate.eventKey}</span>
             </p>
+            {selectedTemplate.lastUpdatedAt ? <p className="mt-1 text-xs text-muted">Last updated {new Date(selectedTemplate.lastUpdatedAt).toLocaleString()}</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="button-secondary" onClick={() => void handlePreview()} disabled={previewing}>
@@ -186,7 +188,7 @@ export function EmailTemplateEditor({
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-app">Template Name</span>
+            <span className="text-sm font-medium text-app">Display Name</span>
             <input value={form.templateName} onChange={(event) => setForm((current) => current ? { ...current, templateName: event.target.value } : current)} className="field-input" />
           </label>
           <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3">
@@ -233,8 +235,8 @@ export function EmailTemplateEditor({
               </p>
             </div>
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-app">Test Recipient</span>
-              <input value={testRecipientEmail} onChange={(event) => setTestRecipientEmail(event.target.value)} className="field-input" placeholder="Optional" />
+              <span className="text-sm font-medium text-app">Test recipient email</span>
+              <input value={testRecipientEmail} onChange={(event) => setTestRecipientEmail(event.target.value)} className="field-input" placeholder="name@example.com" />
             </label>
             <label className="block space-y-2">
               <span className="text-sm font-medium text-app">Sample Data</span>

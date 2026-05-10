@@ -42,7 +42,11 @@ public static class DependencyInjection
         services.AddScoped<ISecretEncryptionService, SecretEncryptionService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+        services.AddScoped<IEmailNotificationRegistry, EmailNotificationRegistry>();
+        services.AddScoped<IEmailDeliveryLogService, EmailDeliveryLogService>();
         services.AddScoped<IUserCredentialDeliveryService, UserCredentialDeliveryService>();
+        services.AddScoped<ITemporaryPasswordService, TemporaryPasswordService>();
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<ITenantSecurityPolicyService, TenantSecurityPolicyService>();
         services.AddScoped<IWorkOrderLifecycleService, WorkOrderLifecycleService>();
         services.AddScoped<IWorkOrderAssignmentWorkflowService, WorkOrderAssignmentWorkflowService>();

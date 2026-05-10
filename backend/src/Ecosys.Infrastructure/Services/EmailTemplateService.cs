@@ -70,153 +70,184 @@ internal sealed class EmailTemplateService(AppDbContext dbContext) : IEmailTempl
         {
             ["user-credentials"] = new(
                 "user-credentials",
-                "User credentials / invite email",
-                "Your Ecosys account is ready",
+                "User credentials",
+                "Your {{platformName}} account is ready",
                 """
-                <p>Hello {{FullName}},</p>
-                <p>Your Ecosys account has been created.</p>
-                <p><strong>Login URL:</strong> {{LoginUrl}}<br />
-                <strong>Username:</strong> {{Email}}<br />
-                <strong>Temporary Password:</strong> {{TemporaryPassword}}</p>
+                <p>Hello {{fullName}},</p>
+                <p>Your {{platformName}} account for {{companyName}} is ready.</p>
+                <p><strong>Login URL:</strong> {{loginUrl}}<br />
+                <strong>Username:</strong> {{email}}<br />
+                <strong>Temporary Password:</strong> {{temporaryPassword}}</p>
                 <p>For security, you will be asked to change your password after signing in.</p>
-                <p>Regards,<br />Ecosys Support</p>
+                <p>Regards,<br />{{supportEmail}}</p>
                 """,
                 """
-                Hello {{FullName}},
+                Hello {{fullName}},
 
-                Your Ecosys account has been created.
+                Your {{platformName}} account for {{companyName}} is ready.
 
-                Login URL: {{LoginUrl}}
-                Username: {{Email}}
-                Temporary Password: {{TemporaryPassword}}
+                Login URL: {{loginUrl}}
+                Username: {{email}}
+                Temporary Password: {{temporaryPassword}}
 
                 For security, you will be asked to change your password after signing in.
 
                 Regards,
-                Ecosys Support
+                {{supportEmail}}
                 """,
-                ["FullName", "Email", "TemporaryPassword", "LoginUrl", "SupportEmail"],
-                ["FullName", "Email", "LoginUrl"],
+                ["fullName", "companyName", "platformName", "loginUrl", "email", "temporaryPassword", "supportEmail"],
+                ["fullName", "email", "loginUrl"],
                 true),
             ["resend-credentials"] = new(
                 "resend-credentials",
-                "Resend credentials email",
-                "Your Ecosys sign-in details",
+                "Credentials resent",
+                "Your {{platformName}} sign-in details",
                 """
-                <p>Hello {{FullName}},</p>
+                <p>Hello {{fullName}},</p>
                 <p>Your Ecosys sign-in details have been refreshed.</p>
-                <p><strong>Login URL:</strong> {{LoginUrl}}<br />
-                <strong>Username:</strong> {{Email}}<br />
-                <strong>Temporary Password:</strong> {{TemporaryPassword}}</p>
+                <p><strong>Login URL:</strong> {{loginUrl}}<br />
+                <strong>Username:</strong> {{email}}<br />
+                <strong>Temporary Password:</strong> {{temporaryPassword}}</p>
                 <p>For security, you will be asked to change your password after signing in.</p>
-                <p>Regards,<br />Ecosys Support</p>
+                <p>Regards,<br />{{supportEmail}}</p>
                 """,
                 """
-                Hello {{FullName}},
+                Hello {{fullName}},
 
                 Your Ecosys sign-in details have been refreshed.
 
-                Login URL: {{LoginUrl}}
-                Username: {{Email}}
-                Temporary Password: {{TemporaryPassword}}
+                Login URL: {{loginUrl}}
+                Username: {{email}}
+                Temporary Password: {{temporaryPassword}}
 
                 For security, you will be asked to change your password after signing in.
 
                 Regards,
-                Ecosys Support
+                {{supportEmail}}
                 """,
-                ["FullName", "Email", "TemporaryPassword", "LoginUrl", "SupportEmail"],
-                ["FullName", "Email", "LoginUrl"],
+                ["fullName", "companyName", "platformName", "loginUrl", "email", "temporaryPassword", "supportEmail"],
+                ["fullName", "email", "loginUrl"],
                 true),
             ["password-reset"] = new(
                 "password-reset",
-                "Password reset email",
-                "Your Ecosys password was reset",
+                "Admin password reset",
+                "Your {{platformName}} password was reset",
                 """
-                <p>Hello {{FullName}},</p>
-                <p>Your Ecosys password has been reset.</p>
-                <p><strong>Login URL:</strong> {{LoginUrl}}<br />
-                <strong>Username:</strong> {{Email}}<br />
-                <strong>Temporary Password:</strong> {{TemporaryPassword}}</p>
+                <p>Hello {{fullName}},</p>
+                <p>Your {{platformName}} password has been reset by an administrator.</p>
+                <p><strong>Login URL:</strong> {{loginUrl}}<br />
+                <strong>Username:</strong> {{email}}<br />
+                <strong>Temporary Password:</strong> {{temporaryPassword}}</p>
                 <p>For security, you will be asked to change your password after signing in.</p>
-                <p>Regards,<br />Ecosys Support</p>
+                <p>Regards,<br />{{supportEmail}}</p>
                 """,
                 """
-                Hello {{FullName}},
+                Hello {{fullName}},
 
-                Your Ecosys password has been reset.
+                Your {{platformName}} password has been reset by an administrator.
 
-                Login URL: {{LoginUrl}}
-                Username: {{Email}}
-                Temporary Password: {{TemporaryPassword}}
+                Login URL: {{loginUrl}}
+                Username: {{email}}
+                Temporary Password: {{temporaryPassword}}
 
                 For security, you will be asked to change your password after signing in.
 
                 Regards,
-                Ecosys Support
+                {{supportEmail}}
                 """,
-                ["FullName", "Email", "TemporaryPassword", "LoginUrl", "SupportEmail"],
-                ["FullName", "Email", "LoginUrl"],
+                ["fullName", "platformName", "loginUrl", "email", "temporaryPassword", "supportEmail"],
+                ["fullName", "email", "loginUrl"],
+                true),
+            ["password-reset-link"] = new(
+                "password-reset-link",
+                "Self-service password reset",
+                "Reset your {{platformName}} password",
+                """
+                <p>Hello {{fullName}},</p>
+                <p>We received a request to reset your {{platformName}} password.</p>
+                <p><a href="{{resetLink}}">Reset your password</a></p>
+                <p>This link expires at {{expiresAt}}. If you did not request a reset, you can ignore this message.</p>
+                <p>Need help? Contact {{supportEmail}}.</p>
+                """,
+                """
+                Hello {{fullName}},
+
+                We received a request to reset your {{platformName}} password.
+                Reset your password: {{resetLink}}
+                This link expires at {{expiresAt}}.
+                Need help? Contact {{supportEmail}}.
+                """,
+                ["fullName", "platformName", "resetLink", "supportEmail", "expiresAt"],
+                ["fullName", "resetLink"],
                 true),
             ["workspace-request-received"] = new(
                 "workspace-request-received",
-                "Workspace request received notification",
-                "New Ecosys workspace request from {{CompanyName}}",
+                "Platform lead received",
+                "New {{platformName}} workspace request from {{leadCompanyName}}",
                 """
-                <p>A new Ecosys workspace request has been submitted.</p>
-                <p><strong>Company:</strong> {{CompanyName}}<br />
-                <strong>Contact:</strong> {{FullName}}<br />
-                <strong>Email:</strong> {{Email}}<br />
-                <strong>Phone:</strong> {{Phone}}<br />
-                <strong>Country:</strong> {{Country}}<br />
-                <strong>Industry:</strong> {{Industry}}</p>
-                <p><strong>Message:</strong><br />{{Message}}</p>
+                <p>A new {{platformName}} workspace request has been submitted.</p>
+                <p><strong>Company:</strong> {{leadCompanyName}}<br />
+                <strong>Contact:</strong> {{contactName}}<br />
+                <strong>Email:</strong> {{contactEmail}}<br />
+                <strong>Phone:</strong> {{contactPhone}}<br />
+                <strong>Industry:</strong> {{industry}}</p>
+                <p><strong>Message:</strong><br />{{message}}</p>
+                <p><strong>Submitted:</strong> {{submittedAt}}</p>
                 """,
                 """
-                A new Ecosys workspace request has been submitted.
+                A new {{platformName}} workspace request has been submitted.
 
-                Company: {{CompanyName}}
-                Contact: {{FullName}}
-                Email: {{Email}}
-                Phone: {{Phone}}
-                Country: {{Country}}
-                Industry: {{Industry}}
-                Message: {{Message}}
+                Company: {{leadCompanyName}}
+                Contact: {{contactName}}
+                Email: {{contactEmail}}
+                Phone: {{contactPhone}}
+                Industry: {{industry}}
+                Message: {{message}}
+                Submitted: {{submittedAt}}
                 """,
-                ["CompanyName", "FullName", "Email", "Phone", "Country", "Industry", "Message"],
-                ["CompanyName", "FullName", "Email"],
+                ["platformName", "leadCompanyName", "contactName", "contactEmail", "contactPhone", "industry", "message", "submittedAt"],
+                ["leadCompanyName", "contactName", "contactEmail"],
                 false),
             ["tenant-onboarding"] = new(
                 "tenant-onboarding",
-                "Tenant/workspace onboarding email",
-                "Your Ecosys workspace is ready",
+                "Tenant welcome / onboarding",
+                "Your {{platformName}} workspace is ready",
                 """
-                <p>Hello {{FullName}},</p>
-                <p>Your Ecosys workspace is ready.</p>
-                <p><strong>Workspace:</strong> {{WorkspaceName}}<br />
-                <strong>Login URL:</strong> {{LoginUrl}}<br />
-                <strong>Admin Email:</strong> {{Email}}</p>
-                <p>Next steps: sign in, review your settings, and contact {{SupportEmail}} if you need help.</p>
-                <p>Regards,<br />Ecosys Support</p>
+                <p>Hello {{fullName}},</p>
+                <p>Your {{platformName}} workspace for {{companyName}} is ready.</p>
+                <p><strong>Tenant:</strong> {{tenantName}}<br />
+                <strong>Login URL:</strong> {{loginUrl}}</p>
+                <p>Contact {{supportEmail}} if you need help getting started.</p>
                 """,
                 """
-                Hello {{FullName}},
+                Hello {{fullName}},
 
-                Your Ecosys workspace is ready.
+                Your {{platformName}} workspace for {{companyName}} is ready.
 
-                Workspace: {{WorkspaceName}}
-                Login URL: {{LoginUrl}}
-                Admin Email: {{Email}}
+                Tenant: {{tenantName}}
+                Login URL: {{loginUrl}}
 
-                Next steps: sign in, review your settings, and contact {{SupportEmail}} if you need help.
+                Contact {{supportEmail}} if you need help getting started.
 
                 Regards,
-                Ecosys Support
+                {{supportEmail}}
                 """,
-                ["FullName", "WorkspaceName", "Email", "LoginUrl", "SupportEmail"],
-                ["FullName", "WorkspaceName", "Email", "LoginUrl"],
+                ["fullName", "companyName", "tenantName", "platformName", "loginUrl", "supportEmail"],
+                ["fullName", "tenantName", "loginUrl"],
+                false),
+            ["test-email"] = new(
+                "test-email",
+                "Test email",
+                "{{platformName}} email delivery test",
+                "<p>Hello from {{platformName}}.</p><p>This test email was sent at {{sentAt}} by {{senderName}}.</p>",
+                "Hello from {{platformName}}.\nThis test email was sent at {{sentAt}} by {{senderName}}.",
+                ["platformName", "senderName", "sentAt"],
+                [],
                 false),
             ["work-order-assigned"] = new("work-order-assigned", "Work order assigned email", "Work order {{WorkOrderNumber}} assigned", "<p>Hello {{AssignedTo}},</p><p>Work order <strong>{{WorkOrderNumber}}</strong> has been assigned to you.</p><p><strong>Priority:</strong> {{Priority}}<br /><strong>Due Date:</strong> {{DueDate}}<br /><strong>Asset:</strong> {{AssetName}}</p>", "Hello {{AssignedTo}},\n\nWork order {{WorkOrderNumber}} has been assigned to you.\nPriority: {{Priority}}\nDue Date: {{DueDate}}\nAsset: {{AssetName}}", ["AssignedTo", "WorkOrderNumber", "Priority", "DueDate", "AssetName"], ["AssignedTo", "WorkOrderNumber"], true),
+            ["pm-due"] = new("pm-due", "Preventive maintenance due", "Preventive maintenance due for {{assetName}}", "<p>Preventive maintenance is due for <strong>{{assetName}}</strong>.</p><p><strong>Assigned Group:</strong> {{fullName}}<br /><strong>Due Date:</strong> {{dueDate}}</p>", "Preventive maintenance is due for {{assetName}}.\nAssigned Group: {{fullName}}\nDue Date: {{dueDate}}", ["fullName", "assetName", "dueDate", "platformName"], ["assetName"], true),
+            ["material-request"] = new("material-request", "Material request", "Material request submitted", "<p>A material request has been submitted.</p><p><strong>Work Order:</strong> {{workOrderNumber}}<br /><strong>Requested By:</strong> {{fullName}}</p>", "A material request has been submitted.\nWork Order: {{workOrderNumber}}\nRequested By: {{fullName}}", ["fullName", "workOrderNumber", "platformName"], ["workOrderNumber"], true),
+            ["smtp-failure-alert"] = new("smtp-failure-alert", "SMTP failure alert", "{{platformName}} email delivery warning", "<p>An outbound email failure needs attention.</p><p><strong>Error:</strong> {{message}}</p>", "An outbound email failure needs attention.\nError: {{message}}", ["platformName", "message", "senderName"], ["message"], false),
             ["work-order-reassigned"] = new("work-order-reassigned", "Work order reassigned email", "Work order {{WorkOrderNumber}} reassigned", "<p>Hello {{AssignedTo}},</p><p>Work order <strong>{{WorkOrderNumber}}</strong> has been reassigned.</p><p><strong>Priority:</strong> {{Priority}}<br /><strong>Due Date:</strong> {{DueDate}}<br /><strong>Asset:</strong> {{AssetName}}</p>", "Hello {{AssignedTo}},\n\nWork order {{WorkOrderNumber}} has been reassigned.\nPriority: {{Priority}}\nDue Date: {{DueDate}}\nAsset: {{AssetName}}", ["AssignedTo", "WorkOrderNumber", "Priority", "DueDate", "AssetName"], ["AssignedTo", "WorkOrderNumber"], true),
             ["work-order-overdue"] = new("work-order-overdue", "Work order overdue/escalation email", "Work order {{WorkOrderNumber}} needs attention", "<p>Work order <strong>{{WorkOrderNumber}}</strong> requires attention.</p><p><strong>Assigned To:</strong> {{AssignedTo}}<br /><strong>Priority:</strong> {{Priority}}<br /><strong>Due Date:</strong> {{DueDate}}<br /><strong>Asset:</strong> {{AssetName}}</p>", "Work order {{WorkOrderNumber}} requires attention.\nAssigned To: {{AssignedTo}}\nPriority: {{Priority}}\nDue Date: {{DueDate}}\nAsset: {{AssetName}}", ["AssignedTo", "WorkOrderNumber", "Priority", "DueDate", "AssetName"], ["WorkOrderNumber"], true),
             ["work-order-completed"] = new("work-order-completed", "Work order completed/closed email", "Work order {{WorkOrderNumber}} completed", "<p>Work order <strong>{{WorkOrderNumber}}</strong> has been completed.</p><p><strong>Assigned To:</strong> {{AssignedTo}}<br /><strong>Asset:</strong> {{AssetName}}</p>", "Work order {{WorkOrderNumber}} has been completed.\nAssigned To: {{AssignedTo}}\nAsset: {{AssetName}}", ["AssignedTo", "WorkOrderNumber", "AssetName"], ["WorkOrderNumber"], true),

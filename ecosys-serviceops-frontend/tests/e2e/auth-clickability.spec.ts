@@ -9,21 +9,28 @@ function json(body: unknown, status = 200) {
 }
 
 async function mockPlatformAuthSession(page: Page) {
+  const platformPermissions = {
+    canViewPlatformTenants: true,
+    canCreatePlatformTenants: true,
+    canEditPlatformTenants: true,
+    canUpdatePlatformTenantStatus: true,
+    canDeactivatePlatformTenants: true,
+  }
+
   const meResponse = {
     user: {
       id: 'platform-owner-1',
       userId: 'platform-owner-1',
       fullName: 'Lena Atieno',
       email: 'superadmin@ecosys.local',
-      role: 'superadmin',
-      permissions: {
-        canViewPlatformTenants: true,
-      },
+      role: 'SuperAdmin',
+      permissions: platformPermissions,
     },
-    role: 'superadmin',
-    permissions: {
-      canViewPlatformTenants: true,
+    tenant: {
+      companyName: 'Ecosys Platform',
     },
+    role: 'SuperAdmin',
+    permissions: platformPermissions,
     branches: [],
   }
 
@@ -44,7 +51,16 @@ async function mockPlatformAuthSession(page: Page) {
   ]
 
   await page.route('**/api/auth/login', async (route) => {
-    await route.fulfill(json({ token: 'platform-token' }))
+    await route.fulfill(json({
+      token: 'platform-token',
+      user: {
+        role: 'SuperAdmin',
+        permissions: platformPermissions,
+      },
+      tenant: {
+        companyName: 'Ecosys Platform',
+      },
+    }))
   })
 
   await page.route('**/api/auth/me', async (route) => {
@@ -71,6 +87,7 @@ async function loginAsPlatformOwner(page: Page) {
   await page.getByLabel('Password').fill('SuperAdmin123!')
   await page.getByRole('button', { name: /^login$/i }).click()
   await expect(page).toHaveURL(/\/(platform|command-centre)/)
+  await expect(page.getByTestId('command-centre-dashboard')).toBeVisible()
   await expect(page.getByTestId('command-centre-sidebar')).toBeVisible()
 }
 

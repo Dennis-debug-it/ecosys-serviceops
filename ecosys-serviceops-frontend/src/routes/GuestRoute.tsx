@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { roleHomePath } from '../utils/constants'
+import { roleHomePath } from '../utils/roles'
 import { LoadingState } from '../components/ui/LoadingState'
 
 export function GuestRoute() {

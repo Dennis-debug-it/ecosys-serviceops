@@ -234,6 +234,9 @@ function buildTenantPayload(input: Partial<Tenant> & { name: string; slug: strin
     subscriptionEndsAt: null,
     status: toPlatformTenantStatus(input.status || 'Active'),
     licenseStatus: input.licenseStatus || 'Active',
+    createDefaultAdmin: Boolean(input.createDefaultAdmin),
+    adminFullName: input.createDefaultAdmin ? (input.adminFullName || input.contactPerson || '') : null,
+    adminEmail: input.createDefaultAdmin ? (input.adminEmail || input.contactEmail || '') : null,
   }
 }
 

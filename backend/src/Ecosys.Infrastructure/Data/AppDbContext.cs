@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
     public DbSet<UserBranchAssignment> UserBranchAssignments => Set<UserBranchAssignment>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<Technician> Technicians => Set<Technician>();
@@ -26,6 +27,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<EmailSetting> EmailSettings => Set<EmailSetting>();
+    public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
     public DbSet<TenantNotificationSetting> TenantNotificationSettings => Set<TenantNotificationSetting>();
     public DbSet<TenantNotificationRecipient> TenantNotificationRecipients => Set<TenantNotificationRecipient>();
     public DbSet<EmailIntakeSetting> EmailIntakeSettings => Set<EmailIntakeSetting>();
@@ -194,6 +196,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(x => x.User)
                 .WithMany(x => x.Sessions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.ToTable("password_reset_tokens");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.TokenHash).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.RequestedIp).HasMaxLength(100);
+            entity.Property(x => x.UserAgent).HasMaxLength(1000);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.ExpiresAt });
+            entity.HasOne(x => x.User)
+                .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -1092,6 +1109,28 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<EmailDeliveryLog>(entity =>
+        {
+            entity.ToTable("email_delivery_logs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.TemplateKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.RecipientEmail).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ErrorCategory).HasMaxLength(120);
+            entity.Property(x => x.ErrorMessage).HasMaxLength(4000);
+            entity.Property(x => x.ProviderMessageId).HasMaxLength(200);
+            entity.HasIndex(x => x.CreatedAt);
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.EventKey);
+            entity.HasIndex(x => x.TemplateKey);
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         modelBuilder.Entity<PlatformQuotation>(entity =>
         {
             entity.ToTable("platform_quotations");
@@ -1378,6 +1417,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entry.Entity.CreatedAt = EnsureUtc(entry.Entity.CreatedAt);
             entry.Entity.UpdatedAt = EnsureUtc(entry.Entity.UpdatedAt);
             entry.Entity.ContactedAt = EnsureUtc(entry.Entity.ContactedAt);
+        }
+
+        foreach (var entry in ChangeTracker.Entries<PasswordResetToken>())
+        {
+            if (entry.State is not EntityState.Added and not EntityState.Modified)
+            {
+                continue;
+            }
+
+            entry.Entity.CreatedAt = EnsureUtc(entry.Entity.CreatedAt);
+            entry.Entity.UpdatedAt = EnsureUtc(entry.Entity.UpdatedAt);
+            entry.Entity.ExpiresAt = EnsureUtc(entry.Entity.ExpiresAt);
+            entry.Entity.UsedAt = EnsureUtc(entry.Entity.UsedAt);
         }
     }
 

@@ -19,6 +19,9 @@ export interface Tenant {
   maxUsers?: number | null
   maxBranches?: number | null
   trialEndDate?: string | null
+  createDefaultAdmin?: boolean
+  adminFullName?: string
+  adminEmail?: string
 }
 
 export type TenantNotificationKey =

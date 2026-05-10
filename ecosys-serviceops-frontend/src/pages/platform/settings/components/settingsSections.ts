@@ -10,8 +10,7 @@ export type SettingsNavSection = {
 export const settingsSections: SettingsNavSection[] = [
   { id: 'general', label: 'General', shortLabel: 'General', description: 'Platform identity and defaults.' },
   { id: 'branding', label: 'Branding', shortLabel: 'Branding', description: 'Visual identity and logo controls.' },
-  { id: 'email', label: 'Email & Notifications', shortLabel: 'Email', description: 'SMTP setup and operational alert preferences.' },
-  { id: 'templates', label: 'Email Templates', shortLabel: 'Templates', description: 'Default templates, previews, and test sends for email events.' },
+  { id: 'email', label: 'Email & Notifications', shortLabel: 'Email', description: 'SMTP setup, governed email templates, notification rules, and delivery logs.' },
   { id: 'numbering', label: 'Numbering', shortLabel: 'Numbers', description: 'Prefixes, counters, and generated previews.' },
   { id: 'security', label: 'Security', shortLabel: 'Security', description: 'Password and session policies.' },
   { id: 'system-preferences', label: 'System Preferences', shortLabel: 'System', description: 'Date/time, pagination, and platform toggles.' },

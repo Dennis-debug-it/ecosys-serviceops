@@ -2,8 +2,10 @@ using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Shared.Auth;
 using Ecosys.Shared.Contracts.Integration;
+using Ecosys.Shared.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 
 namespace Ecosys.Infrastructure.Services;
@@ -12,10 +14,16 @@ public interface IUserCredentialDeliveryService
 {
     string BuildLoginUrl();
     string BuildInviteUrl(string token);
+    string BuildResetPasswordUrl(string token);
     Task<UserCredentialDeliveryResult> SendAsync(
         Guid tenantId,
         User user,
         UserCredentialDeliveryRequest request,
+        CancellationToken cancellationToken = default);
+    Task<UserCredentialDeliveryResult> SendPasswordResetLinkAsync(
+        Guid tenantId,
+        User user,
+        PasswordResetLinkDeliveryRequest request,
         CancellationToken cancellationToken = default);
 }
 
@@ -31,17 +39,25 @@ public sealed record UserCredentialDeliveryResult(
     string Status,
     string Message);
 
+public sealed record PasswordResetLinkDeliveryRequest(
+    string ResetLink,
+    DateTime ExpiresAt);
+
 internal sealed class UserCredentialDeliveryService(
     AppDbContext dbContext,
     IHttpContextAccessor httpContextAccessor,
     IEmailSender emailSender,
     IEmailTemplateService emailTemplateService,
+    IEmailDeliveryLogService emailDeliveryLogService,
     ISecretEncryptionService secretEncryptionService,
+    IOptions<PublicAppOptions> publicAppOptions,
     ILogger<UserCredentialDeliveryService> logger) : IUserCredentialDeliveryService
 {
     public string BuildLoginUrl() => $"{ResolveBaseUrl()}/login";
 
     public string BuildInviteUrl(string token) => $"{ResolveBaseUrl()}/accept-invite?token={Uri.EscapeDataString(token)}";
+
+    public string BuildResetPasswordUrl(string token) => $"{ResolvePublicBaseUrl()}/reset-password?token={Uri.EscapeDataString(token)}";
 
     public async Task<UserCredentialDeliveryResult> SendAsync(
         Guid tenantId,
@@ -51,6 +67,14 @@ internal sealed class UserCredentialDeliveryService(
     {
         if (!user.IsActive)
         {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                request.TemplateEventKey,
+                "Skipped",
+                null,
+                "Credential email was skipped because the user is inactive.",
+                cancellationToken);
             return new UserCredentialDeliveryResult(false, "SkippedInactive", "Credential email was skipped because the user is inactive.");
         }
 
@@ -70,17 +94,41 @@ internal sealed class UserCredentialDeliveryService(
 
         if (effectiveSettings is null)
         {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                request.TemplateEventKey,
+                "Failed",
+                "Not configured",
+                "Credential email could not be sent because email settings are not configured.",
+                cancellationToken);
             return new UserCredentialDeliveryResult(false, "NotConfigured", "Credential email could not be sent because email settings are not configured.");
         }
 
         if (!effectiveSettings.IsEnabled || string.Equals(effectiveSettings.Provider, EmailDeliveryMode.Disabled.ToString(), StringComparison.OrdinalIgnoreCase))
         {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                request.TemplateEventKey,
+                "Skipped",
+                "Disabled",
+                "Credential email could not be sent because email delivery is disabled.",
+                cancellationToken);
             return new UserCredentialDeliveryResult(false, "NotConfigured", "Credential email could not be sent because email delivery is disabled.");
         }
 
         var delivery = CreateDeliveryOptions(effectiveSettings);
         if (delivery is null)
         {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                request.TemplateEventKey,
+                "Failed",
+                "Not configured",
+                "Credential email could not be sent because SMTP settings are incomplete.",
+                cancellationToken);
             return new UserCredentialDeliveryResult(false, "NotConfigured", "Credential email could not be sent because SMTP settings are incomplete.");
         }
 
@@ -92,20 +140,38 @@ internal sealed class UserCredentialDeliveryService(
                 new Dictionary<string, string?>
                 {
                     ["FullName"] = user.FullName,
+                    ["fullName"] = user.FullName,
                     ["Email"] = user.Email,
+                    ["email"] = user.Email,
                     ["TemporaryPassword"] = request.TemporaryPassword,
+                    ["temporaryPassword"] = request.TemporaryPassword,
                     ["InviteLink"] = request.InviteLink,
                     ["ResetPasswordLink"] = request.InviteLink,
+                    ["resetLink"] = request.InviteLink,
                     ["LoginUrl"] = request.LoginUrl,
+                    ["loginUrl"] = request.LoginUrl,
                     ["CompanyName"] = tenant?.CompanyName ?? tenant?.Name ?? "Ecosys",
+                    ["companyName"] = tenant?.CompanyName ?? tenant?.Name ?? "Ecosys",
                     ["WorkspaceName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
                     ["TenantName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
+                    ["tenantName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
+                    ["platformName"] = "Ecosys",
                     ["SupportEmail"] = supportEmail,
+                    ["supportEmail"] = supportEmail,
                 },
                 cancellationToken);
 
             if (!template.Enabled)
             {
+                await WriteDeliveryLogAsync(
+                    tenantId,
+                    user.Email,
+                    request.TemplateEventKey,
+                    "Skipped",
+                    "Disabled",
+                    "Credential email is disabled for this template.",
+                    cancellationToken,
+                    template.Subject);
                 return new UserCredentialDeliveryResult(false, "Disabled", "Credential email is disabled for this template.");
             }
 
@@ -121,20 +187,236 @@ internal sealed class UserCredentialDeliveryService(
                 delivery,
                 cancellationToken);
 
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                request.TemplateEventKey,
+                "Sent",
+                null,
+                null,
+                cancellationToken,
+                template.Subject,
+                DateTime.UtcNow);
             return new UserCredentialDeliveryResult(true, "Sent", "User credentials sent.");
         }
         catch (Exception ex)
         {
+            var errorCategory = ex is EmailDeliveryException emailDeliveryException
+                ? emailDeliveryException.ErrorCategory
+                : EmailErrorCategories.UnknownSmtpError;
+
             logger.LogWarning(
                 ex,
                 "Credential email failed for tenant {TenantId} and user {UserId}. Status {Status}.",
                 tenantId,
                 user.Id,
-                ex is EmailDeliveryException deliveryException ? deliveryException.ErrorCategory : EmailErrorCategories.UnknownSmtpError);
+                errorCategory);
+
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                request.TemplateEventKey,
+                "Failed",
+                errorCategory,
+                ex.Message,
+                cancellationToken);
 
             var workspaceName = tenant?.CompanyName ?? tenant?.Name ?? "this workspace";
             return new UserCredentialDeliveryResult(false, "Failed", $"Credential email could not be sent for {workspaceName}. Please verify email settings and try again.");
         }
+    }
+
+    public async Task<UserCredentialDeliveryResult> SendPasswordResetLinkAsync(
+        Guid tenantId,
+        User user,
+        PasswordResetLinkDeliveryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!user.IsActive)
+        {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                "password-reset-link",
+                "Skipped",
+                null,
+                "Password reset email was skipped because the user is inactive.",
+                cancellationToken);
+            return new UserCredentialDeliveryResult(false, "SkippedInactive", "Password reset email was skipped because the user is inactive.");
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            return new UserCredentialDeliveryResult(false, "MissingEmail", "Password reset email could not be sent because the user email address is missing.");
+        }
+
+        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+        var tenantSettings = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken);
+        var effectiveSettings = await ResolveEffectiveEmailSettingsAsync(tenantId, tenantSettings, cancellationToken);
+        var supportEmail = effectiveSettings?.ReplyToEmail
+            ?? effectiveSettings?.SenderAddress
+            ?? tenant?.ContactEmail
+            ?? tenant?.Email
+            ?? "support@ecosys.local";
+
+        if (effectiveSettings is null)
+        {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                "password-reset-link",
+                "Failed",
+                "Not configured",
+                "Password reset email could not be sent because email settings are not configured.",
+                cancellationToken);
+            return new UserCredentialDeliveryResult(false, "NotConfigured", "Password reset email could not be sent because email settings are not configured.");
+        }
+
+        if (!effectiveSettings.IsEnabled || string.Equals(effectiveSettings.Provider, EmailDeliveryMode.Disabled.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                "password-reset-link",
+                "Skipped",
+                "Disabled",
+                "Password reset email could not be sent because email delivery is disabled.",
+                cancellationToken);
+            return new UserCredentialDeliveryResult(false, "NotConfigured", "Password reset email could not be sent because email delivery is disabled.");
+        }
+
+        var delivery = CreateDeliveryOptions(effectiveSettings);
+        if (delivery is null)
+        {
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                "password-reset-link",
+                "Failed",
+                "Not configured",
+                "Password reset email could not be sent because SMTP settings are incomplete.",
+                cancellationToken);
+            return new UserCredentialDeliveryResult(false, "NotConfigured", "Password reset email could not be sent because SMTP settings are incomplete.");
+        }
+
+        try
+        {
+            var template = await emailTemplateService.RenderTenantTemplateAsync(
+                tenantId,
+                "password-reset-link",
+                new Dictionary<string, string?>
+                {
+                    ["fullName"] = user.FullName,
+                    ["platformName"] = "Ecosys",
+                    ["resetLink"] = request.ResetLink,
+                    ["supportEmail"] = supportEmail,
+                    ["expiresAt"] = request.ExpiresAt.ToString("u"),
+                },
+                cancellationToken);
+
+            if (!template.Enabled)
+            {
+                await WriteDeliveryLogAsync(
+                    tenantId,
+                    user.Email,
+                    "password-reset-link",
+                    "Skipped",
+                    "Disabled",
+                    "Password reset email is disabled for this template.",
+                    cancellationToken,
+                    template.Subject);
+                return new UserCredentialDeliveryResult(false, "Disabled", "Password reset email is disabled for this template.");
+            }
+
+            await emailSender.SendAsync(
+                new EmailMessage(
+                    user.Email,
+                    template.Subject,
+                    template.HtmlBody,
+                    template.SenderNameOverride ?? effectiveSettings.SenderName,
+                    effectiveSettings.SenderAddress,
+                    template.ReplyToOverride ?? effectiveSettings.ReplyToEmail,
+                    IsHtml: true),
+                delivery,
+                cancellationToken);
+
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                "password-reset-link",
+                "Sent",
+                null,
+                null,
+                cancellationToken,
+                template.Subject,
+                DateTime.UtcNow);
+            return new UserCredentialDeliveryResult(true, "Sent", "Password reset email sent.");
+        }
+        catch (Exception ex)
+        {
+            var errorCategory = ex is EmailDeliveryException emailDeliveryException
+                ? emailDeliveryException.ErrorCategory
+                : EmailErrorCategories.UnknownSmtpError;
+
+            logger.LogWarning(
+                ex,
+                "Password reset email failed for tenant {TenantId} and user {UserId}. Status {Status}.",
+                tenantId,
+                user.Id,
+                errorCategory);
+
+            await WriteDeliveryLogAsync(
+                tenantId,
+                user.Email,
+                "password-reset-link",
+                "Failed",
+                errorCategory,
+                ex.Message,
+                cancellationToken);
+
+            return new UserCredentialDeliveryResult(false, "Failed", "Password reset email could not be sent. Please verify email settings and try again.");
+        }
+    }
+
+    private Task WriteDeliveryLogAsync(
+        Guid tenantId,
+        string? recipientEmail,
+        string templateKey,
+        string status,
+        string? errorCategory,
+        string? errorMessage,
+        CancellationToken cancellationToken,
+        string? subject = null,
+        DateTime? sentAt = null)
+    {
+        return emailDeliveryLogService.LogAsync(
+            new EmailDeliveryLogWriteRequest(
+                tenantId,
+                ResolveEventKey(tenantId, templateKey),
+                templateKey,
+                string.IsNullOrWhiteSpace(recipientEmail) ? "unknown@local" : recipientEmail,
+                string.IsNullOrWhiteSpace(subject) ? $"Credential delivery - {templateKey}" : subject,
+                status,
+                errorCategory,
+                errorMessage,
+                null,
+                sentAt),
+            cancellationToken);
+    }
+
+    private static string ResolveEventKey(Guid tenantId, string templateKey)
+    {
+        var isPlatform = tenantId == PlatformConstants.RootTenantId;
+        return templateKey switch
+        {
+            "user-credentials" when isPlatform => "platform.user.created",
+            "user-credentials" => "tenant.user.created",
+            "resend-credentials" when isPlatform => "platform.user.credentials.resent",
+            "resend-credentials" => "tenant.user.credentials.resent",
+            "password-reset" => "user.password-reset.admin",
+            "tenant-onboarding" => "tenant.onboarding",
+            _ => templateKey,
+        };
     }
 
     private async Task<EmailSetting?> ResolveEffectiveEmailSettingsAsync(Guid tenantId, EmailSetting? tenantSettings, CancellationToken cancellationToken)
@@ -209,5 +491,16 @@ internal sealed class UserCredentialDeliveryService(
         }
 
         return "http://localhost";
+    }
+
+    private string ResolvePublicBaseUrl()
+    {
+        var configuredUrl = publicAppOptions.Value.PublicUrl?.Trim();
+        if (!string.IsNullOrWhiteSpace(configuredUrl))
+        {
+            return configuredUrl.TrimEnd('/');
+        }
+
+        return ResolveBaseUrl();
     }
 }

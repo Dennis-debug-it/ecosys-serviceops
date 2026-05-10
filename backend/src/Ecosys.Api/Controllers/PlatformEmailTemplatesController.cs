@@ -19,6 +19,7 @@ public sealed class PlatformEmailTemplatesController(
     IEmailTemplateService emailTemplateService,
     ISecretEncryptionService secretEncryptionService,
     IEmailSender emailSender,
+    IEmailDeliveryLogService emailDeliveryLogService,
     IAuditLogService auditLogService) : ControllerBase
 {
     [HttpGet]
@@ -91,19 +92,61 @@ public sealed class PlatformEmailTemplatesController(
             throw new BusinessRuleException("A test recipient email is required.");
         }
 
-        await emailSender.SendAsync(
-            new EmailMessage(
-                recipient,
-                rendered.Subject,
-                rendered.HtmlBody,
-                rendered.SenderNameOverride ?? settings.SenderName,
-                settings.SenderAddress,
-                rendered.ReplyToOverride ?? settings.ReplyToEmail,
-                IsHtml: true),
-            CreateDeliveryOptions(settings),
-            cancellationToken);
+        try
+        {
+            await emailSender.SendAsync(
+                new EmailMessage(
+                    recipient,
+                    rendered.Subject,
+                    rendered.HtmlBody,
+                    rendered.SenderNameOverride ?? settings.SenderName,
+                    settings.SenderAddress,
+                    rendered.ReplyToOverride ?? settings.ReplyToEmail,
+                    IsHtml: true),
+                CreateDeliveryOptions(settings),
+                cancellationToken);
 
-        return Ok(new EmailTemplateTestResponse(true, null));
+            await emailDeliveryLogService.LogAsync(
+                new EmailDeliveryLogWriteRequest(
+                    PlatformConstants.RootTenantId,
+                    eventKey switch
+                    {
+                        "test-email" => "email.test",
+                        _ => eventKey,
+                    },
+                    eventKey,
+                    recipient,
+                    rendered.Subject,
+                    "Sent",
+                    null,
+                    null,
+                    tenantContext.GetRequiredUserId(),
+                    DateTime.UtcNow),
+                cancellationToken);
+
+            return Ok(new EmailTemplateTestResponse(true, null));
+        }
+        catch (Exception ex)
+        {
+            var errorCategory = ex is EmailDeliveryException deliveryException
+                ? deliveryException.ErrorCategory
+                : EmailErrorCategories.UnknownSmtpError;
+
+            await emailDeliveryLogService.LogAsync(
+                new EmailDeliveryLogWriteRequest(
+                    PlatformConstants.RootTenantId,
+                    eventKey,
+                    eventKey,
+                    recipient,
+                    rendered.Subject,
+                    "Failed",
+                    errorCategory,
+                    ex.Message,
+                    tenantContext.GetRequiredUserId()),
+                cancellationToken);
+
+            return Ok(new EmailTemplateTestResponse(false, ex.Message));
+        }
     }
 
     [HttpPost("{eventKey}/reset")]
@@ -139,24 +182,48 @@ public sealed class PlatformEmailTemplatesController(
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             ["FullName"] = "Jane Doe",
+            ["fullName"] = "Jane Doe",
             ["Email"] = "jane.doe@example.com",
+            ["email"] = "jane.doe@example.com",
             ["TemporaryPassword"] = "Eco!TempPass9",
+            ["temporaryPassword"] = "Eco!TempPass9",
             ["InviteLink"] = "https://app.example.com/accept-invite?token=sample",
             ["ResetPasswordLink"] = "https://app.example.com/reset-password?token=sample",
+            ["resetLink"] = "https://app.example.com/reset-password?token=sample",
             ["LoginUrl"] = "https://app.example.com/login",
+            ["loginUrl"] = "https://app.example.com/login",
             ["CompanyName"] = "Acme Facilities Ltd",
+            ["companyName"] = "Acme Facilities Ltd",
             ["WorkspaceName"] = "Acme Facilities Ltd",
             ["TenantName"] = "Acme Facilities Ltd",
+            ["tenantName"] = "Acme Facilities Ltd",
+            ["platformName"] = "Ecosys ServiceOps",
             ["WorkOrderNumber"] = "WO-000123",
+            ["workOrderNumber"] = "WO-000123",
             ["AssetName"] = "Generator 250kVA",
+            ["assetName"] = "Generator 250kVA",
             ["AssignedTo"] = "Alex Kimani",
+            ["assignedTo"] = "Alex Kimani",
             ["Priority"] = "High",
+            ["priority"] = "High",
             ["DueDate"] = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"),
+            ["dueDate"] = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"),
             ["SupportEmail"] = "support@ecosysdigital.co.ke",
+            ["supportEmail"] = "support@ecosysdigital.co.ke",
+            ["senderName"] = "Ecosys ServiceOps",
+            ["sentAt"] = DateTime.UtcNow.ToString("u"),
             ["Phone"] = "+254700000001",
+            ["contactPhone"] = "+254700000001",
             ["Country"] = "Kenya",
             ["Industry"] = "Facilities",
-            ["Message"] = "We need help onboarding our team."
+            ["industry"] = "Facilities",
+            ["Message"] = "We need help onboarding our team.",
+            ["message"] = "We need help onboarding our team.",
+            ["leadCompanyName"] = "Acme Facilities Ltd",
+            ["contactName"] = "Jane Doe",
+            ["contactEmail"] = "jane.doe@example.com",
+            ["submittedAt"] = DateTime.UtcNow.ToString("u"),
+            ["expiresAt"] = DateTime.UtcNow.AddHours(1).ToString("u")
         };
 
         if (sampleData is not null)

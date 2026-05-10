@@ -15,6 +15,12 @@ export type SignupInput = {
   country: string
 }
 
+export type ResetPasswordInput = {
+  token: string
+  newPassword: string
+  confirmPassword: string
+}
+
 export const authService = {
   async login(input: LoginInput) {
     return api.post<LoginResponse>('/api/auth/login', {
@@ -36,6 +42,20 @@ export const authService = {
 
   getCurrentUser(signal?: AbortSignal) {
     return api.get<unknown>('/api/auth/me', { signal })
+  },
+
+  forgotPassword(email: string) {
+    return api.post<{ message: string }>('/api/auth/forgot-password', {
+      email: email.trim(),
+    })
+  },
+
+  resetPassword(input: ResetPasswordInput) {
+    return api.post<{ message: string }>('/api/auth/reset-password', {
+      token: input.token,
+      newPassword: input.newPassword,
+      confirmPassword: input.confirmPassword,
+    })
   },
 
   async logout() {

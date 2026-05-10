@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Infrastructure.Services;
@@ -19,7 +18,8 @@ public sealed class PlatformUsersController(
     ITenantContext tenantContext,
     IAuditLogService auditLogService,
     IPasswordHasher<User> passwordHasher,
-    IUserCredentialDeliveryService credentialDeliveryService) : ControllerBase
+    IUserCredentialDeliveryService credentialDeliveryService,
+    ITemporaryPasswordService temporaryPasswordService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<PlatformUserResponse>>> GetAll(CancellationToken cancellationToken)
@@ -78,7 +78,7 @@ public sealed class PlatformUsersController(
             MustChangePassword = true
         };
 
-        var initialPassword = string.IsNullOrWhiteSpace(request.Password) ? GenerateTemporaryPassword() : request.Password.Trim();
+        var initialPassword = string.IsNullOrWhiteSpace(request.Password) ? temporaryPasswordService.Generate() : request.Password.Trim();
         user.PasswordHash = passwordHasher.HashPassword(user, initialPassword);
 
         dbContext.Users.Add(user);
@@ -189,11 +189,8 @@ public sealed class PlatformUsersController(
             ?? throw new NotFoundException("Platform user was not found.");
 
         var nextPassword = string.IsNullOrWhiteSpace(request?.TemporaryPassword)
-            ? GenerateTemporaryPassword()
+            ? temporaryPasswordService.Generate()
             : request.TemporaryPassword.Trim();
-
-        user.PasswordHash = passwordHasher.HashPassword(user, nextPassword);
-        user.MustChangePassword = true;
 
         var delivery = await credentialDeliveryService.SendAsync(
             PlatformConstants.RootTenantId,
@@ -208,10 +205,11 @@ public sealed class PlatformUsersController(
 
         if (delivery.Success)
         {
+            user.PasswordHash = passwordHasher.HashPassword(user, nextPassword);
+            user.MustChangePassword = true;
             user.LastCredentialSentAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
             PlatformConstants.RootTenantId,
@@ -245,9 +243,7 @@ public sealed class PlatformUsersController(
         var user = await QueryPlatformUsers().SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NotFoundException("Platform user was not found.");
 
-        var nextPassword = GenerateTemporaryPassword();
-        user.PasswordHash = passwordHasher.HashPassword(user, nextPassword);
-        user.MustChangePassword = true;
+        var nextPassword = temporaryPasswordService.Generate();
 
         var delivery = await credentialDeliveryService.SendAsync(
             PlatformConstants.RootTenantId,
@@ -262,10 +258,11 @@ public sealed class PlatformUsersController(
 
         if (delivery.Success)
         {
+            user.PasswordHash = passwordHasher.HashPassword(user, nextPassword);
+            user.MustChangePassword = true;
             user.LastCredentialSentAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         if (delivery.Success)
         {
@@ -280,7 +277,11 @@ public sealed class PlatformUsersController(
                 cancellationToken: cancellationToken);
         }
 
-        return Ok(new PlatformResetPasswordResponse(user.Id, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, delivery.Message));
+        var message = delivery.Success
+            ? delivery.Message
+            : "Credentials could not be sent. The user's existing password was not changed.";
+
+        return Ok(new PlatformResetPasswordResponse(user.Id, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, message));
     }
 
     [HttpPost("{id:guid}/assign-role")]
@@ -432,11 +433,6 @@ public sealed class PlatformUsersController(
         return "ReadOnlyAuditor";
     }
 
-    private static string GenerateTemporaryPassword()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(9);
-        return $"Eco!{Convert.ToBase64String(bytes).Replace('+', 'A').Replace('/', 'B').TrimEnd('=')}9";
-    }
 }
 
 public sealed record UpsertPlatformUserRequest(

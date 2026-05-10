@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { clearStoredAuth, getStoredAuth, onUnauthorized, persistAuthToken } from '../lib/api'
+import { ApiError, clearStoredAuth, getStoredAuth, onUnauthorized, persistAuthToken } from '../lib/api'
 import { authService, type LoginInput, type SignupInput } from '../services/authService'
 import type { ApiBranch, ApiPermissions } from '../types/api'
 import type { AppSession, AuthBranch, Role } from '../types/app'
 import { asBoolean, asNullableString, asString, normalizeBranches, normalizePermissions, pickRecord } from '../utils/apiDefaults'
 import { cleanupBodyInteractivity, clearTransientAppState, dispatchUiReset } from '../utils/appCleanup'
 import { isPlatformRole } from '../utils/constants'
-import { getPlatformRoleLabel, normalizeAppRole } from '../utils/roles'
+import { getPlatformRoleLabel, normalizeAppRole, normalizeRole } from '../utils/roles'
 
 const SESSION_STORAGE_KEY = 'ecosys.serviceops.session'
 
@@ -221,12 +221,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(session?.token),
       isReady,
       loading,
-      canAccess: (roles) => Boolean(session && roles.includes(session.role)),
+      canAccess: (roles) => Boolean(
+        session && roles.some((role) => normalizeRole(String(role)) === normalizeRole(String(session.role))),
+      ),
       login: async (input, onStatusChange) => {
         cleanupBodyInteractivity()
         dispatchUiReset()
         setLoading(true)
-        setIsReady(false)
         try {
           onStatusChange?.('signing-in')
           const loginResponse = await authService.login(input)
@@ -251,6 +252,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearLocalSessionState()
           setSession(null)
           setIsReady(true)
+          if (error instanceof ApiError) {
+            if (error.status === 401) {
+              throw new Error('Invalid email or password. Please check your credentials and try again.', { cause: error })
+            }
+
+            if (error.status === 0) {
+              throw new Error('Unable to reach the server. Please check your connection and try again.', { cause: error })
+            }
+
+            if (error.status >= 500) {
+              throw new Error('Something went wrong while signing in. Please try again shortly.', { cause: error })
+            }
+          }
+
           throw error
         } finally {
           setLoading(false)
@@ -260,7 +275,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cleanupBodyInteractivity()
         dispatchUiReset()
         setLoading(true)
-        setIsReady(false)
         try {
           const signupResponse = await authService.signup(input)
           persistAuthToken(signupResponse.token)
@@ -282,7 +296,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       logout: async () => {
         setLoading(true)
-        setIsReady(false)
         setSession(null)
         clearLocalSessionState()
         try {

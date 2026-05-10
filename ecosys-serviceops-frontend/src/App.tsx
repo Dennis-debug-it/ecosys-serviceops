@@ -16,6 +16,7 @@ import {
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { UnsupportedRolePage } from './components/auth/UnsupportedRolePage'
 import { AppShell } from './components/layout/AppShell'
 import type { ShellOutletContext } from './components/layout/AppShell'
 import { LoadingState } from './components/ui/LoadingState'
@@ -27,8 +28,11 @@ import { SettingsLayout } from './pages/settings/SettingsLayout'
 import { defaultSettingsSegment, settingsLegacyRedirects, settingsPageRoutes } from './pages/settings/routes'
 import { installInteractionDebugLogger } from './utils/appCleanup'
 import { isPlatformRole, isTenantAdminRole, isTenantWorkspaceRole, PLATFORM_ROLES, TENANT_USER_ROLES } from './utils/constants'
+import { isKnownRole, roleHomePath } from './utils/roles'
 
 const LoginPage = lazy(async () => ({ default: (await import('./modules/auth/LoginPage')).LoginPage }))
+const ForgotPasswordPage = lazy(async () => ({ default: (await import('./modules/auth/ForgotPasswordPage')).ForgotPasswordPage }))
+const ResetPasswordPage = lazy(async () => ({ default: (await import('./modules/auth/ResetPasswordPage')).ResetPasswordPage }))
 const SignupPage = lazy(async () => ({ default: (await import('./modules/auth/SignupPage')).SignupPage }))
 const PlatformLeadsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformLeadsPage')).PlatformLeadsPage }))
 const DashboardPage = lazy(async () => ({ default: (await import('./modules/dashboard/DashboardPage')).DashboardPage }))
@@ -88,7 +92,7 @@ function HomeRedirect() {
     return <Navigate to="/login" replace />
   }
 
-  return <Navigate to={isPlatformRole(session.role) ? '/platform' : '/dashboard'} replace />
+  return <Navigate to={roleHomePath(session.role)} replace />
 }
 
 function NotFoundPage() {
@@ -130,6 +134,10 @@ function TenantOnlyRoute() {
     return <Navigate to="/platform" replace />
   }
 
+  if (!isKnownRole(session.role)) {
+    return <Navigate to="/unsupported-role" replace />
+  }
+
   return <Outlet context={shellContext} />
 }
 
@@ -146,7 +154,7 @@ function AdminOnlyRoute() {
   }
 
   if (!isTenantAdminRole(session.role) || !session.permissions?.canManageSettings) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={roleHomePath(session.role)} replace />
   }
 
   return <Outlet context={shellContext} />
@@ -165,7 +173,7 @@ function PlatformOnlyRoute() {
   }
 
   if (!isPlatformRole(session.role) || !session.permissions?.canViewPlatformTenants) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={roleHomePath(session.role)} replace />
   }
 
   return <Outlet context={shellContext} />
@@ -177,6 +185,11 @@ function AuthenticatedRouteBoundary() {
       <Outlet />
     </ErrorBoundary>
   )
+}
+
+function UnsupportedRoleRoute() {
+  const { session } = useAuth()
+  return <UnsupportedRolePage role={session?.role} />
 }
 
 function AuthenticatedShell() {
@@ -240,6 +253,10 @@ function AuthenticatedShell() {
     return <RouteLoading label="Loading workspace shell" />
   }
 
+  if (!isKnownRole(session.role)) {
+    return <UnsupportedRolePage role={session.role} />
+  }
+
   return (
     <AppShell
       mode={isPlatformRole(session.role) ? 'platform' : 'tenant'}
@@ -266,12 +283,15 @@ function AppRoutes() {
 
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/get-started" element={<SignupPage />} />
           <Route path="/signup" element={<Navigate to="/get-started" replace />} />
         </Route>
 
         <Route element={<RequireAuth />}>
           <Route element={<AuthenticatedRouteBoundary />}>
+            <Route path="/unsupported-role" element={<UnsupportedRoleRoute />} />
             <Route element={<AuthenticatedShell />}>
               <Route element={<TenantOnlyRoute />}>
                 <Route path="/dashboard" element={<DashboardPage />} />

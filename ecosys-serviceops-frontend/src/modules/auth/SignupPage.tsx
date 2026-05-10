@@ -95,7 +95,7 @@ export function SignupPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#127A78]">What happens next</p>
               <LeadStep>We review your requirements and recommend the right module mix.</LeadStep>
               <LeadStep>Our team contacts you to confirm operational needs and rollout approach.</LeadStep>
-              <LeadStep>Your Ecosys setup is prepared manually after engagement and review.</LeadStep>
+              <LeadStep>Your Ecosys setup will be custom made to suit your needs after review.</LeadStep>
             </div>
             <PoweredByEcosys className="mt-8" tone={poweredByTone} />
           </section>

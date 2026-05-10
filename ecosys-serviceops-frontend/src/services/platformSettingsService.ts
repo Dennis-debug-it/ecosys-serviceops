@@ -5,7 +5,6 @@ export type PlatformSettingsSection =
   | 'branding'
   | 'email'
   | 'numbering'
-  | 'templates'
   | 'tax-finance'
   | 'security'
   | 'integrations'
@@ -222,6 +221,34 @@ export type PlatformEmailTemplateTestResponse = {
   message?: string | null
 }
 
+export type PlatformEmailNotificationRule = {
+  eventKey: string
+  displayName: string
+  templateKey: string
+  recipientStrategy: string
+  senderScope: string
+  dispatchStatus: string
+  description: string
+  supportedChannels: string[]
+  notes: string
+}
+
+export type PlatformEmailDeliveryLog = {
+  id: string
+  tenantId?: string | null
+  eventKey: string
+  templateKey: string
+  recipientEmail: string
+  subject: string
+  status: string
+  errorCategory?: string | null
+  errorMessage?: string | null
+  triggeredByUserId?: string | null
+  createdAt: string
+  sentAt?: string | null
+  providerMessageId?: string | null
+}
+
 export type PlatformEmailTemplatePayload = {
   templateName: string
   subject: string
@@ -289,6 +316,24 @@ export const platformSettingsService = {
   },
   verifySmtpConnection() {
     return api.post<PlatformEmailActionResponse>('/api/platform/settings/email/verify', {})
+  },
+  listNotificationRules() {
+    return api.get<PlatformEmailNotificationRule[]>('/api/platform/settings/email/notification-rules')
+  },
+  listDeliveryLogs(filters?: {
+    status?: string
+    templateKey?: string
+    eventKey?: string
+    recipientEmail?: string
+    dateFrom?: string
+    dateTo?: string
+  }) {
+    const params = new URLSearchParams()
+    Object.entries(filters || {}).forEach(([key, value]) => {
+      if (value) params.set(key, value)
+    })
+    const query = params.toString()
+    return api.get<PlatformEmailDeliveryLog[]>(`/api/platform/settings/email/delivery-logs${query ? `?${query}` : ''}`)
   },
   listEmailTemplates() {
     return api.get<PlatformEmailTemplate[]>('/api/platform/settings/email-templates')

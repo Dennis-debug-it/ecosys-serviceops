@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { EcosysIcon, EcosysLogo } from '../../components/brand'
 import { cleanupBodyInteractivity, dispatchUiReset } from '../../utils/appCleanup'
-import { roleHomePath } from '../../utils/constants'
+import { roleHomePath } from '../../utils/roles'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -18,6 +18,20 @@ export function LoginPage() {
     cleanupBodyInteractivity()
     dispatchUiReset()
   }, [])
+
+  function redirectToRoleHome(role: string) {
+    const targetPath = roleHomePath(role)
+
+    try {
+      cleanupBodyInteractivity()
+      dispatchUiReset()
+      navigate(targetPath, { replace: true })
+    } catch (error) {
+      console.error('[auth] Failed to redirect after login.', { role, targetPath, error })
+      setSubmitPhase(null)
+      setError(`Signed in successfully, but we could not open your workspace automatically. Try visiting ${targetPath}.`)
+    }
+  }
 
   async function submit() {
     if (loading || isSubmitting) return
@@ -34,8 +48,7 @@ export function LoginPage() {
 
     try {
       const session = await login(form, (status) => setSubmitPhase(status))
-      cleanupBodyInteractivity()
-      navigate(roleHomePath(session.role), { replace: true })
+      redirectToRoleHome(String(session.role))
     } catch (error) {
       setSubmitPhase(null)
       setError(error instanceof Error ? error.message : 'Login failed.')
@@ -138,10 +151,15 @@ export function LoginPage() {
                   />
                 </label>
                 {error ? (
-                  <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200">
+                  <div role="alert" className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200">
                     {error}
                   </div>
                 ) : null}
+                <div className="flex items-center justify-end">
+                  <Link to="/forgot-password" className="text-sm font-semibold text-accent-strong hover:opacity-80">
+                    Forgot password?
+                  </Link>
+                </div>
                 <button
                   type="submit"
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#127A78] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(18,122,120,0.28)] transition hover:bg-[#0C2F33] disabled:cursor-not-allowed disabled:opacity-70"
@@ -151,9 +169,6 @@ export function LoginPage() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
-              <div className="mt-4 rounded-2xl border border-[#d5e4de] bg-white/75 px-4 py-3 text-sm text-[#4f6764]">
-                Self-service password reset is not enabled yet. If you need a password reset email or new credentials, contact your workspace administrator.
-              </div>
 
               <p className="mt-6 text-sm text-muted">
                 New to Ecosys?{' '}

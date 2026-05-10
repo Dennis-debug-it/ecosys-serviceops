@@ -3,6 +3,7 @@ using System;
 using Ecosys.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Ecosys.Infrastructure.Migrations.AppDb
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510080635_AddEmailDeliveryLogs")]
+    partial class AddEmailDeliveryLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1343,50 +1346,6 @@ namespace Ecosys.Infrastructure.Migrations.AppDb
                         .HasFilter("\"BranchId\" IS NOT NULL");
 
                     b.ToTable("numbering_settings", (string)null);
-                });
-
-            modelBuilder.Entity("Ecosys.Domain.Entities.PasswordResetToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RequestedIp")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserAgent")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "ExpiresAt");
-
-                    b.ToTable("password_reset_tokens", (string)null);
                 });
 
             modelBuilder.Entity("Ecosys.Domain.Entities.PlatformDocumentTemplate", b =>
@@ -3790,17 +3749,6 @@ namespace Ecosys.Infrastructure.Migrations.AppDb
                     b.Navigation("Branch");
 
                     b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Ecosys.Domain.Entities.PasswordResetToken", b =>
-                {
-                    b.HasOne("Ecosys.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Ecosys.Domain.Entities.PlatformExpense", b =>

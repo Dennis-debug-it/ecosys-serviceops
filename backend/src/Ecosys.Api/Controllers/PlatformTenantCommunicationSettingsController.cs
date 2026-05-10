@@ -558,14 +558,14 @@ public sealed class PlatformTenantCommunicationSettingsController(
             string.IsNullOrWhiteSpace(setting.Host) ? null : setting.Host,
             setting.Port <= 0 ? null : setting.Port,
             setting.Username,
-            MaskSecret(setting.EncryptedSecret ?? setting.Password),
+            BuildSavedSecretHint(setting.EncryptedSecret ?? setting.Password, "Password saved. Leave blank to keep existing password."),
             string.IsNullOrWhiteSpace(setting.SenderName) ? null : setting.SenderName,
             string.IsNullOrWhiteSpace(setting.SenderAddress) ? null : setting.SenderAddress,
             setting.ReplyToEmail,
             setting.UseSsl,
             EmailDeliveryModeResolver.ResolveSecureMode(setting.Port, setting.UseSsl),
             null,
-            null,
+            BuildSavedSecretHint(null, "Secret saved. Leave blank to keep existing secret."),
             null,
             30,
             0,
@@ -661,4 +661,7 @@ public sealed class PlatformTenantCommunicationSettingsController(
         var visible = trimmed.Length <= 3 ? trimmed : trimmed[^3..];
         return $"{new string('*', Math.Max(5, trimmed.Length - 3))}{visible}";
     }
+
+    private static string? BuildSavedSecretHint(string? rawSecret, string hint) =>
+        string.IsNullOrWhiteSpace(rawSecret) ? null : hint;
 }

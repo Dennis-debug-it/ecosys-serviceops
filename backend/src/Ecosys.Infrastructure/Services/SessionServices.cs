@@ -16,6 +16,7 @@ public interface IUserSessionService
     Task<bool> TouchAsync(Guid sessionId, TimeSpan minimumInterval, CancellationToken cancellationToken = default);
     Task LogoutAsync(Guid sessionId, CancellationToken cancellationToken = default);
     Task<UserSession?> GetAsync(Guid sessionId, CancellationToken cancellationToken = default);
+    Task<int> RevokeAllForUserAsync(Guid userId, string? reason = null, CancellationToken cancellationToken = default);
 }
 
 internal sealed class UserSessionService(AppDbContext dbContext, IHttpContextAccessor httpContextAccessor) : IUserSessionService
@@ -76,6 +77,33 @@ internal sealed class UserSessionService(AppDbContext dbContext, IHttpContextAcc
 
     public Task<UserSession?> GetAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
         dbContext.UserSessions.SingleOrDefaultAsync(x => x.Id == sessionId, cancellationToken);
+
+    public async Task<int> RevokeAllForUserAsync(Guid userId, string? reason = null, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var sessions = await dbContext.UserSessions
+            .Where(x => x.UserId == userId && !x.IsRevoked)
+            .ToListAsync(cancellationToken);
+
+        foreach (var session in sessions)
+        {
+            session.IsRevoked = true;
+            session.RevokedAt = now;
+            session.LastSeenAt = now;
+            session.LogoutAt ??= now;
+            if (!string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(session.UserAgent))
+            {
+                session.UserAgent = reason;
+            }
+        }
+
+        if (sessions.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return sessions.Count;
+    }
 
     public static bool IsActive(UserSession session, DateTime utcNow) =>
         !session.IsRevoked

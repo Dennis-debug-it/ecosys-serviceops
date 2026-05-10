@@ -24,7 +24,8 @@ public sealed class UsersController(
     ILicenseGuardService licenseGuardService,
     ITenantSecurityPolicyService tenantSecurityPolicyService,
     IAuditLogService auditLogService,
-    IUserCredentialDeliveryService credentialDeliveryService) : TenantAwareControllerBase(tenantContext)
+    IUserCredentialDeliveryService credentialDeliveryService,
+    ITemporaryPasswordService temporaryPasswordService) : TenantAwareControllerBase(tenantContext)
 {
     private const int InviteExpiryHours = 72;
     [HttpGet]
@@ -79,10 +80,10 @@ public sealed class UsersController(
         var permissions = permissionTemplateService.Merge(normalizedRole, request.JobTitle, request.Permissions?.ToModel());
         var normalizedBranchIds = NormalizeBranchIds(request.BranchIds);
         var resolvedDefaultBranchId = await ResolveDefaultBranchIdAsync(normalizedRole, normalizedBranchIds, request.DefaultBranchId, request.HasAllBranchAccess, cancellationToken);
-        var generatedTemporaryPassword = RequiresTemporaryPassword(deliveryMethod) ? GenerateTemporaryPassword() : null;
+        var generatedTemporaryPassword = RequiresTemporaryPassword(deliveryMethod) ? temporaryPasswordService.Generate() : null;
         var bootstrapPassword = !string.IsNullOrWhiteSpace(request.Password)
             ? request.Password.Trim()
-            : generatedTemporaryPassword ?? GenerateTemporaryPassword();
+            : generatedTemporaryPassword ?? temporaryPasswordService.Generate();
 
         await tenantSecurityPolicyService.ValidatePasswordAsync(TenantId, bootstrapPassword, cancellationToken);
 
@@ -287,17 +288,13 @@ public sealed class UsersController(
 
         if (sendTemporaryPassword)
         {
-            temporaryPassword = GenerateTemporaryPassword();
+            temporaryPassword = temporaryPasswordService.Generate();
             await tenantSecurityPolicyService.ValidatePasswordAsync(TenantId, temporaryPassword, cancellationToken);
-            user.PasswordHash = passwordHasher.HashPassword(user, temporaryPassword);
-            user.MustChangePassword = true;
         }
 
         if (sendInvite)
         {
             inviteToken = GenerateInviteToken();
-            user.InviteTokenHash = HashInviteToken(inviteToken);
-            user.InviteTokenExpiresAt = DateTime.UtcNow.AddHours(InviteExpiryHours);
         }
 
         var inviteLink = inviteToken is not null ? credentialDeliveryService.BuildInviteUrl(inviteToken) : null;
@@ -309,15 +306,26 @@ public sealed class UsersController(
                 credentialDeliveryService.BuildLoginUrl(),
                 temporaryPassword,
                 inviteLink,
-                user.MustChangePassword),
+                sendTemporaryPassword),
             cancellationToken);
 
         if (delivery.Success)
         {
-            user.LastCredentialSentAt = DateTime.UtcNow;
-        }
+            if (temporaryPassword is not null)
+            {
+                user.PasswordHash = passwordHasher.HashPassword(user, temporaryPassword);
+                user.MustChangePassword = true;
+            }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+            if (inviteToken is not null)
+            {
+                user.InviteTokenHash = HashInviteToken(inviteToken);
+                user.InviteTokenExpiresAt = DateTime.UtcNow.AddHours(InviteExpiryHours);
+            }
+
+            user.LastCredentialSentAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         if (delivery.Success)
         {
@@ -331,21 +339,23 @@ public sealed class UsersController(
                 cancellationToken);
         }
 
-        return Ok(new CredentialDeliveryResponse(user.Id, user.FullName, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, delivery.Message));
+        var message = delivery.Success
+            ? delivery.Message
+            : "Credentials could not be sent. The user's existing password was not changed.";
+
+        return Ok(new CredentialDeliveryResponse(user.Id, user.FullName, user.Email, delivery.Success, user.LastCredentialSentAt, delivery.Status, message));
     }
 
     [HttpPost("{id:guid}/reset-password")]
     public async Task<ActionResult<CredentialDeliveryResponse>> ResetPassword(Guid id, [FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
         userAccessService.EnsureAdmin();
-        var password = request.ResolvePasswordOrNull() ?? GenerateTemporaryPassword();
+        var password = request.ResolvePasswordOrNull() ?? temporaryPasswordService.Generate();
         await tenantSecurityPolicyService.ValidatePasswordAsync(TenantId, password, cancellationToken);
 
         var user = await dbContext.Users.SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == id, cancellationToken)
             ?? throw new NotFoundException("User was not found.");
 
-        user.PasswordHash = passwordHasher.HashPassword(user, password);
-        user.MustChangePassword = true;
         var delivery = await credentialDeliveryService.SendAsync(
             TenantId,
             user,
@@ -359,10 +369,11 @@ public sealed class UsersController(
 
         if (delivery.Success)
         {
+            user.PasswordHash = passwordHasher.HashPassword(user, password);
+            user.MustChangePassword = true;
             user.LastCredentialSentAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
             TenantId,
@@ -714,12 +725,6 @@ public sealed class UsersController(
     private static bool RequiresInvite(string credentialDeliveryMethod) =>
         string.Equals(credentialDeliveryMethod, "InviteEmail", StringComparison.OrdinalIgnoreCase)
         || string.Equals(credentialDeliveryMethod, "Both", StringComparison.OrdinalIgnoreCase);
-
-    private static string GenerateTemporaryPassword()
-    {
-        var buffer = RandomNumberGenerator.GetBytes(12);
-        return $"Eco!{Convert.ToBase64String(buffer).Replace('+', 'A').Replace('/', 'B').TrimEnd('=').Substring(0, 12)}9";
-    }
 
     private static string GenerateInviteToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
         .Replace('+', '-')

@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Infrastructure.Services;
@@ -7,6 +8,7 @@ using Ecosys.Shared.Auth;
 using Ecosys.Shared.Contracts.Integration;
 using Ecosys.Shared.Errors;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,7 +24,10 @@ public sealed class PlatformTenantsController(
     IAuditLogService auditLogService,
     IEmailTemplateService emailTemplateService,
     IEmailSender emailSender,
-    ISecretEncryptionService secretEncryptionService) : ControllerBase
+    ISecretEncryptionService secretEncryptionService,
+    IPasswordHasher<User> passwordHasher,
+    IUserPermissionTemplateService permissionTemplateService,
+    IUserCredentialDeliveryService credentialDeliveryService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<PlatformTenantListResponse>>> GetAll(CancellationToken cancellationToken)
@@ -68,6 +73,7 @@ public sealed class PlatformTenantsController(
     public async Task<ActionResult<PlatformTenantDetailResponse>> Create([FromBody] UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
     {
         ValidateDefaultAdminRequest(request);
+        await ValidateDefaultAdminAvailabilityAsync(request, cancellationToken);
 
         var tenant = new Tenant
         {
@@ -79,6 +85,7 @@ public sealed class PlatformTenantsController(
         await EnsureTenantSupportRecordsAsync(tenant, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await CreateDefaultAdminAsync(tenant, request, cancellationToken);
         await WriteAuditAsync(tenant, "TenantCreated", $"Tenant '{tenant.Name}' was created.", cancellationToken);
         await TrySendOnboardingEmailAsync(tenant, cancellationToken);
 
@@ -326,6 +333,95 @@ public sealed class PlatformTenantsController(
         if (!await dbContext.TenantSecurityPolicies.AnyAsync(x => x.TenantId == tenant.Id, cancellationToken))
         {
             dbContext.TenantSecurityPolicies.Add(new TenantSecurityPolicy { TenantId = tenant.Id });
+        }
+    }
+
+    private async Task ValidateDefaultAdminAvailabilityAsync(UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
+    {
+        if (!request.CreateDefaultAdmin)
+        {
+            return;
+        }
+
+        var normalizedAdminEmail = NormalizeEmail(request.AdminEmail)!;
+        var emailInUse = await dbContext.Users.AnyAsync(x => x.Email.ToLower() == normalizedAdminEmail.ToLower(), cancellationToken);
+        if (emailInUse)
+        {
+            throw new BusinessRuleException("Admin email is already in use.");
+        }
+    }
+
+    private async Task CreateDefaultAdminAsync(Tenant tenant, UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
+    {
+        if (!request.CreateDefaultAdmin)
+        {
+            return;
+        }
+
+        var adminEmail = NormalizeEmail(request.AdminEmail)!;
+        var existingAdmin = await dbContext.Users.AnyAsync(
+            x => x.TenantId == tenant.Id && x.Email.ToLower() == adminEmail.ToLower(),
+            cancellationToken);
+        if (existingAdmin)
+        {
+            return;
+        }
+
+        var password = GenerateTemporaryPassword();
+        var permissions = permissionTemplateService.GetFullTenantPermissions();
+        var adminUser = new User
+        {
+            TenantId = tenant.Id,
+            FullName = NormalizeRequired(request.AdminFullName, "Admin full name is required when creating a default admin."),
+            Email = adminEmail,
+            Role = AppRoles.Admin,
+            JobTitle = "Tenant Administrator",
+            IsActive = true,
+            HasAllBranchAccess = true,
+            MustChangePassword = true,
+            Permission = ToEntity(permissions),
+        };
+        adminUser.PasswordHash = passwordHasher.HashPassword(adminUser, password);
+
+        dbContext.Users.Add(adminUser);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var delivery = await credentialDeliveryService.SendAsync(
+            tenant.Id,
+            adminUser,
+            new UserCredentialDeliveryRequest(
+                "user-credentials",
+                credentialDeliveryService.BuildLoginUrl(),
+                password,
+                null,
+                true),
+            cancellationToken);
+
+        if (delivery.Success)
+        {
+            adminUser.LastCredentialSentAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        await auditLogService.LogAsync(
+            tenant.Id,
+            tenantContext.GetRequiredUserId(),
+            "User created",
+            nameof(User),
+            adminUser.Id.ToString(),
+            $"Created default tenant admin '{adminUser.Email}'.",
+            cancellationToken);
+
+        if (delivery.Success)
+        {
+            await auditLogService.LogAsync(
+                tenant.Id,
+                tenantContext.GetRequiredUserId(),
+                "User credentials sent",
+                nameof(User),
+                adminUser.Id.ToString(),
+                $"User credentials sent to '{adminUser.Email}'.",
+                cancellationToken);
         }
     }
 
@@ -784,6 +880,26 @@ public sealed class PlatformTenantsController(
 
     private static DateTime? EnsureUtc(DateTime? value) =>
         value.HasValue ? EnsureUtc(value.Value) : null;
+
+    private static UserPermission ToEntity(UserPermissionsModel permissions) =>
+        new()
+        {
+            CanViewWorkOrders = permissions.CanViewWorkOrders,
+            CanCreateWorkOrders = permissions.CanCreateWorkOrders,
+            CanAssignWorkOrders = permissions.CanAssignWorkOrders,
+            CanCompleteWorkOrders = permissions.CanCompleteWorkOrders,
+            CanApproveMaterials = permissions.CanApproveMaterials,
+            CanIssueMaterials = permissions.CanIssueMaterials,
+            CanManageAssets = permissions.CanManageAssets,
+            CanManageSettings = permissions.CanManageSettings,
+            CanViewReports = permissions.CanViewReports,
+        };
+
+    private static string GenerateTemporaryPassword()
+    {
+        var buffer = RandomNumberGenerator.GetBytes(12);
+        return $"Eco!{Convert.ToBase64String(buffer).Replace('+', 'A').Replace('/', 'B').TrimEnd('=').Substring(0, 12)}9";
+    }
 
     private static class PlatformTenantStatuses
     {

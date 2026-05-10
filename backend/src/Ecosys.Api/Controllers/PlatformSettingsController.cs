@@ -21,6 +21,7 @@ public sealed class PlatformSettingsController(
     IAuditLogService auditLogService,
     ISecretEncryptionService secretEncryptionService,
     IEmailSender emailSender,
+    IEmailDeliveryLogService emailDeliveryLogService,
     ILogger<PlatformSettingsController> logger) : ControllerBase
 {
     private const string PlatformFinanceCategory = "platform-finance";
@@ -288,6 +289,19 @@ public sealed class PlatformSettingsController(
             setting.LastError = null;
             setting.LastTestedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
+            await emailDeliveryLogService.LogAsync(
+                new EmailDeliveryLogWriteRequest(
+                    PlatformConstants.RootTenantId,
+                    "email.test",
+                    "test-email",
+                    recipient,
+                    "Ecosys Platform Email Test",
+                    "Sent",
+                    null,
+                    null,
+                    tenantContext.GetRequiredUserId(),
+                    setting.LastTestedAt),
+                cancellationToken);
             return Ok(new PlatformEmailActionResponse(true, setting.LastTestedAt, null));
         }
         catch (Exception ex)
@@ -297,6 +311,18 @@ public sealed class PlatformSettingsController(
                 : EmailErrorCategories.UnknownSmtpError;
             setting.LastTestedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
+            await emailDeliveryLogService.LogAsync(
+                new EmailDeliveryLogWriteRequest(
+                    PlatformConstants.RootTenantId,
+                    "email.test",
+                    "test-email",
+                    recipient,
+                    "Ecosys Platform Email Test",
+                    "Failed",
+                    setting.LastError,
+                    ex.Message,
+                    tenantContext.GetRequiredUserId()),
+                cancellationToken);
             logger.LogWarning(ex, "Platform email test failed.");
             return Ok(new PlatformEmailActionResponse(false, setting.LastTestedAt, setting.LastError));
         }
@@ -761,14 +787,14 @@ public sealed class PlatformSettingsController(
             setting.Host,
             setting.Port,
             setting.Username,
-            MaskSecret(setting.EncryptedSecret ?? setting.Password, null),
+            BuildSavedSecretHint(setting.EncryptedSecret ?? setting.Password, "Password saved. Leave blank to keep existing password."),
             setting.SenderName,
             setting.SenderAddress,
             setting.ReplyToEmail,
             setting.UseSsl,
             EmailDeliveryModeResolver.ResolveSecureMode(setting.Port, setting.UseSsl),
             null,
-            null,
+            BuildSavedSecretHint(null, "Secret saved. Leave blank to keep existing secret."),
             null,
             30,
             0,
@@ -997,6 +1023,9 @@ public sealed class PlatformSettingsController(
 
         return existingMasked;
     }
+
+    private static string? BuildSavedSecretHint(string? rawSecret, string hint) =>
+        string.IsNullOrWhiteSpace(rawSecret) ? null : hint;
 
     private sealed record PlatformFinanceSettingsRecord(string DefaultCurrency, PlatformTaxSettingRecord Tax);
     private sealed record PlatformTaxSettingRecord(string Name, decimal DefaultRate, string Mode);

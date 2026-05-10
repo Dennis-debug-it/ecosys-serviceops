@@ -50,6 +50,9 @@ const defaultTenantForm: Tenant = {
   maxUsers: 10,
   maxBranches: 2,
   trialEndDate: null,
+  createDefaultAdmin: true,
+  adminFullName: '',
+  adminEmail: '',
 }
 
 export function PlatformTenantsPage() {
@@ -114,6 +117,19 @@ export function PlatformTenantsPage() {
       return
     }
 
+    if (mode === 'create' && form.createDefaultAdmin) {
+      const adminName = (form.adminFullName || form.contactPerson || '').trim()
+      const adminEmail = (form.adminEmail || form.contactEmail || '').trim()
+      if (!adminName || !adminEmail) {
+        pushToast({
+          title: 'Admin details required',
+          description: 'Contact person and contact email are required to create the first tenant admin and mail login credentials.',
+          tone: 'warning',
+        })
+        return
+      }
+    }
+
     const normalizedSlug = slugifyName(form.slug)
     const slugError = getSlugValidationMessage(normalizedSlug)
     if (slugError) {
@@ -129,7 +145,13 @@ export function PlatformTenantsPage() {
       } else {
         await platformService.tenantsApi.update(form.tenantId, payload)
       }
-      pushToast({ title: mode === 'create' ? 'Tenant created' : 'Tenant updated', description: `${form.name} saved successfully.`, tone: 'success' })
+      pushToast({
+        title: mode === 'create' ? 'Tenant created' : 'Tenant updated',
+        description: mode === 'create' && form.createDefaultAdmin
+          ? `${form.name} was created and initial admin credentials were queued for email delivery.`
+          : `${form.name} saved successfully.`,
+        tone: 'success',
+      })
       setModalOpen(false)
       setPrefillLeadId(null)
       setSlugTouched(false)
@@ -165,6 +187,8 @@ export function PlatformTenantsPage() {
           slug: generatedSlug || defaultTenantForm.slug,
           contactPerson: lead.contactPersonName,
           contactEmail: lead.email,
+          adminFullName: lead.contactPersonName,
+          adminEmail: lead.email,
         })
         setSlugTouched(false)
         setPrefillLeadId(lead.id)
@@ -336,6 +360,46 @@ export function PlatformTenantsPage() {
           <Field label="Max Branches"><input type="number" min={1} value={form.maxBranches ?? ''} onChange={(event) => setForm((current) => ({ ...current, maxBranches: event.target.value ? Number(event.target.value) : null }))} className="field-input" /></Field>
           <Field label="Trial End Date"><input type="date" value={form.trialEndDate ? form.trialEndDate.slice(0, 10) : ''} onChange={(event) => setForm((current) => ({ ...current, trialEndDate: event.target.value || null }))} className="field-input" /></Field>
         </div>
+        {mode === 'create' ? (
+          <div className="mt-4 space-y-4">
+            <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3">
+              <span className="text-sm text-app">Create default tenant admin and email login credentials</span>
+              <input
+                type="checkbox"
+                checked={form.createDefaultAdmin ?? true}
+                onChange={(event) => setForm((current) => ({ ...current, createDefaultAdmin: event.target.checked }))}
+              />
+            </label>
+
+            {form.createDefaultAdmin ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Initial Admin Full Name">
+                  <input
+                    value={form.adminFullName ?? ''}
+                    onChange={(event) => setForm((current) => ({ ...current, adminFullName: event.target.value }))}
+                    className="field-input"
+                    placeholder={form.contactPerson || 'Tenant administrator'}
+                  />
+                </Field>
+                <Field label="Initial Admin Email">
+                  <input
+                    type="email"
+                    value={form.adminEmail ?? ''}
+                    onChange={(event) => setForm((current) => ({ ...current, adminEmail: event.target.value }))}
+                    className="field-input"
+                    placeholder={form.contactEmail || 'admin@company.com'}
+                  />
+                </Field>
+              </div>
+            ) : null}
+
+            <InfoAlert
+              title="Tenant onboarding credentials"
+              description="When enabled, Ecosys will create the first tenant admin account and send login credentials to the admin email after workspace creation."
+              tone="info"
+            />
+          </div>
+        ) : null}
         <div className="mt-6 flex justify-end gap-3">
           <button type="button" className="button-secondary" onClick={() => setModalOpen(false)} disabled={saving}>Cancel</button>
           <button type="button" className="button-primary" onClick={() => void saveTenant()} disabled={saving}>{saving ? 'Saving...' : mode === 'create' ? 'Create Tenant' : 'Save Changes'}</button>

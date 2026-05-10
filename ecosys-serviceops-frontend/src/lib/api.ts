@@ -1,4 +1,5 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5072').replace(/\/+$/, '')
+const DEFAULT_API_BASE_URL = import.meta.env.DEV ? 'http://localhost:5072' : 'https://app.ecosysdigital.co.ke'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '')
 const AUTH_STORAGE_KEY = 'ecosys.serviceops.auth'
 
 type StorageMode = 'local' | 'session'
@@ -219,7 +220,7 @@ function getDownloadFileName(response: Response, fallbackFileName: string) {
     return decodeURIComponent(utf8Match[1])
   }
 
-  const quotedMatch = disposition.match(/filename=\"([^\"]+)\"/i)
+  const quotedMatch = disposition.match(/filename="([^"]+)"/i)
   if (quotedMatch?.[1]) {
     return quotedMatch[1]
   }

@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import type { Role } from '../types/app'
-import { roleHomePath } from '../utils/constants'
+import { normalizeRole, roleHomePath } from '../utils/roles'
 import { LoadingState } from '../components/ui/LoadingState'
 
 export function RequireAuth({ allow }: { allow?: Role[] }) {
@@ -16,7 +16,7 @@ export function RequireAuth({ allow }: { allow?: Role[] }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
-  if (allow && !allow.includes(session.role)) {
+  if (allow && !allow.some((role) => normalizeRole(String(role)) === normalizeRole(String(session.role)))) {
     return <Navigate to={roleHomePath(session.role)} replace />
   }
 

@@ -14,7 +14,8 @@ public sealed class AuthController(
     ITenantContext tenantContext,
     IUserSessionService userSessionService,
     AppDbContext dbContext,
-    IAuditLogService auditLogService) : ControllerBase
+    IAuditLogService auditLogService,
+    IPasswordResetService passwordResetService) : ControllerBase
 {
     [HttpPost("signup")]
     public async Task<ActionResult<SignupResponse>> Signup([FromBody] SignupRequest request, CancellationToken cancellationToken)
@@ -47,6 +48,20 @@ public sealed class AuthController(
             result.Token,
             new LoginUserDto(result.UserId, result.FullName, result.Email, result.Role, result.JobTitle, result.Department, MapPermissions(result.Permissions, IsPlatformRole(result.Role))),
             new LoginTenantDto(result.TenantId, result.CompanyName, result.Country, result.Industry, result.LogoUrl, result.ShowPoweredByEcosys)));
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<MessageResponse>> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var message = await passwordResetService.RequestAsync(request.Email, cancellationToken);
+        return Ok(new MessageResponse(message));
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<MessageResponse>> ResetPassword([FromBody] SelfServiceResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var message = await passwordResetService.ResetAsync(request.Token, request.NewPassword, request.ConfirmPassword, cancellationToken);
+        return Ok(new MessageResponse(message));
     }
 
     [Authorize]
@@ -201,6 +216,9 @@ public sealed record SignupResponse(
     PermissionResponse Permissions);
 
 public sealed record LoginRequest(string Email, string Password);
+public sealed record ForgotPasswordRequest(string Email);
+public sealed record SelfServiceResetPasswordRequest(string Token, string NewPassword, string ConfirmPassword);
+public sealed record MessageResponse(string Message);
 
 public sealed record LoginResponse(
     string Token,
