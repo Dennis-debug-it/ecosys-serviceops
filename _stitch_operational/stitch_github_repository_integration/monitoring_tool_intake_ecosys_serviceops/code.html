@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ecosys ServiceOps - Intake Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700;800&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#705d00",
+                        "on-tertiary-fixed-variant": "#544600",
+                        "tertiary-container": "#c8a900",
+                        "surface-container": "#eceeec",
+                        "surface": "#f8faf7",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#afefdd",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#7ebdac",
+                        "error-container": "#ffdad6",
+                        "background": "#f8faf7",
+                        "surface-container-highest": "#e1e3e0",
+                        "on-secondary-container": "#616a00",
+                        "on-surface-variant": "#3f4945",
+                        "primary-fixed-dim": "#94d3c1",
+                        "on-tertiary-container": "#4b3e00",
+                        "surface-variant": "#e1e3e0",
+                        "surface-dim": "#d8dbd8",
+                        "secondary-fixed": "#dded49",
+                        "on-primary-fixed": "#00201a",
+                        "surface-tint": "#29695b",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#c1d02c",
+                        "primary-container": "#004d40",
+                        "primary": "#00342b",
+                        "tertiary-fixed-dim": "#e9c400",
+                        "on-tertiary-fixed": "#221b00",
+                        "inverse-surface": "#2e3130",
+                        "outline": "#707975",
+                        "on-primary-fixed-variant": "#065043",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f1",
+                        "surface-container-high": "#e7e9e6",
+                        "on-secondary-fixed-variant": "#444b00",
+                        "outline-variant": "#bfc9c4",
+                        "on-surface": "#191c1b",
+                        "secondary-container": "#dded49",
+                        "on-background": "#191c1b",
+                        "on-secondary-fixed": "#1a1d00",
+                        "inverse-primary": "#94d3c1",
+                        "surface-bright": "#f8faf7",
+                        "secondary": "#5b6300",
+                        "inverse-on-surface": "#eff1ef",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#ffe16d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "container-max": "1440px",
+                        "base": "4px",
+                        "gutter": "20px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "display-lg": ["Manrope"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-footer {
+            backdrop-filter: blur(10px);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bfc9c4; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-hidden">
+<!-- SideNavBar Anchor -->
+<aside class="fixed h-screen left-0 w-64 bg-primary dark:bg-primary-container shadow-xl flex flex-col py-lg px-md z-50">
+<div class="mb-xl px-sm flex items-center gap-sm">
+<div class="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-headline-md" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h1 class="text-on-primary font-bold text-headline-md leading-tight">Ecosys</h1>
+<p class="text-on-primary/70 text-label-caps uppercase tracking-wider">ServiceOps</p>
+</div>
+</div>
+<nav class="flex-1 space-y-xs">
+<!-- Operations Active -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg font-bold transition-transform scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard_customize">dashboard_customize</span>
+<span>Operations</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="engineering">engineering</span>
+<span>Field Service</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Assets</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto">
+<button class="w-full py-md bg-primary-container/30 border border-on-primary/20 text-on-primary rounded-xl flex items-center justify-center gap-sm hover:bg-primary-container/50 transition-all">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span>Support</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar Anchor -->
+<header class="flex justify-between items-center w-full px-lg py-sm sticky top-0 bg-surface dark:bg-surface-dim border-b border-outline-variant z-40 shadow-sm">
+<div class="flex items-center gap-lg">
+<div class="relative">
+<span class="absolute left-md top-1/2 -translate-y-1/2 text-outline material-symbols-outlined">search</span>
+<input class="pl-xl pr-md py-xs bg-surface-container-low border-none rounded-full w-80 text-body-sm focus:ring-2 focus:ring-primary/20" placeholder="Search resources..." type="text"/>
+</div>
+<div class="flex gap-md">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-sm" href="#">Settings</a>
+<a class="text-primary font-bold border-b-2 border-primary font-body-sm" href="#">Email &amp; Notifications</a>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-xs relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-xs">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-xs"></div>
+<div class="flex items-center gap-sm">
+<span class="text-right hidden lg:block">
+<p class="text-body-sm font-bold text-on-surface">Alex Rivera</p>
+<p class="text-label-caps text-outline">System Admin</p>
+</span>
+<img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary-fixed shadow-sm" data-alt="A professional headshot of a Hispanic male system administrator in a high-tech corporate office. The background is softly blurred with subtle green and teal monitor glows, conveying a sense of expertise and modern efficiency. The lighting is crisp and cinematic, emphasizing clean skin tones and a neutral, confident expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzfud1Y3DnoULgPYTrPLL2EL1ZbR-MMZhaSNsfAf_ppZk-VfGBQ1WekdQi3NZb9lr8F_5aKxML09VowU5SK9n3DGccOYMkAvpjyHonflKps98a0Tn6hElc9bslXcSbofIloeUaIaLs87u15u65h5aKPWbuAAVNotTFdOmrMzbBqQee88yAbdJ493oB4SMPEC-L5wrd55rk39Bwn1IQx5qiP3LofskaXR4xeVyRfp0jGJL5JOICKl-aPtF2pgBeWJRUsDFLS3Mx5RUx"/>
+</div>
+</div>
+</header>
+<!-- Configuration Canvas -->
+<div class="flex-1 overflow-y-auto p-lg pb-32 space-y-lg">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-display-lg font-headline-md text-primary">Intake Configuration</h2>
+<p class="text-on-surface-variant">Manage monitoring tool integrations, ingestion rules, and automated severity mapping.</p>
+</div>
+<div class="flex gap-sm">
+<button class="px-lg py-sm border border-outline text-primary rounded-lg font-bold hover:bg-surface-container-high transition-all">Export Config</button>
+<button class="px-lg py-sm bg-secondary text-on-secondary rounded-lg font-bold hover:brightness-110 shadow-md flex items-center gap-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                        New Integration
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-lg">
+<!-- Source Setup & Health -->
+<div class="col-span-12 lg:col-span-4 space-y-lg">
+<section class="bg-white border border-outline-variant rounded-xl p-lg shadow-sm">
+<div class="flex items-center justify-between mb-lg">
+<h3 class="font-headline-md text-title-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="sensors">sensors</span>
+                                Source Setup
+                            </h3>
+<span class="px-sm py-xs bg-primary-fixed text-on-primary-fixed text-label-caps rounded-full">3 Active</span>
+</div>
+<div class="space-y-md">
+<div class="p-md bg-surface-container-low rounded-lg border border-transparent hover:border-secondary transition-all cursor-pointer group">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="cloud">cloud</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-on-surface">AWS CloudWatch</p>
+<p class="text-body-sm text-outline">Latency: 42ms</p>
+</div>
+<span class="w-2 h-2 bg-secondary rounded-full animate-pulse"></span>
+</div>
+</div>
+<div class="p-md bg-surface-container-low rounded-lg border border-transparent hover:border-secondary transition-all cursor-pointer group">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="database">database</span>
+</div>
+<div class="flex-1">
+<p class="font-bold text-on-surface">Datadog Core</p>
+<p class="text-body-sm text-outline">Latency: 12ms</p>
+</div>
+<span class="w-2 h-2 bg-secondary rounded-full"></span>
+</div>
+</div>
+<button class="w-full py-sm border-2 border-dashed border-outline-variant text-outline rounded-lg hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                                Add Integration
+                            </button>
+</div>
+</section>
+<section class="bg-primary text-on-primary rounded-xl p-lg shadow-xl relative overflow-hidden">
+<div class="relative z-10">
+<p class="text-label-caps text-on-primary/60 mb-xs">Ingestion Load</p>
+<h4 class="text-display-lg font-bold mb-md">1.2M <span class="text-headline-md font-normal">ops/sec</span></h4>
+<div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[72%]"></div>
+</div>
+<p class="mt-sm text-body-sm text-on-primary/80 italic">Optimized for peak service delivery.</p>
+</div>
+<div class="absolute -right-8 -bottom-8 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="insights">insights</span>
+</div>
+</section>
+</div>
+<!-- Matching & Severity Rules -->
+<div class="col-span-12 lg:col-span-8 space-y-lg">
+<section class="bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="px-lg py-md bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-title-sm">Matching &amp; Routing Rules</h3>
+<div class="flex gap-sm">
+<button class="p-xs hover:bg-white rounded-lg transition-colors"><span class="material-symbols-outlined text-outline" data-icon="filter_list">filter_list</span></button>
+<button class="p-xs hover:bg-white rounded-lg transition-colors"><span class="material-symbols-outlined text-outline" data-icon="more_vert">more_vert</span></button>
+</div>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Rule Item 1 -->
+<div class="p-lg hover:bg-surface-variant/20 transition-colors">
+<div class="flex items-start justify-between gap-lg">
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<span class="px-sm py-xs bg-error-container text-on-error-container text-[10px] font-bold uppercase rounded">Critical</span>
+<h4 class="font-bold text-on-surface">Database Connection Timeout</h4>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-md">If <code class="bg-surface-container text-primary px-sm rounded">payload.error_code == 504</code> then route to <span class="font-bold text-primary">DBA_OnCall</span>.</p>
+<div class="flex gap-sm">
+<span class="px-sm py-xs bg-surface-container-highest text-outline text-[11px] rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="tag">tag</span> production
+                                            </span>
+<span class="px-sm py-xs bg-surface-container-highest text-outline text-[11px] rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="tag">tag</span> tier-1
+                                            </span>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="text-right">
+<p class="text-label-caps text-outline">Last Triggered</p>
+<p class="text-body-sm font-bold">2 mins ago</p>
+</div>
+<input checked="" class="w-10 h-5 bg-outline-variant rounded-full appearance-none checked:bg-secondary relative cursor-pointer before:content-[''] before:absolute before:w-4 before:h-4 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:left-5.5 transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+<!-- Rule Item 2 -->
+<div class="p-lg hover:bg-surface-variant/20 transition-colors">
+<div class="flex items-start justify-between gap-lg">
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<span class="px-sm py-xs bg-tertiary-container text-on-tertiary-container text-[10px] font-bold uppercase rounded">Warning</span>
+<h4 class="font-bold text-on-surface">Memory Usage &gt; 85%</h4>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-md">Match subject containing <code class="bg-surface-container text-primary px-sm rounded">"MEM_LIMIT"</code> and notify <span class="font-bold text-primary">SRE_Team</span>.</p>
+<div class="flex gap-sm">
+<span class="px-sm py-xs bg-surface-container-highest text-outline text-[11px] rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="tag">tag</span> infrastructure
+                                            </span>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="text-right">
+<p class="text-label-caps text-outline">Last Triggered</p>
+<p class="text-body-sm font-bold">14 hrs ago</p>
+</div>
+<input checked="" class="w-10 h-5 bg-outline-variant rounded-full appearance-none checked:bg-secondary relative cursor-pointer before:content-[''] before:absolute before:w-4 before:h-4 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:left-5.5 transition-all" type="checkbox"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Test Simulation Panel -->
+<section class="bg-surface-container-high border border-outline-variant rounded-xl p-lg shadow-inner">
+<div class="flex items-center gap-md mb-lg">
+<div class="p-sm bg-primary text-on-primary rounded-lg">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</div>
+<div>
+<h3 class="font-headline-md text-title-sm">Simulation Environment</h3>
+<p class="text-body-sm text-outline">Test your rules against sample payloads without creating real incidents.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-lg">
+<div class="space-y-sm">
+<label class="text-label-caps text-outline">JSON Payload</label>
+<textarea class="w-full h-32 bg-surface text-on-surface border-outline-variant rounded-lg font-data-mono text-body-sm focus:ring-primary focus:border-primary">{
+  "source": "AWS",
+  "metric": "CPUUtilization",
+  "value": 98.2,
+  "unit": "Percent",
+  "instance": "i-09f8239"
+}
+                                </textarea>
+</div>
+<div class="space-y-sm">
+<label class="text-label-caps text-outline">Simulated Result</label>
+<div class="w-full h-32 bg-inverse-surface text-inverse-on-surface rounded-lg p-md font-data-mono text-body-sm flex flex-col justify-center">
+<p class="text-secondary mb-xs">&gt; MATCH FOUND: Rule #12</p>
+<p class="text-white/70">&gt; ACTION: Trigger Webhook to PagerDuty</p>
+<p class="text-white/70">&gt; SEVERITY: Critical</p>
+<p class="animate-pulse">_</p>
+</div>
+</div>
+</div>
+<div class="mt-lg flex justify-end">
+<button class="px-xl py-sm bg-primary text-on-primary rounded-lg font-bold hover:brightness-125 transition-all">Run Test Simulation</button>
+</div>
+</section>
+</div>
+</div>
+<!-- Recent Alert Log -->
+<section class="bg-white border border-outline-variant rounded-xl shadow-sm">
+<div class="px-lg py-md border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-title-sm">Ingestion Log (Last 50)</h3>
+<div class="flex items-center gap-md">
+<span class="text-body-sm text-outline">Auto-refreshing in 12s</span>
+<div class="flex bg-surface-container rounded-lg p-xs">
+<button class="px-md py-xs bg-white shadow-sm rounded-md text-body-sm font-bold">Grid</button>
+<button class="px-md py-xs text-outline text-body-sm hover:text-on-surface transition-colors">List</button>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-lg py-md text-label-caps text-outline">Timestamp</th>
+<th class="px-lg py-md text-label-caps text-outline">Source</th>
+<th class="px-lg py-md text-label-caps text-outline">Summary</th>
+<th class="px-lg py-md text-label-caps text-outline">Severity</th>
+<th class="px-lg py-md text-label-caps text-outline">Status</th>
+<th class="px-lg py-md text-label-caps text-outline">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md font-data-mono text-body-sm">14:22:01.033</td>
+<td class="px-lg py-md font-bold text-on-surface">DataDog</td>
+<td class="px-lg py-md text-body-sm">High error rate on API Gateway (v2)</td>
+<td class="px-lg py-md">
+<span class="px-sm py-xs bg-error-container text-on-error-container text-[10px] font-bold rounded">Critical</span>
+</td>
+<td class="px-lg py-md">
+<span class="flex items-center gap-xs text-secondary text-body-sm">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                        Ingested
+                                    </span>
+</td>
+<td class="px-lg py-md">
+<button class="text-primary hover:underline text-body-sm font-bold">View JSON</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md font-data-mono text-body-sm">14:19:44.212</td>
+<td class="px-lg py-md font-bold text-on-surface">AWS</td>
+<td class="px-lg py-md text-body-sm">Auto-scaling group resized: +2 instances</td>
+<td class="px-lg py-md">
+<span class="px-sm py-xs bg-surface-container-highest text-outline text-[10px] font-bold rounded">Info</span>
+</td>
+<td class="px-lg py-md">
+<span class="flex items-center gap-xs text-outline text-body-sm">
+<span class="material-symbols-outlined text-[16px]">visibility_off</span>
+                                        Filtered
+                                    </span>
+</td>
+<td class="px-lg py-md">
+<button class="text-primary hover:underline text-body-sm font-bold">View JSON</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Sticky Footer Anchor -->
+<footer class="fixed bottom-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface-container-highest/80 glass-footer border-t border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex justify-end items-center px-lg py-md gap-md">
+<span class="mr-auto text-label-caps font-bold text-primary">© 2024 ECOSYS SERVICEOPS</span>
+<button class="px-lg py-sm text-outline hover:text-on-surface font-label-caps transition-all active:scale-95">Cancel</button>
+<button class="px-xl py-sm bg-secondary text-on-secondary rounded-lg font-bold shadow-md hover:brightness-110 active:scale-95 transition-all">Save Changes</button>
+</footer>
+</main>
+</body></html>

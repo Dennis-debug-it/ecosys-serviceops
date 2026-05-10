@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Company Profile - Ecosys ServiceOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#616a00",
+                        "on-primary-fixed-variant": "#065043",
+                        "primary-fixed": "#afefdd",
+                        "outline": "#707975",
+                        "on-tertiary-fixed-variant": "#544600",
+                        "tertiary": "#705d00",
+                        "secondary-fixed-dim": "#c1d02c",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#444b00",
+                        "on-tertiary-container": "#4b3e00",
+                        "tertiary-container": "#c8a900",
+                        "on-tertiary-fixed": "#221b00",
+                        "background": "#f8faf7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e7e9e6",
+                        "outline-variant": "#bfc9c4",
+                        "surface": "#f8faf7",
+                        "surface-container": "#eceeec",
+                        "on-primary-fixed": "#00201a",
+                        "surface-dim": "#d8dbd8",
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#7ebdac",
+                        "tertiary-fixed-dim": "#e9c400",
+                        "inverse-primary": "#94d3c1",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3f4945",
+                        "secondary-fixed": "#dded49",
+                        "on-secondary-fixed": "#1a1d00",
+                        "surface-bright": "#f8faf7",
+                        "surface-tint": "#29695b",
+                        "primary-fixed-dim": "#94d3c1",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3130",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-background": "#191c1b",
+                        "tertiary-fixed": "#ffe16d",
+                        "secondary": "#5b6300",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f2f4f1",
+                        "secondary-container": "#dded49",
+                        "primary-container": "#004d40",
+                        "primary": "#00342b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "40px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "gutter": "20px",
+                        "base": "4px",
+                        "container-max": "1440px",
+                        "md": "16px"
+                    },
+                    "fontFamily": {
+                        "title-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "display-lg": ["Manrope"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Manrope"],
+                        "data-mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .scale-98:active { transform: scale(0.98); }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+<!-- SideNavBar -->
+<aside class="fixed h-screen left-0 w-64 bg-primary shadow-xl flex flex-col py-lg px-md z-50">
+<div class="flex items-center gap-sm mb-xl">
+<div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="dashboard_customize">dashboard_customize</span>
+</div>
+<div>
+<div class="font-headline-md text-headline-md font-bold text-on-primary">Ecosys</div>
+<div class="text-[10px] uppercase tracking-widest text-on-primary/60">ServiceOps</div>
+</div>
+</div>
+<nav class="flex-1 space-y-xs overflow-y-auto">
+<div class="px-sm pb-xs">
+<span class="text-label-caps font-label-caps text-on-primary/40">Tenant Settings</span>
+</div>
+<!-- Operations Tab -->
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard_customize">dashboard_customize</span>
+<span class="font-body-md text-body-md">Operations</span>
+</a>
+<!-- Field Service Tab -->
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="engineering">engineering</span>
+<span class="font-body-md text-body-md">Field Service</span>
+</a>
+<!-- Assets Tab -->
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-body-md text-body-md">Assets</span>
+</a>
+<div class="pt-lg pb-xs px-sm border-t border-on-primary/10 mt-md">
+<span class="text-label-caps font-label-caps text-on-primary/40">Configuration</span>
+</div>
+<!-- Settings Active State Logic applied to Company Profile -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="business">business</span>
+<span class="font-body-md text-body-md">Company Profile</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+<span class="font-body-md text-body-md">Branding</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-body-md text-body-md">Users &amp; Roles</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="store">store</span>
+<span class="font-body-md text-body-md">Branches/Outlets</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="format_list_numbered">format_list_numbered</span>
+<span class="font-body-md text-body-md">Numbering Rules</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="font-body-md text-body-md">Email &amp; Notifications</span>
+</a>
+</nav>
+<div class="mt-auto pt-md border-t border-on-primary/10">
+<button class="w-full flex items-center justify-center gap-sm bg-primary-container text-on-primary-container py-sm rounded-lg font-bold hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="help_outline">help_outline</span>
+<span>Support</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 w-full bg-surface border-b border-outline-variant flex justify-between items-center px-lg py-sm shadow-sm">
+<div class="flex items-center gap-lg">
+<h1 class="text-title-sm font-headline-md text-on-surface">ServiceOps <span class="text-outline mx-sm">/</span> <span class="font-normal text-on-surface-variant">Company Profile</span></h1>
+<div class="hidden md:flex items-center bg-surface-container rounded-full px-md py-xs border border-outline-variant w-80">
+<span class="material-symbols-outlined text-outline text-[20px] mr-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full" placeholder="Search settings..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex items-center gap-sm pr-md border-r border-outline-variant">
+<a class="text-on-surface-variant hover:text-primary transition-colors px-sm py-xs" href="#">Settings</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors px-sm py-xs" href="#">Email &amp; Notifications</a>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="flex items-center gap-sm ml-sm cursor-pointer hover:bg-surface-container p-xs rounded-lg transition-colors">
+<img alt="User Avatar" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRmcfUGsdXRbgx29oA0ozknYu94r-MwjCEqeapY03k9JcUxG9hjLMsx_Fr4gsY7-N_p5vj0brybyCyFaVTlWe-JqoULaPZe2XA-5S2TsE6kg6T5Pmukh_M8xS-YEKLvWnANL-e5Loqua3Ekhv3stj_s9X3U39aDgBETjv4YDO54WqZrxFH_ugbhRkoI02VP8cZFyW_jq39aZMoudOONrWR2niTErXG84auGrdtECNbgS7C-W4PYpo5b8bkZcF3TNx1g-mZsoZ8WoYH"/>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<div class="max-w-5xl mx-auto px-lg py-xl">
+<div class="mb-lg">
+<h2 class="font-headline-md text-headline-md text-on-surface">Company Profile</h2>
+<p class="text-on-surface-variant mt-xs">Manage your organization's legal identity, contact details, and primary headquarters information.</p>
+</div>
+<div class="grid grid-cols-12 gap-lg">
+<!-- Company Information Card -->
+<div class="col-span-12 lg:col-span-8">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.04)] border border-outline-variant overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant bg-surface-container-low/30">
+<h3 class="font-title-sm text-title-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="corporate_fare">corporate_fare</span>
+                                Company Information
+                            </h3>
+</div>
+<div class="p-lg grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="col-span-2">
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Company Name</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" type="text" value="Ecosys global solutions Ltd"/>
+</div>
+<div>
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Tax PIN / Registration No.</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" type="text" value="TAX-9920-X82-00"/>
+</div>
+<div>
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Industry Type</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+<option selected="">Renewable Energy &amp; Utilities</option>
+<option>Logistics &amp; Transportation</option>
+<option>Construction &amp; Engineering</option>
+<option>Manufacturing</option>
+</select>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side Asymmetric Card (Branding Mini-Preview) -->
+<div class="col-span-12 lg:col-span-4">
+<div class="bg-primary rounded-xl p-lg text-on-primary shadow-xl h-full relative overflow-hidden group">
+<div class="relative z-10">
+<span class="text-label-caps font-label-caps text-on-primary/60 mb-sm block">Current Identity</span>
+<div class="flex items-center gap-md mb-lg">
+<div class="w-16 h-16 bg-white rounded-lg flex items-center justify-center p-sm">
+<img alt="Tenant Logo" class="w-full h-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_I9aviNCDOYmhL8z_Kq7PchmYVKWYQXcBy_KSbc1VQk3nyTwsUCgICt_TVD05X5mQOiRkKfw2sDTf1SD5gm5445pKIZZEeaAIX1F4DMG8Shz9phlSEdaf6SdODlNkuTZKZojqJ-agybOg30iit7ihmMllpZTPIkNVTybRS8nRchBa-NCneZ7PJme4NV_k7Bz3XcfKQSFrdbCu8p0GsfSyriaYnAGo0p9asP_lAItPD-DFKM14j65CTH2gQbG3gfWxFk1Td2r_eUbn"/>
+</div>
+<div>
+<h4 class="font-headline-md text-[20px]">Ecosys Global</h4>
+<p class="text-on-primary/70 text-body-sm">Enterprise Workspace</p>
+</div>
+</div>
+<p class="text-on-primary/80 text-body-sm mb-lg leading-relaxed">
+                                Your profile information is visible to all administrators and is used on generated invoices and service reports.
+                            </p>
+<button class="w-full py-sm px-md border border-on-primary/30 rounded-lg hover:bg-on-primary/10 transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+                                Change Branding
+                            </button>
+</div>
+<!-- Abstract Background Decoration -->
+<div class="absolute -bottom-10 -right-10 w-40 h-40 bg-secondary rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+</div>
+</div>
+<!-- Primary Contact Card -->
+<div class="col-span-12 md:col-span-6">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.04)] border border-outline-variant overflow-hidden h-full">
+<div class="px-lg py-md border-b border-outline-variant bg-surface-container-low/30">
+<h3 class="font-title-sm text-title-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="contact_page">contact_page</span>
+                                Primary Contact
+                            </h3>
+</div>
+<div class="p-lg space-y-md">
+<div>
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Contact Person</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" type="text" value="Sarah Jenkins"/>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Phone</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" type="tel" value="+1 (555) 012-3456"/>
+</div>
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Email</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" type="email" value="s.jenkins@ecosys.global"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Headquarters Address Card -->
+<div class="col-span-12 md:col-span-6">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.04)] border border-outline-variant overflow-hidden h-full">
+<div class="px-lg py-md border-b border-outline-variant bg-surface-container-low/30">
+<h3 class="font-title-sm text-title-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+                                Headquarters Address
+                            </h3>
+</div>
+<div class="p-lg space-y-md">
+<div>
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Street Address</label>
+<textarea class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none" rows="3">Suite 400, Innovation Drive, 
+Technology Park, 
+San Francisco, CA 94105</textarea>
+</div>
+<div class="grid grid-cols-2 gap-md">
+<div>
+<label class="block text-label-caps font-label-caps text-outline mb-xs">City</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" type="text" value="San Francisco"/>
+</div>
+<div>
+<label class="block text-label-caps font-label-caps text-outline mb-xs">Country</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm focus:ring-2 focus:ring-primary/20 focus:border-primary">
+<option selected="">United States</option>
+<option>United Kingdom</option>
+<option>Canada</option>
+<option>Germany</option>
+</select>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Sticky Actions -->
+<footer class="fixed bottom-0 right-0 w-[calc(100%-16rem)] z-40 flex justify-end items-center px-lg py-md gap-md border-t border-outline-variant bg-surface-container-highest/80 backdrop-blur-md shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+<button class="text-outline hover:text-on-surface font-label-caps text-label-caps px-lg py-sm transition-all">
+            Cancel
+        </button>
+<button class="bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold text-label-caps uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all duration-150 flex items-center gap-sm shadow-md">
+<span class="material-symbols-outlined text-[18px]" data-icon="save">save</span>
+            Save Changes
+        </button>
+</footer>
+</body></html>

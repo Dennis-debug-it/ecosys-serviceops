@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ecosys ServiceOps | Command Centre</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700;800&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Style Guidance & Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffe16d",
+                        "on-secondary-fixed": "#1a1d00",
+                        "on-primary-fixed": "#00201a",
+                        "surface-container-high": "#e7e9e6",
+                        "primary-container": "#004d40",
+                        "on-primary-fixed-variant": "#065043",
+                        "on-surface": "#191c1b",
+                        "surface-container-highest": "#e1e3e0",
+                        "secondary-fixed-dim": "#c1d02c",
+                        "tertiary-fixed-dim": "#e9c400",
+                        "outline": "#707975",
+                        "surface-tint": "#29695b",
+                        "inverse-on-surface": "#eff1ef",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#544600",
+                        "secondary-fixed": "#dded49",
+                        "secondary-container": "#dded49",
+                        "surface-dim": "#d8dbd8",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bfc9c4",
+                        "on-secondary-container": "#616a00",
+                        "surface-container": "#eceeec",
+                        "surface": "#f8faf7",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "secondary": "#5b6300",
+                        "background": "#f8faf7",
+                        "error-container": "#ffdad6",
+                        "primary": "#00342b",
+                        "on-tertiary-container": "#4b3e00",
+                        "on-primary-container": "#7ebdac",
+                        "primary-fixed": "#afefdd",
+                        "tertiary-container": "#c8a900",
+                        "on-tertiary-fixed": "#221b00",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f2f4f1",
+                        "surface-variant": "#e1e3e0",
+                        "tertiary": "#705d00",
+                        "inverse-primary": "#94d3c1",
+                        "on-error-container": "#93000a",
+                        "on-background": "#191c1b",
+                        "primary-fixed-dim": "#94d3c1",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3130",
+                        "on-secondary-fixed-variant": "#444b00",
+                        "surface-bright": "#f8faf7",
+                        "on-surface-variant": "#3f4945"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "lg": "24px",
+                        "gutter": "20px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "container-max": "1440px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "display-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-caps": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "data-mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        body {
+            background-color: #f8faf7;
+            color: #191c1b;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md">
+<!-- SideNavBar Shell -->
+<aside class="fixed h-screen left-0 w-64 bg-primary dark:bg-primary-container shadow-xl flex flex-col py-lg px-md z-50">
+<div class="mb-xl flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary" data-icon="hub">hub</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-on-primary dark:text-on-primary-fixed leading-tight">Ecosys</h1>
+<p class="text-label-caps text-on-primary/60">ServiceOps</p>
+</div>
+</div>
+<nav class="flex-1 space-y-base">
+<!-- Active Tab: Operations (Command Centre) -->
+<a class="bg-secondary-container text-on-secondary-container rounded-lg font-bold flex items-center gap-md px-md py-sm active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard_customize">dashboard_customize</span>
+<span>Operations</span>
+</a>
+<a class="text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-all rounded-lg flex items-center gap-md px-md py-sm" href="#">
+<span class="material-symbols-outlined" data-icon="engineering">engineering</span>
+<span>Field Service</span>
+</a>
+<a class="text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-all rounded-lg flex items-center gap-md px-md py-sm" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Assets</span>
+</a>
+<a class="text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-all rounded-lg flex items-center gap-md px-md py-sm" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-lg border-t border-on-primary/10">
+<button class="w-full bg-secondary-container/10 text-secondary-fixed border border-secondary-fixed/30 py-sm rounded-lg flex items-center justify-center gap-sm hover:bg-secondary-container/20 transition-all">
+<span class="material-symbols-outlined text-body-md" data-icon="help_outline">help_outline</span>
+<span class="font-bold">Support</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar Shell -->
+<header class="sticky top-0 z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center w-full px-lg py-sm shadow-sm">
+<div class="flex items-center gap-lg">
+<h2 class="text-title-sm font-headline-md text-on-surface dark:text-inverse-on-surface">Command Centre</h2>
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full pl-xl py-xs text-body-sm focus:ring-2 focus:ring-primary/20" placeholder="Search tenants, assets or requests..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex items-center gap-sm pr-md border-r border-outline-variant">
+<a class="text-on-surface-variant hover:text-primary transition-colors text-body-sm" href="#">Settings</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-body-sm font-bold border-b-2 border-primary" href="#">Email &amp; Notifications</a>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary" data-icon="help_outline">help_outline</button>
+<div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a software platform administrator in a bright, modern studio environment. The individual exhibits a confident and helpful demeanor. The background is a soft, high-key white with subtle deep teal accents, maintaining the clean light-mode aesthetic of a premium enterprise dashboard system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCv0J-Ldw3khmySkmhQobq_dLqe45bQM12JfAkC49OzrgrGvpawNuettk0stxZYBBOFIIOUr6hkWu-JPexQwDyFXes3v6BPlH2uB6iCmiDcHex5rU5JpcVA7nm5fugM6beTEjCroyY8ipkmw-nhFPb6L2c15XA-G4wMRNmWvgf0Zu6Wj2KEIJ0cP9O77XPaZy5GsZw57KSn2QWBn3XtMnOsGUQ_T4jD8YzpuE36qL8otNWE1pu7QlgKv9QsYvI8vkhY1zRZAFGN4mTl"/>
+</div>
+</div>
+</div>
+</header>
+<div class="p-lg space-y-lg">
+<!-- Dashboard Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-display-lg font-display-lg text-primary">System Overview</h1>
+<p class="text-on-surface-variant mt-xs">Real-time status of the Ecosys ServiceOps ecosystem.</p>
+</div>
+<div class="flex gap-md">
+<button class="flex items-center gap-sm bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold shadow-md hover:brightness-110 transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="add_business">add_business</span>
+                        Provision New Tenant
+                    </button>
+<button class="flex items-center gap-sm border border-primary text-primary px-lg py-sm rounded-lg font-bold hover:bg-primary/5 transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+                        Invite Admin
+                    </button>
+</div>
+</div>
+<!-- Stats Grid (Bento Style) -->
+<div class="grid grid-cols-12 gap-lg">
+<!-- System Health Indicator -->
+<div class="col-span-12 lg:col-span-4 bg-primary text-on-primary p-lg rounded-xl shadow-lg relative overflow-hidden group">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-secondary/20 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500"></div>
+<div class="relative z-10 h-full flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="text-label-caps opacity-70">GLOBAL SYSTEM HEALTH</span>
+<div class="flex items-center gap-xs px-sm py-xs bg-secondary-fixed/20 rounded-full border border-secondary-fixed/40">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed animate-pulse"></span>
+<span class="text-[10px] font-bold text-secondary-fixed">OPERATIONAL</span>
+</div>
+</div>
+<div class="mt-md">
+<h3 class="text-headline-md font-bold">99.98% Uptime</h3>
+<p class="text-body-sm text-on-primary/60 mt-xs">All regions performing within optimal latency parameters.</p>
+</div>
+<div class="mt-lg pt-md border-t border-on-primary/10 flex justify-between items-center">
+<span class="text-body-sm font-bold">Last backup: 14m ago</span>
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</div>
+</div>
+</div>
+<!-- Metrics Cards -->
+<div class="col-span-6 lg:col-span-2 bg-surface border border-outline-variant p-lg rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="corporate_fare">corporate_fare</span>
+</div>
+<p class="text-label-caps text-on-surface-variant mb-xs">TENANT COUNT</p>
+<h3 class="text-headline-md font-bold text-on-surface">1,284</h3>
+<p class="text-[11px] text-secondary font-bold mt-sm">+12% this month</p>
+</div>
+<div class="col-span-6 lg:col-span-2 bg-surface border border-outline-variant p-lg rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="verified_user">verified_user</span>
+</div>
+<p class="text-label-caps text-on-surface-variant mb-xs">ACTIVE TENANTS</p>
+<h3 class="text-headline-md font-bold text-on-surface">1,192</h3>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-lg">
+<div class="bg-secondary h-full rounded-full w-[92%]"></div>
+</div>
+</div>
+<div class="col-span-6 lg:col-span-2 bg-surface border border-outline-variant p-lg rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-lg bg-error-container/30 flex items-center justify-center mb-md">
+<span class="material-symbols-outlined text-error" data-icon="pending_actions">pending_actions</span>
+</div>
+<p class="text-label-caps text-on-surface-variant mb-xs">PENDING REQUESTS</p>
+<h3 class="text-headline-md font-bold text-on-surface">43</h3>
+<p class="text-[11px] text-error font-bold mt-sm">Critical: 5</p>
+</div>
+<div class="col-span-6 lg:col-span-2 bg-surface border border-outline-variant p-lg rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="mail">mail</span>
+</div>
+<p class="text-label-caps text-on-surface-variant mb-xs">EMAIL STATUS</p>
+<h3 class="text-headline-md font-bold text-on-surface">98.2%</h3>
+<p class="text-[11px] text-on-surface-variant mt-sm">Delivered in &lt; 2s</p>
+</div>
+</div>
+<!-- Bottom Content: Recent Activity & Tenant Explorer -->
+<div class="grid grid-cols-12 gap-lg pb-xl">
+<!-- Recent Activity Feed -->
+<section class="col-span-12 lg:col-span-5 bg-surface border border-outline-variant rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h3 class="text-title-sm font-bold text-primary">Recent Activity</h3>
+<button class="text-label-caps text-secondary font-bold hover:underline">VIEW ALL</button>
+</div>
+<div class="p-lg flex-1 space-y-lg overflow-y-auto max-h-[400px]">
+<div class="flex gap-md">
+<div class="mt-1">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-body-sm" data-icon="add_task" style="font-variation-settings: 'FILL' 1;">add_task</span>
+</div>
+</div>
+<div>
+<p class="text-body-md text-on-surface"><span class="font-bold">GreenGrid Energy</span> workspace request approved by Admin J. Miller.</p>
+<p class="text-label-caps text-on-surface-variant mt-1">2 MINUTES AGO • PROVISIONING</p>
+</div>
+</div>
+<div class="flex gap-md">
+<div class="mt-1">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-body-sm" data-icon="mail_lock">mail_lock</span>
+</div>
+</div>
+<div>
+<p class="text-body-md text-on-surface">Failed email delivery alert for <span class="font-bold">Solaris Tech</span>. Retrying in 5m.</p>
+<p class="text-label-caps text-on-surface-variant mt-1">14 MINUTES AGO • SYSTEM</p>
+</div>
+</div>
+<div class="flex gap-md">
+<div class="mt-1">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-body-sm" data-icon="person">person</span>
+</div>
+</div>
+<div>
+<p class="text-body-md text-on-surface"><span class="font-bold">Sarah Chen</span> accepted admin invitation.</p>
+<p class="text-label-caps text-on-surface-variant mt-1">45 MINUTES AGO • USER MGT</p>
+</div>
+</div>
+<div class="flex gap-md opacity-60">
+<div class="mt-1">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-body-sm" data-icon="security">security</span>
+</div>
+</div>
+<div>
+<p class="text-body-md text-on-surface">Monthly security audit completed. 0 vulnerabilities found.</p>
+<p class="text-label-caps text-on-surface-variant mt-1">3 HOURS AGO • SECURITY</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Data Table: Active Tenants -->
+<section class="col-span-12 lg:col-span-7 bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="px-lg py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h3 class="text-title-sm font-bold text-primary">Active Workspace Clusters</h3>
+<div class="flex gap-sm">
+<button class="material-symbols-outlined p-1 rounded hover:bg-surface-container-high text-on-surface-variant" data-icon="filter_list">filter_list</button>
+<button class="material-symbols-outlined p-1 rounded hover:bg-surface-container-high text-on-surface-variant" data-icon="more_vert">more_vert</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest">
+<th class="px-lg py-sm text-label-caps text-on-surface-variant border-b border-outline-variant">TENANT NAME</th>
+<th class="px-lg py-sm text-label-caps text-on-surface-variant border-b border-outline-variant">HEALTH</th>
+<th class="px-lg py-sm text-label-caps text-on-surface-variant border-b border-outline-variant">USERS</th>
+<th class="px-lg py-sm text-label-caps text-on-surface-variant border-b border-outline-variant">STORAGE</th>
+<th class="px-lg py-sm text-label-caps text-on-surface-variant border-b border-outline-variant">ACTIONS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">AQ</div>
+<span class="font-bold text-on-surface">AquaPure Systems</span>
+</div>
+</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<span class="text-[11px] px-sm py-xs bg-secondary-container/20 text-on-secondary-container rounded font-bold">HEALTHY</span>
+</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">412</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">1.2 TB</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="open_in_new">open_in_new</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">EF</div>
+<span class="font-bold text-on-surface">EcoFlow Global</span>
+</div>
+</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<span class="text-[11px] px-sm py-xs bg-secondary-container/20 text-on-secondary-container rounded font-bold">HEALTHY</span>
+</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">1,084</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">4.5 TB</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="open_in_new">open_in_new</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded bg-error-container/20 flex items-center justify-center text-[10px] font-bold text-error">VR</div>
+<span class="font-bold text-on-surface">Verdant Rail</span>
+</div>
+</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<span class="text-[11px] px-sm py-xs bg-error-container/50 text-error rounded font-bold">WARNING</span>
+</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">23</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">156 GB</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="report_problem">report_problem</button>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">SC</div>
+<span class="font-bold text-on-surface">SkyCore Labs</span>
+</div>
+</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<span class="text-[11px] px-sm py-xs bg-secondary-container/20 text-on-secondary-container rounded font-bold">HEALTHY</span>
+</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">92</td>
+<td class="px-lg py-md border-b border-outline-variant text-body-sm font-data-mono">812 GB</td>
+<td class="px-lg py-md border-b border-outline-variant">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors" data-icon="open_in_new">open_in_new</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-lg py-sm bg-surface-container-low flex justify-center">
+<button class="text-body-sm text-primary font-bold hover:underline">Show 24 more clusters</button>
+</div>
+</section>
+</div>
+</div>
+<!-- Sticky Footer Shell -->
+<footer class="fixed bottom-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface-container-highest/80 backdrop-blur-md border-t border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex justify-end items-center px-lg py-md gap-md">
+<span class="mr-auto text-label-caps font-bold text-primary">© 2024 Ecosys ServiceOps</span>
+<button class="text-outline hover:text-on-surface font-label-caps transition-all active:scale-95">Cancel</button>
+<button class="bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold font-label-caps hover:brightness-110 transition-all active:scale-95">Save Changes</button>
+</footer>
+</main>
+<!-- FAB for quick context (Creation) -->
+<button class="fixed bottom-lg right-lg w-14 h-14 bg-secondary-container text-on-secondary-container rounded-full shadow-xl flex items-center justify-center z-50 hover:scale-110 active:scale-90 transition-all border-4 border-surface">
+<span class="material-symbols-outlined text-headline-md" data-icon="add" style="font-variation-settings: 'wght' 700;">add</span>
+</button>
+</body></html>

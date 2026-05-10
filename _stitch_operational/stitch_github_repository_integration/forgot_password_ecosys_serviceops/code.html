@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Forgot Password | Ecosys ServiceOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#ffe16d",
+                      "on-secondary-fixed": "#1a1d00",
+                      "on-primary-fixed": "#00201a",
+                      "surface-container-high": "#e7e9e6",
+                      "primary-container": "#004d40",
+                      "on-primary-fixed-variant": "#065043",
+                      "on-surface": "#191c1b",
+                      "surface-container-highest": "#e1e3e0",
+                      "secondary-fixed-dim": "#c1d02c",
+                      "tertiary-fixed-dim": "#e9c400",
+                      "outline": "#707975",
+                      "surface-tint": "#29695b",
+                      "inverse-on-surface": "#eff1ef",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#544600",
+                      "secondary-fixed": "#dded49",
+                      "secondary-container": "#dded49",
+                      "surface-dim": "#d8dbd8",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#bfc9c4",
+                      "on-secondary-container": "#616a00",
+                      "surface-container": "#eceeec",
+                      "surface": "#f8faf7",
+                      "error": "#ba1a1a",
+                      "on-primary": "#ffffff",
+                      "secondary": "#5b6300",
+                      "background": "#f8faf7",
+                      "error-container": "#ffdad6",
+                      "primary": "#00342b",
+                      "on-tertiary-container": "#4b3e00",
+                      "on-primary-container": "#7ebdac",
+                      "primary-fixed": "#afefdd",
+                      "tertiary-container": "#c8a900",
+                      "on-tertiary-fixed": "#221b00",
+                      "on-secondary": "#ffffff",
+                      "surface-container-low": "#f2f4f1",
+                      "surface-variant": "#e1e3e0",
+                      "tertiary": "#705d00",
+                      "inverse-primary": "#94d3c1",
+                      "on-error-container": "#93000a",
+                      "on-background": "#191c1b",
+                      "primary-fixed-dim": "#94d3c1",
+                      "on-error": "#ffffff",
+                      "inverse-surface": "#2e3130",
+                      "on-secondary-fixed-variant": "#444b00",
+                      "surface-bright": "#f8faf7",
+                      "on-surface-variant": "#3f4945"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "8px",
+                      "lg": "24px",
+                      "gutter": "20px",
+                      "base": "4px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "container-max": "1440px",
+                      "xl": "40px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "display-lg": ["Manrope"],
+                      "headline-md": ["Manrope"],
+                      "label-caps": ["Inter"],
+                      "title-sm": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "data-mono": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                      "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md selection:bg-secondary-fixed selection:text-on-secondary-fixed min-h-screen flex items-center justify-center relative overflow-hidden">
+<!-- Decorative Background -->
+<div class="absolute inset-0 -z-10 overflow-hidden">
+<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary-fixed/20 blur-[120px]"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary-fixed/10 blur-[100px]"></div>
+</div>
+<main class="w-full max-w-[440px] px-lg">
+<!-- Logo Branding -->
+<div class="flex flex-col items-center mb-xl">
+<div class="w-12 h-12 bg-primary flex items-center justify-center rounded-xl shadow-lg mb-md">
+<span class="material-symbols-outlined text-on-primary text-[28px]" data-icon="engineering">engineering</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight">Ecosys <span class="text-secondary">ServiceOps</span></h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">Enterprise Service Management Ecosystem</p>
+</div>
+<!-- Auth Card -->
+<div class="glass-panel border border-outline-variant shadow-xl rounded-xl p-xl overflow-hidden relative">
+<!-- Success Message Concept (Hidden by default, shown for demonstration logic) -->
+<div class="hidden mb-lg p-md bg-secondary-container/30 border border-secondary-fixed-dim rounded-lg flex items-start gap-sm" id="success-banner">
+<span class="material-symbols-outlined text-secondary mt-1" data-icon="check_circle">check_circle</span>
+<p class="font-body-sm text-on-secondary-container">
+                    If an account exists for this email, password reset instructions will be sent shortly.
+                </p>
+</div>
+<div class="mb-lg">
+<h2 class="font-title-sm text-title-sm text-on-surface">Forgot Password</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-xs leading-relaxed">
+                    Enter the email address associated with your ServiceOps account to receive a secure recovery link.
+                </p>
+</div>
+<form action="#" class="space-y-lg" method="POST">
+<div class="space-y-sm">
+<label class="font-label-caps text-label-caps text-on-surface-variant block uppercase tracking-wider" for="email">Email Address</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-md flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline group-focus-within:text-primary transition-colors" data-icon="mail">mail</span>
+</div>
+<input class="w-full pl-xl pr-md py-sm bg-surface-container-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary font-body-md text-on-surface transition-all placeholder:text-outline/50" id="email" name="email" placeholder="name@ecosys.com" required="" type="email"/>
+</div>
+</div>
+<button class="w-full bg-secondary-fixed text-on-secondary-fixed hover:brightness-105 active:scale-98 transition-all font-title-sm text-title-sm py-sm rounded-lg shadow-md flex items-center justify-center gap-sm" type="submit">
+<span>Send Reset Instructions</span>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<div class="pt-sm border-t border-outline-variant/30 text-center">
+<a class="inline-flex items-center gap-xs font-body-sm text-primary hover:text-on-primary-fixed-variant transition-colors group" href="/login">
+<span class="material-symbols-outlined text-[18px] group-hover:-translate-x-1 transition-transform" data-icon="chevron_left">chevron_left</span>
+<span>Back to Login</span>
+</a>
+</div>
+</form>
+</div>
+<!-- Footer Visual Hint -->
+<div class="mt-xl text-center">
+<p class="font-label-caps text-label-caps text-outline uppercase tracking-[0.1em]">Secure Infrastructure Access</p>
+<div class="flex justify-center gap-md mt-sm">
+<div class="flex items-center gap-xs opacity-60">
+<span class="material-symbols-outlined text-[16px]" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+<span class="text-[10px] font-medium uppercase tracking-tighter">256-bit AES</span>
+</div>
+<div class="flex items-center gap-xs opacity-60">
+<span class="material-symbols-outlined text-[16px]" data-icon="shield_person" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+<span class="text-[10px] font-medium uppercase tracking-tighter">Verified SSO</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Visual Element: Abstract Industrial Growth Image -->
+<div class="fixed bottom-0 right-0 w-[400px] h-[400px] opacity-10 pointer-events-none select-none">
+<img alt="ServiceOps Visual" class="w-full h-full object-cover rounded-tl-[100px]" data-alt="A highly detailed macro photography shot of an intricate green circuit board with glowing light trails representing data flow and ecological energy. The lighting is soft and clinical, reflecting a modern laboratory or high-tech workspace. The color palette consists of deep forest greens, vibrant lime accents, and cool teals, perfectly aligning with a sustainable technology aesthetic. The atmosphere is professional and sophisticated." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDf_kArk0-30kYaOAgLqeW3KzJI0WBov2bpUuBSBxzVK1dkyjUTdQrEvlD3KoNOFs9NMeRMNt-CwNP4QquYl9yxq3pIlzWWuM_Gc59XDjacfVdqNklJ8hK6L0i6apzCibEUnGCZUEH3XThTXn3VnpPq3b4L8wUkH5AXLW4jLbH3IzUD0nJZQArD1U4Lf_G-ZgK5H1_7c9CEdgOp97JqGewhKQ7308yfs5ubHApP8j7K5lqlVAJGFxI6ebFyco-Zdc-vPpwfK1_jZlew"/>
+</div>
+<!-- Sticky Footer (as per Shared Components guidance but modified for transactional page context) -->
+<footer class="fixed bottom-0 left-0 right-0 px-lg py-md flex justify-between items-center bg-surface-container-highest/50 backdrop-blur-md border-t border-outline-variant/20">
+<div class="font-label-caps text-label-caps text-on-surface-variant">
+            © 2024 Ecosys ServiceOps
+        </div>
+<div class="flex gap-lg">
+<a class="font-label-caps text-label-caps text-outline hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-caps text-label-caps text-outline hover:text-primary transition-colors" href="#">Contact Support</a>
+</div>
+</footer>
+</body></html>

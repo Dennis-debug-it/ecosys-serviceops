@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Branding &amp; Identity - ServiceOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .preview-glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                "on-secondary-container": "#616a00",
+                "on-primary-fixed-variant": "#065043",
+                "primary-fixed": "#afefdd",
+                "outline": "#707975",
+                "on-tertiary-fixed-variant": "#544600",
+                "tertiary": "#705d00",
+                "secondary-fixed-dim": "#c1d02c",
+                "error": "#ba1a1a",
+                "on-secondary-fixed-variant": "#444b00",
+                "on-tertiary-container": "#4b3e00",
+                "tertiary-container": "#c8a900",
+                "on-tertiary-fixed": "#221b00",
+                "background": "#f8faf7",
+                "surface-container-lowest": "#ffffff",
+                "surface-container-high": "#e7e9e6",
+                "outline-variant": "#bfc9c4",
+                "surface": "#f8faf7",
+                "surface-container": "#eceeec",
+                "on-primary-fixed": "#00201a",
+                "surface-dim": "#d8dbd8",
+                "on-error-container": "#93000a",
+                "on-primary-container": "#7ebdac",
+                "tertiary-fixed-dim": "#e9c400",
+                "inverse-primary": "#94d3c1",
+                "on-tertiary": "#ffffff",
+                "on-surface-variant": "#3f4945",
+                "secondary-fixed": "#dded49",
+                "on-secondary-fixed": "#1a1d00",
+                "surface-bright": "#f8faf7",
+                "surface-tint": "#29695b",
+                "primary-fixed-dim": "#94d3c1",
+                "on-error": "#ffffff",
+                "inverse-surface": "#2e3130",
+                "on-primary": "#ffffff",
+                "error-container": "#ffdad6",
+                "on-background": "#191c1b",
+                "tertiary-fixed": "#ffe16d",
+                "secondary": "#5b6300",
+                "on-secondary": "#ffffff",
+                "surface-container-low": "#f2f4f1",
+                "secondary-container": "#dded49"
+              },
+              "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+              },
+              "spacing": {
+                "xl": "40px",
+                "lg": "24px",
+                "xs": "4px",
+                "sm": "8px",
+                "gutter": "20px",
+                "base": "4px",
+                "container-max": "1440px",
+                "md": "16px"
+              },
+              "fontFamily": {
+                "title-sm": ["Inter"],
+                "label-caps": ["Inter"],
+                "display-lg": ["Manrope"],
+                "body-sm": ["Inter"],
+                "body-md": ["Inter"],
+                "headline-md": ["Manrope"],
+                "data-mono": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-background font-body-md text-on-surface selection:bg-secondary-container">
+<!-- SideNavBar -->
+<aside class="docked h-screen left-0 w-64 fixed bg-primary dark:bg-primary-container shadow-xl flex flex-col py-lg px-md z-50">
+<div class="mb-xl px-sm flex items-center gap-sm">
+<div class="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-on-primary dark:text-on-primary-fixed">Ecosys</h1>
+<p class="text-label-caps text-on-primary/60">ServiceOps</p>
+</div>
+</div>
+<nav class="flex-1 space-y-sm">
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary transition-colors hover:bg-primary-container/50 dark:hover:bg-primary/50 group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard_customize">dashboard_customize</span>
+<span class="font-body-md">Operations</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary transition-colors hover:bg-primary-container/50 dark:hover:bg-primary/50 group" href="#">
+<span class="material-symbols-outlined" data-icon="engineering">engineering</span>
+<span class="font-body-md">Field Service</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary transition-colors hover:bg-primary-container/50 dark:hover:bg-primary/50 group" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-body-md">Assets</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-lg border-t border-on-primary/10 px-sm">
+<button class="w-full flex items-center justify-center gap-sm bg-primary-container text-on-primary-container py-sm rounded-lg font-bold hover:brightness-110 transition-all">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+                Support
+            </button>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky bg-surface dark:bg-surface-dim border-b border-outline-variant shadow-sm flex justify-between items-center w-full px-lg py-sm z-40">
+<div class="flex items-center gap-lg">
+<h2 class="text-title-sm font-headline-md text-on-surface dark:text-inverse-on-surface">ServiceOps</h2>
+<div class="h-6 w-[1px] bg-outline-variant"></div>
+<nav class="flex items-center gap-md">
+<a class="text-on-surface-variant font-body-md hover:text-primary transition-colors" href="#">General</a>
+<a class="text-primary font-bold border-b-2 border-primary font-body-md py-xs" href="#">Branding</a>
+<a class="text-on-surface-variant font-body-md hover:text-primary transition-colors" href="#">Email &amp; Notifications</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors" data-icon="help_outline">help_outline</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Avatar" data-alt="A professional headshot of a corporate manager in a high-tech office setting. The person is smiling warmly, dressed in a crisp dark blazer. The background features blurred architectural glass and greenery, maintaining a soft, bright, and professional light-mode aesthetic with teal and lime undertones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVD4X9LjCG_rzK_6Hb-2X_3QccoyYlZpKmcfHAoXV8GC2i6NHT1EbrkXeINkH9KQk_eM82n2bN4qinVml2phQu9uXeg3vYGmi0dfhufge5AzDBec5lmMP8IA8XzdYJ9TUYv1bVvXLac2Isd0GT-yk-UmP4dsxgBozcN96w-lktNtQjjB3N64Vi6vZKv9RdTOy90kvFJ62kYdrWj3PGVNaLAncfAG2oq1F9jRBxFmAmjbUE1Pq_tGPOxOFWmK7jwQ3A1Bjr1G5pqVrY"/>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<div class="max-w-6xl mx-auto px-lg py-xl">
+<div class="mb-xl">
+<h1 class="text-display-lg font-display-lg text-primary mb-sm">Branding &amp; Identity</h1>
+<p class="text-body-md text-on-surface-variant">Manage platform-wide visual identity and white-labeling preferences.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-xl">
+<!-- Settings Column -->
+<div class="lg:col-span-7 space-y-lg">
+<!-- Visual Assets Card -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-lg shadow-[0_1px_3px_rgba(0,0,0,0.02),0_8px_24px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-sm mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="image">image</span>
+<h3 class="text-title-sm font-headline-md">Visual Assets</h3>
+</div>
+<div class="space-y-lg">
+<div>
+<label class="block text-label-caps text-on-surface-variant mb-sm uppercase tracking-wider">Company Logo</label>
+<div class="flex items-start gap-lg">
+<div class="w-32 h-32 rounded-xl border-2 border-dashed border-outline-variant/60 flex flex-col items-center justify-center gap-xs hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer bg-surface-container-low group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="cloud_upload">cloud_upload</span>
+<div class="text-center">
+<span class="block text-label-caps text-outline group-hover:text-primary transition-colors">Upload SVG</span>
+<span class="text-[9px] text-outline/60 font-medium uppercase tracking-tighter">or drag &amp; drop</span>
+</div>
+</div>
+<div class="flex-1 text-body-sm text-on-surface-variant leading-relaxed">
+<p class="font-bold text-on-surface mb-xs">Recommended dimensions: 512x128px</p>
+<p>Accepted formats: SVG (preferred), transparent PNG, or WebP. File size must not exceed 2MB. Use a logo with high contrast for optimal visibility in the navigation sidebar.</p>
+</div>
+</div>
+</div>
+<div class="h-[1px] bg-outline-variant/30"></div>
+<div>
+<label class="block text-label-caps text-on-surface-variant mb-sm uppercase tracking-wider">Favicon</label>
+<div class="flex items-center gap-lg">
+<div class="w-12 h-12 rounded bg-surface-container-high border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant" data-icon="tab">tab</span>
+</div>
+<button class="text-primary font-bold text-body-sm hover:underline">Change icon</button>
+<span class="text-body-sm text-outline">ICO or PNG, 32x32px</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Brand Colors Card -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-lg shadow-[0_1px_3px_rgba(0,0,0,0.02),0_8px_24px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-sm mb-lg">
+<span class="material-symbols-outlined text-primary" data-icon="palette">palette</span>
+<h3 class="text-title-sm font-headline-md">Brand Colors</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="space-y-md">
+<label class="block text-label-caps text-on-surface-variant mb-sm uppercase tracking-wider">Primary Brand Color</label>
+<div class="flex items-center gap-md p-sm border border-outline-variant rounded-lg bg-surface">
+<div class="w-10 h-10 rounded-full bg-primary shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] border border-black/5"></div>
+<input class="bg-transparent border-none focus:ring-0 font-data-mono text-on-surface flex-1" type="text" value="#00342B"/>
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="colorize">colorize</button>
+</div>
+<p class="text-body-sm text-outline">Used for main navigation, primary actions, and brand anchors.</p>
+</div>
+<div class="space-y-md">
+<label class="block text-label-caps text-on-surface-variant mb-sm uppercase tracking-wider">Accent Accent Color</label>
+<div class="flex items-center gap-md p-sm border border-outline-variant rounded-lg bg-surface">
+<div class="w-10 h-10 rounded-full bg-secondary shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] border border-black/5"></div>
+<input class="bg-transparent border-none focus:ring-0 font-data-mono text-on-surface flex-1" type="text" value="#CDDC39"/>
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="colorize">colorize</button>
+</div>
+<p class="text-body-sm text-outline">Used for highlights, focus states, and success indicators.</p>
+</div>
+</div>
+</section>
+<!-- White Labeling Toggle -->
+<section class="bg-primary/5 border border-primary/20 rounded-xl p-lg flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.02),0_8px_24px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div>
+<h3 class="font-headline-md text-title-sm text-primary">Powered by Ecosys</h3>
+<p class="text-body-sm text-on-surface-variant">Display Ecosys branding in the footer and login screen.</p>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</section>
+</div>
+<!-- Preview Column -->
+<div class="lg:col-span-5">
+<div class="sticky top-28 space-y-lg">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="text-label-caps text-on-surface-variant uppercase tracking-wider">Live Preview</h3>
+<span class="text-body-sm text-primary font-bold">Refresh Preview</span>
+</div>
+<!-- Sample Dashboard Mockup -->
+<div class="rounded-xl border border-outline-variant shadow-lg overflow-hidden flex flex-col bg-surface-container-high">
+<div class="h-8 bg-surface-container-high border-b border-outline-variant px-md flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+<div class="aspect-[4/3] flex flex-col">
+<div class="h-10 bg-white border-b border-outline-variant px-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-4 h-4 rounded-sm bg-primary"></div>
+<div class="w-16 h-2 bg-surface-container-highest rounded-full"></div>
+</div>
+<div class="flex gap-sm">
+<div class="w-4 h-4 rounded-full bg-surface-container-highest"></div>
+<div class="w-4 h-4 rounded-full bg-surface-container-highest"></div>
+</div>
+</div>
+<div class="flex-1 p-md flex gap-md bg-surface-container-low">
+<div class="w-16 flex flex-col gap-sm">
+<div class="h-4 bg-secondary rounded"></div>
+<div class="h-4 bg-surface-container-highest rounded opacity-50"></div>
+<div class="h-4 bg-surface-container-highest rounded opacity-50"></div>
+</div>
+<div class="flex-1 space-y-md">
+<div class="h-24 bg-white rounded-lg border border-outline-variant p-sm space-y-sm">
+<div class="w-1/2 h-3 bg-surface-container-high rounded"></div>
+<div class="grid grid-cols-2 gap-sm">
+<div class="h-12 bg-surface-container-low rounded"></div>
+<div class="h-12 bg-surface-container-low rounded"></div>
+</div>
+</div>
+<div class="h-8 w-24 bg-secondary rounded-lg ml-auto"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sample Login Card Mockup -->
+<div class="rounded-xl border border-outline-variant shadow-lg overflow-hidden flex flex-col bg-surface-container-high">
+<div class="h-8 bg-surface-container-high border-b border-outline-variant px-md flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+<div class="relative aspect-video">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="A minimalist, high-end modern corporate office lobby at dawn with soft natural lighting streaming through floor-to-ceiling windows. The scene is quiet and sophisticated, with clean architectural lines and a professional atmosphere in a light-mode teal and lime color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_V66Wdw76NU5oObOh0O8lP2zHH2bSbVPfMFdheYyE7G32XEc2W8McbGfnE4Oc7rsqqNAJVNreK8Q10vQa05bV2GWmh1bHsLLPii3yFmDuyoR1EnEw1bhigoU70acSfI57j4n60-qqAFKFAbYqW95SuXwbHTaCQSQ-n0lPIusNQVHis9AjhQPrACX-jKpARg2pwd94gVEJBr57z1M64POZ1fQEF3ZY0CI0tPuU-zfUAHCRlIQSnbi5zcCrftKjwb-jXok94N1E42zW"/>
+<div class="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
+<div class="bg-white/90 backdrop-blur-md p-lg rounded-xl w-64 shadow-2xl space-y-md">
+<div class="flex justify-center mb-sm">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px]" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+</div>
+<div class="space-y-sm">
+<div class="h-8 bg-surface-container rounded border border-outline-variant"></div>
+<div class="h-8 bg-surface-container rounded border border-outline-variant"></div>
+</div>
+<div class="h-10 bg-secondary rounded-lg flex items-center justify-center">
+<span class="text-on-secondary font-bold text-body-sm">Sign In</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Action Footer -->
+<footer class="fixed bottom-0 right-0 w-[calc(100%-16rem)] z-50 border-t border-outline-variant bg-surface-container-highest/80 backdrop-blur-md shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+<div class="flex justify-end items-center px-lg py-md gap-md">
+<button class="text-outline hover:text-on-surface font-label-caps uppercase active:scale-95 transition-transform duration-150">Cancel</button>
+<button class="bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold hover:brightness-110 active:scale-95 transition-all duration-150 shadow-md">
+                Save Changes
+            </button>
+</div>
+</footer>
+</body></html>

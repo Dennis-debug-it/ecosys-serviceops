@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clients | Ecosys ServiceOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#705d00",
+                        "on-tertiary-fixed-variant": "#544600",
+                        "tertiary-container": "#c8a900",
+                        "surface-container": "#eceeec",
+                        "surface": "#f8faf7",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#afefdd",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#7ebdac",
+                        "error-container": "#ffdad6",
+                        "background": "#f8faf7",
+                        "surface-container-highest": "#e1e3e0",
+                        "on-secondary-container": "#616a00",
+                        "on-surface-variant": "#3f4945",
+                        "primary-fixed-dim": "#94d3c1",
+                        "on-tertiary-container": "#4b3e00",
+                        "surface-variant": "#e1e3e0",
+                        "surface-dim": "#d8dbd8",
+                        "secondary-fixed": "#dded49",
+                        "on-primary-fixed": "#00201a",
+                        "surface-tint": "#29695b",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#c1d02c",
+                        "primary-container": "#004d40",
+                        "primary": "#00342b",
+                        "tertiary-fixed-dim": "#e9c400",
+                        "on-tertiary-fixed": "#221b00",
+                        "inverse-surface": "#2e3130",
+                        "outline": "#707975",
+                        "on-primary-fixed-variant": "#065043",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f1",
+                        "surface-container-high": "#e7e9e6",
+                        "on-secondary-fixed-variant": "#444b00",
+                        "outline-variant": "#bfc9c4",
+                        "on-surface": "#191c1b",
+                        "secondary-container": "#dded49",
+                        "on-background": "#191c1b",
+                        "on-secondary-fixed": "#1a1d00",
+                        "inverse-primary": "#94d3c1",
+                        "surface-bright": "#f8faf7",
+                        "secondary": "#5b6300",
+                        "inverse-on-surface": "#eff1ef",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#ffe16d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "container-max": "1440px",
+                        "base": "4px",
+                        "gutter": "20px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "display-lg": ["Manrope"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-background min-h-screen">
+<!-- SideNavBar -->
+<aside class="docked h-screen left-0 w-64 fixed z-50 bg-primary dark:bg-primary-container shadow-xl flex flex-col h-full py-lg px-md">
+<div class="mb-xl px-sm">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[24px]" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-on-primary dark:text-on-primary-fixed leading-none">Ecosys</h1>
+<p class="text-label-caps text-on-primary/60 uppercase tracking-widest mt-1">ServiceOps</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary transition-colors hover:bg-primary-container/50 dark:hover:bg-primary/50 rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard_customize">dashboard_customize</span>
+<span class="font-body-md">Operations</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="engineering">engineering</span>
+<span class="font-body-md">Field Service</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary transition-colors hover:bg-primary-container/50 dark:hover:bg-primary/50 rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-body-md">Assets</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary transition-colors hover:bg-primary-container/50 dark:hover:bg-primary/50 rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-lg border-t border-on-primary/10">
+<button class="w-full flex items-center justify-center gap-sm bg-secondary text-on-secondary py-sm rounded-lg font-bold hover:brightness-110 transition-all active:scale-95">
+<span class="material-symbols-outlined text-[18px]">contact_support</span>
+<span>Support</span>
+</button>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="ml-64 max-w-[calc(100%-16rem)] flex justify-between items-center w-full px-lg py-sm docked full-width top-0 sticky z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant shadow-sm backdrop-blur-md">
+<div class="flex items-center gap-lg flex-1">
+<div class="relative max-w-md w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full pl-10 py-2 text-body-sm focus:ring-2 focus:ring-primary/20" placeholder="Search clients, sites, or orders..." type="text"/>
+</div>
+<nav class="hidden md:flex items-center gap-lg">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md" href="#">Settings</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md" href="#">Email &amp; Notifications</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-sm cursor-pointer group">
+<div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden border border-outline-variant">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a senior operations manager in a high-tech corporate setting. The individual is wearing a dark charcoal blazer and has a confident, approachable expression. Background is a softly blurred modern office with lime green and deep teal accents, reflecting the brand's stability and eco-efficiency." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcGFN_R28Vq2WivyIiuF3pcli2IRA1HhRIm2szgBOtaFl68XQwgljbHwvGQAKCB9m3kdwNad5bTOZRBu8mpQdgDMuHC9CBfEOprMiPqgQEP_MtdbwffQkucI71Zicl5FS124-kBE8Ag78DI91AL1Ww3DrTNgBH-Ao0kSois8ZNpl1a1su5MHFqKM5USNtZh-7QFPDr6rYF8QfT5FaxXOyFz5X0PJfD3ZiAh36VQn8oidKi0EhOsbq93DxrRVOoxfcXDqRkKWI7h5c_"/>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">expand_more</span>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 p-lg pb-32">
+<!-- Header Actions -->
+<div class="flex justify-between items-end mb-lg">
+<div>
+<nav class="flex items-center gap-xs text-label-caps text-outline mb-2">
+<span>FIELD SERVICE</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-bold">CLIENTS</span>
+</nav>
+<h2 class="font-headline-md text-headline-md text-on-surface">Client Directory</h2>
+<p class="text-body-sm text-on-surface-variant">Manage commercial and residential service accounts</p>
+</div>
+<div class="flex gap-md">
+<button class="flex items-center gap-sm px-lg py-sm border border-outline text-primary rounded-lg font-bold hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">filter_list</span>
+<span>Filters</span>
+</button>
+<button class="flex items-center gap-sm px-lg py-sm bg-secondary text-on-secondary rounded-lg font-bold hover:brightness-110 shadow-sm transition-all">
+<span class="material-symbols-outlined">person_add</span>
+<span>Create Client</span>
+</button>
+</div>
+</div>
+<!-- Table Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-lg py-md font-label-caps text-outline">CLIENT NAME</th>
+<th class="px-lg py-md font-label-caps text-outline">STATUS</th>
+<th class="px-lg py-md font-label-caps text-outline">TYPE</th>
+<th class="px-lg py-md font-label-caps text-outline">CONTACT PERSON</th>
+<th class="px-lg py-md font-label-caps text-outline">PHONE / EMAIL</th>
+<th class="px-lg py-md font-label-caps text-outline text-right">SITES / ASSETS</th>
+<th class="px-lg py-md font-label-caps text-outline text-right">OPEN ORDERS</th>
+<th class="px-lg py-md w-12"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-primary font-bold">NV</div>
+<div class="font-title-sm text-body-md font-bold text-on-surface">NexGen Ventures</div>
+</div>
+</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-primary-fixed-dim/20 text-on-primary-fixed-variant rounded-full text-label-caps font-bold">ACTIVE</span>
+</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">business</span>
+                                    Commercial
+                                </div>
+</td>
+<td class="px-lg py-md text-body-md font-semibold text-on-surface">Sarah Jenkins</td>
+<td class="px-lg py-md">
+<div class="text-body-sm text-on-surface-variant">+1 (555) 012-3456</div>
+<div class="text-body-sm text-primary/70">s.jenkins@nexgen.com</div>
+</td>
+<td class="px-lg py-md text-right">
+<div class="font-data-mono text-body-sm text-on-surface">12 / 84</div>
+</td>
+<td class="px-lg py-md text-right">
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold text-label-caps">05</span>
+</td>
+<td class="px-lg py-md">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-primary font-bold">EH</div>
+<div class="font-title-sm text-body-md font-bold text-on-surface">Evergreen Heights</div>
+</div>
+</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-primary-fixed-dim/20 text-on-primary-fixed-variant rounded-full text-label-caps font-bold">ACTIVE</span>
+</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">home</span>
+                                    Residential
+                                </div>
+</td>
+<td class="px-lg py-md text-body-md font-semibold text-on-surface">Marcus Thorne</td>
+<td class="px-lg py-md">
+<div class="text-body-sm text-on-surface-variant">+1 (555) 987-6543</div>
+<div class="text-body-sm text-primary/70">m.thorne@eheights.org</div>
+</td>
+<td class="px-lg py-md text-right">
+<div class="font-data-mono text-body-sm text-on-surface">04 / 16</div>
+</td>
+<td class="px-lg py-md text-right">
+<span class="bg-surface-container-highest text-on-surface-variant px-2 py-0.5 rounded font-bold text-label-caps">00</span>
+</td>
+<td class="px-lg py-md">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 (Inactive Example) -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-lg py-md opacity-60">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-outline font-bold">BL</div>
+<div class="font-title-sm text-body-md font-bold text-on-surface">Blue Line Logistics</div>
+</div>
+</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-surface-container-highest text-outline rounded-full text-label-caps font-bold">INACTIVE</span>
+</td>
+<td class="px-lg py-md">
+<div class="flex items-center gap-xs text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">local_shipping</span>
+                                    Commercial
+                                </div>
+</td>
+<td class="px-lg py-md text-body-md font-semibold text-on-surface opacity-60">Linda Park</td>
+<td class="px-lg py-md opacity-60">
+<div class="text-body-sm text-on-surface-variant">+1 (555) 222-3333</div>
+<div class="text-body-sm text-primary/70">linda@blueline.com</div>
+</td>
+<td class="px-lg py-md text-right opacity-60">
+<div class="font-data-mono text-body-sm text-on-surface">01 / 02</div>
+</td>
+<td class="px-lg py-md text-right">
+<span class="bg-surface-container-highest text-on-surface-variant px-2 py-0.5 rounded font-bold text-label-caps">00</span>
+</td>
+<td class="px-lg py-md">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="bg-surface-container-low px-lg py-md flex justify-between items-center">
+<p class="text-body-sm text-on-surface-variant">Showing 1-10 of 24 clients</p>
+<div class="flex gap-xs">
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+<button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-on-primary text-body-sm font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-surface-container-high transition-colors text-body-sm">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-surface-container-high transition-colors text-body-sm">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+</div>
+</div>
+</div>
+</main>
+<!-- Create Client Drawer Overlay -->
+<div class="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-[60] flex justify-end">
+<div class="w-full max-w-xl bg-surface h-full shadow-2xl flex flex-col relative animate-in slide-in-from-right duration-300">
+<div class="px-lg py-lg border-b border-outline-variant flex justify-between items-center bg-surface">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Create New Client</h3>
+<p class="text-body-sm text-on-surface-variant">Register a new commercial or residential entity</p>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-lg space-y-lg hide-scrollbar">
+<!-- Section 1: Basic Info -->
+<div class="space-y-md">
+<h4 class="font-label-caps text-primary border-l-4 border-secondary pl-2 uppercase tracking-widest">Client Identity</h4>
+<div class="grid grid-cols-2 gap-md">
+<div class="col-span-2 space-y-1">
+<label class="text-label-caps text-on-surface-variant">ENTITY NAME *</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" placeholder="e.g. Acme Corp Industries" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">ACCOUNT TYPE</label>
+<select class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low">
+<option>Commercial</option>
+<option>Residential</option>
+<option>Government</option>
+</select>
+</div>
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">INDUSTRY</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" placeholder="e.g. Technology" type="text"/>
+</div>
+</div>
+</div>
+<!-- Section 2: Contact Info -->
+<div class="space-y-md">
+<h4 class="font-label-caps text-primary border-l-4 border-secondary pl-2 uppercase tracking-widest">Primary Contact</h4>
+<div class="grid grid-cols-2 gap-md">
+<div class="col-span-2 space-y-1">
+<label class="text-label-caps text-on-surface-variant">FULL NAME</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" placeholder="John Doe" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">EMAIL ADDRESS</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" placeholder="john@example.com" type="email"/>
+</div>
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">PHONE NUMBER</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" placeholder="+1 (555) 000-0000" type="tel"/>
+</div>
+</div>
+</div>
+<!-- Section 3: Billing Address -->
+<div class="space-y-md">
+<h4 class="font-label-caps text-primary border-l-4 border-secondary pl-2 uppercase tracking-widest">Billing Address</h4>
+<div class="space-y-md">
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">STREET ADDRESS</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" type="text"/>
+</div>
+<div class="grid grid-cols-3 gap-md">
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">CITY</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">STATE</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="text-label-caps text-on-surface-variant">ZIP</label>
+<input class="w-full border-outline-variant rounded-lg focus:ring-primary focus:border-primary bg-surface-container-low" type="text"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Footer for Drawer -->
+<footer class="p-lg bg-surface-container-highest/80 backdrop-blur-md border-t border-outline-variant flex justify-end gap-md">
+<button class="px-lg py-sm text-outline hover:text-on-surface font-bold font-label-caps active:scale-95 transition-all">CANCEL</button>
+<button class="bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold font-label-caps active:scale-95 transition-all shadow-md">SAVE CHANGES</button>
+</footer>
+</div>
+</div>
+<!-- Deactivate Warning Modal (Hidden state representation) -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-md bg-inverse-surface/60 hidden">
+<div class="max-w-md w-full bg-surface rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+<div class="p-lg text-center">
+<div class="w-16 h-16 bg-error-container text-on-error-container rounded-full flex items-center justify-center mx-auto mb-md">
+<span class="material-symbols-outlined text-[32px]">warning</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Deactivate Client?</h3>
+<p class="text-body-md text-on-surface-variant">
+                    You are about to deactivate <span class="font-bold">NexGen Ventures</span>. This will suspend all recurring service schedules and prevent new work orders from being created. 
+                </p>
+<div class="mt-lg p-md bg-surface-container-low rounded-lg border border-outline-variant text-left">
+<div class="flex items-center gap-sm text-error">
+<span class="material-symbols-outlined text-[20px]">info</span>
+<span class="text-body-sm font-bold">5 Open Work Orders will be paused.</span>
+</div>
+</div>
+</div>
+<div class="flex border-t border-outline-variant">
+<button class="flex-1 py-md font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors">Keep Active</button>
+<button class="flex-1 py-md font-bold text-on-error-container bg-error-container hover:brightness-95 transition-colors border-l border-outline-variant">Deactivate Now</button>
+</div>
+</div>
+</div>
+<!-- Global Footer (Predictive Component Mapping) -->
+<footer class="fixed bottom-0 right-0 w-[calc(100%-16rem)] z-40 flex justify-end items-center px-lg py-md gap-md bg-surface-container-highest/80 backdrop-blur-md border-t border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+<div class="flex-1 text-label-caps text-primary font-bold">© 2024 ECOSYS SERVICEOPS</div>
+<button class="text-outline hover:text-on-surface font-label-caps transition-all">Cancel</button>
+<button class="bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold font-label-caps active:scale-95 transition-all">Save Changes</button>
+</footer>
+</body></html>

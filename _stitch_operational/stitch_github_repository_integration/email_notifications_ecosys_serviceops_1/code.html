@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f2f4f1",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e1e3e0",
+                        "on-background": "#191c1b",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#705d00",
+                        "inverse-primary": "#94d3c1",
+                        "inverse-surface": "#2e3130",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#94d3c1",
+                        "on-secondary-fixed-variant": "#444b00",
+                        "surface-bright": "#f8faf7",
+                        "on-surface-variant": "#3f4945",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "background": "#f8faf7",
+                        "secondary": "#5b6300",
+                        "on-tertiary-container": "#4b3e00",
+                        "primary": "#00342b",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#7ebdac",
+                        "tertiary-container": "#c8a900",
+                        "primary-fixed": "#afefdd",
+                        "on-tertiary-fixed": "#221b00",
+                        "secondary-fixed": "#dded49",
+                        "on-tertiary-fixed-variant": "#544600",
+                        "secondary-container": "#dded49",
+                        "surface-dim": "#d8dbd8",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#616a00",
+                        "outline-variant": "#bfc9c4",
+                        "surface": "#f8faf7",
+                        "surface-container": "#eceeec",
+                        "tertiary-fixed": "#ffe16d",
+                        "on-primary-fixed": "#00201a",
+                        "on-secondary-fixed": "#1a1d00",
+                        "primary-container": "#004d40",
+                        "surface-container-high": "#e7e9e6",
+                        "on-primary-fixed-variant": "#065043",
+                        "surface-container-highest": "#e1e3e0",
+                        "secondary-fixed-dim": "#c1d02c",
+                        "on-surface": "#191c1b",
+                        "surface-tint": "#29695b",
+                        "outline": "#707975",
+                        "tertiary-fixed-dim": "#e9c400",
+                        "inverse-on-surface": "#eff1ef",
+                        "on-tertiary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "40px",
+                        "container-max": "1440px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "base": "4px",
+                        "lg": "24px",
+                        "gutter": "20px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Manrope"],
+                        "label-caps": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            @apply border-b-2 border-primary text-primary font-bold;
+        }
+        .glass-footer {
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md selection:bg-secondary-container">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed h-screen left-0 w-64 bg-primary dark:bg-primary-container shadow-xl flex flex-col py-lg px-md z-50">
+<div class="flex items-center gap-sm mb-xl">
+<div class="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-on-primary dark:text-on-primary-fixed leading-tight">Ecosys</h1>
+<p class="text-on-primary/60 text-xs tracking-widest uppercase">ServiceOps</p>
+</div>
+</div>
+<nav class="flex-grow space-y-1">
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard_customize</span>
+<span class="font-body-md">Operations</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">engineering</span>
+<span class="font-body-md">Field Service</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary/70 hover:text-on-primary hover:bg-primary-container/50 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-md">Assets</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-98 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-lg border-t border-on-primary/10">
+<button class="w-full flex items-center justify-center gap-sm py-sm rounded-lg bg-on-primary/10 text-on-primary hover:bg-on-primary/20 transition-all">
+<span class="material-symbols-outlined text-sm">support_agent</span>
+<span class="font-label-caps">Support</span>
+</button>
+</div>
+</aside>
+<!-- TopAppBar (Shared Component) -->
+<header class="fixed top-0 right-0 left-64 h-16 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center px-lg z-40 shadow-sm">
+<div class="flex items-center gap-xl">
+<h2 class="text-title-sm font-headline-md text-on-surface dark:text-inverse-on-surface">ServiceOps</h2>
+<nav class="flex items-center gap-lg">
+<a class="text-on-surface-variant font-body-md hover:text-primary transition-colors" href="#">Settings</a>
+<a class="text-primary font-bold border-b-2 border-primary py-4 transition-all" href="#">Email &amp; Notifications</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-sm"></div>
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a corporate manager in a clean, high-key office environment. The subject is wearing a tailored charcoal suit and has a confident, approachable expression. The background is a soft-focus modern office with glass partitions and subtle green plants, maintaining the brand's sophisticated teal and lime aesthetic. Lighting is bright and even, conveying trust and stability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZhep1ToJGlo2uWjypIEjgdgHTh-JA81d2nen9FrLDUgwsFScmLSuCwuv5LVzsOEVZEcKPWGkXArGUoOhZSum2ho5kB-SbtCUmH06WqGpgzLqV04R_baoO2le3R_7w1BfRI5vie-LXs3gicVqb7YEZQmyW_j7n_u5Ibjruw_oUE4Fi-bvKujB_GPx01A48qZoDhNQkT0-MQ-GdxWFV9R4tt3a6T6xZd0QPA39Rleo8vjoZqmXR9e26VxKOW2uqTwikdNrpurb1RyvS"/>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">keyboard_arrow_down</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-lg pb-32">
+<div class="max-w-container-max mx-auto">
+<!-- Page Header -->
+<div class="mb-lg">
+<h1 class="text-headline-md font-headline-md text-on-surface">Communications Control</h1>
+<p class="text-on-surface-variant font-body-md">Configure SMTP relay, automated notification rules, and custom email templates.</p>
+</div>
+<!-- Tabs Navigation -->
+<div class="flex border-b border-outline-variant mb-lg overflow-x-auto scrollbar-hide">
+<button class="px-lg py-sm font-bold text-primary border-b-2 border-primary flex items-center gap-sm transition-all">
+<span class="material-symbols-outlined text-sm">mail</span>
+                    SMTP Settings
+                </button>
+<button class="px-lg py-sm text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-sm">
+<span class="material-symbols-outlined text-sm">description</span>
+                    Templates
+                </button>
+<button class="px-lg py-sm text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-sm">
+<span class="material-symbols-outlined text-sm">rule</span>
+                    Rules
+                </button>
+<button class="px-lg py-sm text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-sm">
+<span class="material-symbols-outlined text-sm">receipt_long</span>
+                    Logs
+                </button>
+</div>
+<!-- Content Area: SMTP Settings (Active) -->
+<div class="grid grid-cols-12 gap-lg">
+<!-- Left Column: Primary Config -->
+<div class="col-span-12 lg:col-span-8 space-y-lg">
+<!-- SMTP Server Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant bg-surface-container-low/50">
+<h3 class="text-title-sm font-headline-md">SMTP Server Configuration</h3>
+</div>
+<div class="p-lg grid grid-cols-2 gap-lg">
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">SMTP Host</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary transition-all" type="text" value="smtp.ecosys-ops.com"/>
+</div>
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Port</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary transition-all" type="number" value="587"/>
+</div>
+<div class="col-span-2">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Security Protocol</label>
+<select class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary transition-all">
+<option>None</option>
+<option selected="">STARTTLS</option>
+<option>SSL/TLS</option>
+</select>
+</div>
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Username</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary transition-all" type="text" value="service_relay_01"/>
+</div>
+<div class="col-span-2 md:col-span-1 relative">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Password</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary transition-all" type="password" value="••••••••••••"/>
+<span class="absolute right-3 bottom-2 text-xs text-secondary italic font-medium">Saved</span>
+</div>
+</div>
+</div>
+<!-- Sender Info Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant bg-surface-container-low/50 flex justify-between items-center">
+<h3 class="text-title-sm font-headline-md">Sender Information</h3>
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded uppercase tracking-wider">Default Global</span>
+</div>
+<div class="p-lg grid grid-cols-2 gap-lg">
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Display Name</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary" type="text" value="Ecosys Service Alerts"/>
+</div>
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Sender Email</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary" type="email" value="noreply@ecosys.com"/>
+</div>
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Reply-to Address</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary" type="email" value="support@ecosys.com"/>
+</div>
+<div class="col-span-2 md:col-span-1">
+<label class="block text-label-caps text-on-surface-variant mb-xs">Subject Prefix</label>
+<input class="w-full bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary" type="text" value="[ECOSYS-OPS]"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Testing & Status -->
+<div class="col-span-12 lg:col-span-4 space-y-lg">
+<!-- Connection Status (Contextual Card) -->
+<div class="bg-primary text-on-primary rounded-xl p-lg shadow-lg relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-sm mb-md">
+<span class="w-3 h-3 bg-secondary rounded-full animate-pulse"></span>
+<span class="text-label-caps opacity-80">Connection Status</span>
+</div>
+<h4 class="text-headline-md font-bold mb-xs">Active &amp; Verified</h4>
+<p class="text-sm opacity-70 mb-lg">Last successful handshake was 14 minutes ago. Throughput: 124 emails/hour.</p>
+<button class="bg-secondary text-on-secondary px-md py-sm rounded-lg font-bold text-sm w-full hover:brightness-110 transition-all flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                Re-verify Connection
+                            </button>
+</div>
+</div>
+<!-- Test Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant bg-surface-container-low/50">
+<h3 class="text-title-sm font-headline-md">Diagnostic Test</h3>
+</div>
+<div class="p-lg">
+<p class="text-body-sm text-on-surface-variant mb-md">Send a test email to verify your SMTP and sender credentials are functioning correctly.</p>
+<label class="block text-label-caps text-on-surface-variant mb-xs">Recipient Email</label>
+<div class="flex gap-sm">
+<input class="flex-grow bg-surface border-outline-variant rounded-lg focus:ring-secondary focus:border-secondary" placeholder="dev-ops@company.com" type="email"/>
+<button class="bg-primary text-on-primary p-sm rounded-lg hover:brightness-125 transition-all">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+<p class="mt-md text-[11px] text-outline italic">Logs will be updated immediately upon sending.</p>
+</div>
+</div>
+<!-- Usage Stats (Asymmetric layout helper) -->
+<div class="bg-secondary-container/30 border border-secondary/20 rounded-xl p-lg">
+<h4 class="text-label-caps text-on-secondary-container mb-md">Monthly Quota</h4>
+<div class="w-full bg-outline-variant/30 h-2 rounded-full mb-sm">
+<div class="bg-secondary h-2 rounded-full w-3/4"></div>
+</div>
+<div class="flex justify-between text-xs font-bold text-on-secondary-container">
+<span>75,402 / 100,000</span>
+<span>75%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Table Section Placeholder for Other Tabs (Hidden for visual focus on SMTP) -->
+<div class="mt-xl opacity-20 pointer-events-none select-none">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm">
+<div class="px-lg py-md border-b border-outline-variant flex justify-between">
+<div class="w-32 h-4 bg-outline-variant rounded"></div>
+<div class="w-16 h-4 bg-outline-variant rounded"></div>
+</div>
+<div class="p-lg space-y-md">
+<div class="w-full h-8 bg-surface-container rounded"></div>
+<div class="w-full h-8 bg-surface-container rounded"></div>
+<div class="w-full h-8 bg-surface-container rounded"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer (Shared Component) -->
+<footer class="fixed bottom-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface-container-highest/80 glass-footer border-t border-outline-variant px-lg py-md flex justify-between items-center shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+<div class="flex items-center gap-sm">
+<span class="text-primary font-bold text-label-caps uppercase tracking-widest">© 2024 Ecosys ServiceOps</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="text-outline text-label-caps">v2.4.12-Stable</span>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-outline hover:text-on-surface font-label-caps transition-colors px-lg py-sm">Cancel</button>
+<button class="bg-secondary text-on-secondary px-lg py-sm rounded-lg font-bold flex items-center gap-sm hover:brightness-110 active:scale-95 transition-all shadow-md">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">save</span>
+                Save Changes
+            </button>
+</div>
+</footer>
+</body></html>

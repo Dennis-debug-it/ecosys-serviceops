@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ecosys ServiceOps - Mobile Work Orders</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#705d00",
+                    "on-tertiary-fixed-variant": "#544600",
+                    "tertiary-container": "#c8a900",
+                    "surface-container": "#eceeec",
+                    "surface": "#f8faf7",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#afefdd",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-container": "#7ebdac",
+                    "error-container": "#ffdad6",
+                    "background": "#f8faf7",
+                    "surface-container-highest": "#e1e3e0",
+                    "on-secondary-container": "#616a00",
+                    "on-surface-variant": "#3f4945",
+                    "primary-fixed-dim": "#94d3c1",
+                    "on-tertiary-container": "#4b3e00",
+                    "surface-variant": "#e1e3e0",
+                    "surface-dim": "#d8dbd8",
+                    "secondary-fixed": "#dded49",
+                    "on-primary-fixed": "#00201a",
+                    "surface-tint": "#29695b",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#c1d02c",
+                    "primary-container": "#004d40",
+                    "primary": "#00342b",
+                    "tertiary-fixed-dim": "#e9c400",
+                    "on-tertiary-fixed": "#221b00",
+                    "inverse-surface": "#2e3130",
+                    "outline": "#707975",
+                    "on-primary-fixed-variant": "#065043",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f2f4f1",
+                    "surface-container-high": "#e7e9e6",
+                    "on-secondary-fixed-variant": "#444b00",
+                    "outline-variant": "#bfc9c4",
+                    "on-surface": "#191c1b",
+                    "secondary-container": "#dded49",
+                    "on-background": "#191c1b",
+                    "on-secondary-fixed": "#1a1d00",
+                    "inverse-primary": "#94d3c1",
+                    "surface-bright": "#f8faf7",
+                    "secondary": "#5b6300",
+                    "inverse-on-surface": "#eff1ef",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#ffe16d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "xl": "40px",
+                    "xs": "4px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "container-max": "1440px",
+                    "base": "4px",
+                    "gutter": "20px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "title-sm": ["Inter"],
+                    "display-lg": ["Manrope"],
+                    "data-mono": ["JetBrains Mono"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-x-hidden">
+<!-- Mobile Top Bar (Collapsed Shell State) -->
+<header class="bg-surface sticky top-0 z-30 flex justify-between items-center w-full px-md py-sm border-b border-outline-variant shadow-sm">
+<div class="flex items-center gap-sm">
+<button class="p-xs text-primary hover:bg-primary/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="flex flex-col">
+<span class="text-title-sm font-headline-md font-bold text-on-surface">ServiceOps</span>
+<span class="text-[10px] uppercase tracking-wider text-primary font-bold">Field Service</span>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<img alt="User Avatar" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a service manager in a bright, modern office setting. The lighting is soft and natural, emphasizing a trust-focused and efficient atmosphere. The color palette features muted teals and soft greys, aligned with a high-end enterprise design system. The background is slightly blurred to maintain focus on the individual's friendly and capable expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDhoP4FOoXbBTiKwoFR94LH0OLTooeNwXrGnaGemAgynNdTgQGQAKhcx6KGmzCrwMtnWq0gpAV_TOHyDoZ2KA_n8UwYFBjjwrjWVkLYZDN0FIaqjwGtRwp8QtdAZNrmk9gA5Y4xH1nQMrxbrAC_JMX5rcOU1gUl2OZHnK-3uYDXLsh71JlBhsO3Md7lESU0vDVg499DwsVFUYWbg0S5p3CSxdtevWXJcCDzC2_xdCXyp7XarGz4p8EplOgCc3uxeI5Jimcb3ckSF0R"/>
+</div>
+</header>
+<main class="p-md pb-32 space-y-lg max-w-md mx-auto">
+<!-- Summary Cards Stack (Bento-style layout for mobile) -->
+<section class="grid grid-cols-2 gap-sm">
+<div class="col-span-2 bg-primary p-lg rounded-xl shadow-lg relative overflow-hidden">
+<div class="relative z-10 flex flex-col">
+<span class="text-on-primary/70 font-label-caps uppercase">Active Work Orders</span>
+<span class="text-display-lg font-display-lg text-on-primary">14</span>
+<div class="mt-sm flex items-center gap-xs text-secondary-fixed font-bold text-body-sm">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span>+12% vs last week</span>
+</div>
+</div>
+<!-- Abstract branding element -->
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-secondary/20 rounded-full blur-2xl"></div>
+</div>
+<div class="bg-surface-container-high p-md rounded-xl border border-outline-variant">
+<span class="text-on-surface-variant font-label-caps uppercase">High Priority</span>
+<div class="flex items-end justify-between mt-xs">
+<span class="text-headline-md font-headline-md text-on-surface">04</span>
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">priority_high</span>
+</div>
+</div>
+<div class="bg-surface-container-high p-md rounded-xl border border-outline-variant">
+<span class="text-on-surface-variant font-label-caps uppercase">Due Today</span>
+<div class="flex items-end justify-between mt-xs">
+<span class="text-headline-md font-headline-md text-on-surface">06</span>
+<span class="material-symbols-outlined text-tertiary">schedule</span>
+</div>
+</div>
+</section>
+<!-- Search & Filter Area -->
+<div class="flex gap-sm">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-body-md">search</span>
+<input class="w-full bg-surface-container-lowest border-outline-variant rounded-lg pl-10 py-sm focus:ring-primary focus:border-primary text-body-sm" placeholder="Search work orders..." type="text"/>
+</div>
+<button class="p-sm bg-surface-container-high border border-outline-variant rounded-lg text-on-surface">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+<!-- Work Order List -->
+<section class="space-y-md">
+<div class="flex justify-between items-center px-xs">
+<h2 class="font-headline-md text-title-sm text-on-surface">Operations List</h2>
+<button class="text-primary font-bold text-body-sm">View All</button>
+</div>
+<!-- Card 1: Urgent -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm hover:shadow-md transition-shadow active:scale-[0.98]">
+<div class="flex justify-between items-start mb-sm">
+<div class="flex flex-col">
+<span class="font-data-mono text-xs text-on-surface-variant">#WO-88291</span>
+<h3 class="font-headline-md text-body-md font-bold text-on-surface mt-1">HVAC Compressor Failure</h3>
+</div>
+<span class="px-sm py-[2px] bg-error-container text-on-error-container rounded-full text-[10px] font-bold uppercase tracking-tight">Urgent</span>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">business</span>
+<span class="text-body-sm">Green Horizon Tech Park</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">calendar_today</span>
+<span class="text-body-sm">Due: Oct 24, 2:00 PM</span>
+</div>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Tech" class="w-6 h-6 rounded-full border-2 border-surface" data-alt="Close up portrait of a skilled field technician wearing a safety helmet and reflective vest. The image has a cinematic quality with soft lens flare, suggesting an outdoor industrial setting. The color palette is composed of professional greys and vibrant safety yellows, consistent with a premium enterprise identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1Q-9rgi_JWZHgvuXEI_Q5SL2fn3wQJy-WzQrIq3-hJlFIPOG436vp2hRjYiowus9q-JVKkAU0BxRyGLButv4NDkWTfKsW-G7LJzZjSCDlZwB_bong8XnmCBOtpU4HZ4VfzLYnw7WCkBDAxI1kscwCi6qt64quvj7s01fIkDByI_YQAKNomerWCGnmOBz6pLONUKks6dDONlsA5oveC_PGAlDNl5sesNWZoJ0dFe3Fl3s5g-R6AzFEPshd_f4tQH8Gqh8yd3oaSA-f"/>
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center text-[10px] font-bold border-2 border-surface">+2</div>
+</div>
+<button class="text-secondary font-bold text-body-sm flex items-center gap-xs">
+                        Details <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Standard -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm hover:shadow-md transition-shadow active:scale-[0.98]">
+<div class="flex justify-between items-start mb-sm">
+<div class="flex flex-col">
+<span class="font-data-mono text-xs text-on-surface-variant">#WO-88295</span>
+<h3 class="font-headline-md text-body-md font-bold text-on-surface mt-1">Annual Solar Panel Cleaning</h3>
+</div>
+<span class="px-sm py-[2px] bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase tracking-tight">Routine</span>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">business</span>
+<span class="text-body-sm">EcoVantage Logistics Hub</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">calendar_today</span>
+<span class="text-body-sm">Due: Oct 26, 10:00 AM</span>
+</div>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Tech" class="w-6 h-6 rounded-full border-2 border-surface" data-alt="A portrait of a focused maintenance engineer looking directly at the camera with confidence. The background is a modern industrial facility with clean lines and high-tech equipment. The lighting is bright and professional, highlighting a deep teal and lime color scheme that represents sustainable growth and stability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtU2BpLCBNW6z4Bx5cpFOKkctZ4vhgemC6BhnOAYEce9_7pc-ySwZt7KTMIqH2qfvykzWG9ygla8TjkuD6EiqWWYbQCzZcwI1YkSafE1wueQbUwt7YGTj7O2gBw8apmWwwnhJ3wFUBW4s0tEowLpY6II6XbRkTMKudjPWrSK7UZhvlnWSXHraoWvMgO883fs7r7_YlSlgEQmzY6epnIv-k67dpdEUG-oDrjFxc_UDNof8khJtvlj-exs2xvU6hBrI4Zl_UHcMlcvM8"/>
+</div>
+<button class="text-secondary font-bold text-body-sm flex items-center gap-xs">
+                        Details <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Card 3: Pending -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm opacity-80 active:scale-[0.98]">
+<div class="flex justify-between items-start mb-sm">
+<div class="flex flex-col">
+<span class="font-data-mono text-xs text-on-surface-variant">#WO-88301</span>
+<h3 class="font-headline-md text-body-md font-bold text-on-surface mt-1">Water Filtration Audit</h3>
+</div>
+<span class="px-sm py-[2px] bg-surface-container-highest text-on-surface-variant rounded-full text-[10px] font-bold uppercase tracking-tight">Planning</span>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">business</span>
+<span class="text-body-sm">PureFlow Water Center</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-body-md">calendar_today</span>
+<span class="text-body-sm">Due: Nov 01, 09:00 AM</span>
+</div>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex justify-between items-center">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-outline text-[16px]">person_off</span>
+<span class="text-[10px] text-outline font-bold uppercase">Unassigned</span>
+</div>
+<button class="text-secondary font-bold text-body-sm flex items-center gap-xs">
+                        Details <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-md w-14 h-14 bg-secondary text-on-secondary rounded-2xl shadow-xl flex items-center justify-center active:scale-95 transition-transform z-40">
+<span class="material-symbols-outlined text-[32px]">add</span>
+</button>
+<!-- Sticky Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface-container-highest/80 backdrop-blur-md border-t border-outline-variant z-40">
+<div class="flex justify-around items-center px-md py-sm">
+<div class="flex flex-col items-center gap-xs px-md py-xs bg-secondary-container text-on-secondary-container rounded-lg font-bold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard_customize</span>
+<span class="text-label-caps">Operations</span>
+</div>
+<div class="flex flex-col items-center gap-xs px-md py-xs text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">engineering</span>
+<span class="text-label-caps">Field Service</span>
+</div>
+<div class="flex flex-col items-center gap-xs px-md py-xs text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="text-label-caps">Assets</span>
+</div>
+<div class="flex flex-col items-center gap-xs px-md py-xs text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-label-caps">Settings</span>
+</div>
+</div>
+</nav>
+</body></html>
