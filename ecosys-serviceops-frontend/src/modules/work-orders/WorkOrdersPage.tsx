@@ -8,16 +8,16 @@ import { ErrorState } from '../../components/ui/ErrorState'
 import { InfoAlert } from '../../components/ui/InfoAlert'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useToast } from '../../components/ui/ToastProvider'
+import { MetricCard, MetricGrid, PageScaffold, SearchToolbar, SectionCard, SegmentedTabs } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { assetService } from '../../services/assetService'
 import { clientService } from '../../services/clientService'
+import { pmTemplateService } from '../../services/pmTemplateService'
 import { settingsService } from '../../services/settingsService'
 import { technicianService } from '../../services/technicianService'
 import { userService } from '../../services/userService'
 import { workOrderService } from '../../services/workOrderService'
-import { pmTemplateService } from '../../services/pmTemplateService'
 import type { AssetRecord, AssignmentGroupRecord, ClientRecord, PmTemplateRecord, TechnicianRecord, UserRecord, WorkOrder } from '../../types/api'
 import { formatDateOnly } from '../../utils/date'
 import { priorityTone, statusTone } from '../../utils/format'
@@ -121,6 +121,13 @@ export function WorkOrdersPage() {
           .includes(search.toLowerCase()),
       )
   }, [assignmentGroupFilter, data.workOrders, priority, search, showUnassignedOnly, status, technicianFilter])
+  const statusTabs = [
+    { id: 'All', label: 'All queue', meta: data.workOrders.length },
+    { id: 'Open', label: 'Open', meta: data.workOrders.filter((item) => item.status === 'Open').length },
+    { id: 'In Progress', label: 'In progress', meta: data.workOrders.filter((item) => item.status === 'In Progress').length },
+    { id: 'Awaiting Parts', label: 'Awaiting parts', meta: data.workOrders.filter((item) => item.status === 'Awaiting Parts').length },
+    { id: 'Completed', label: 'Completed', meta: data.workOrders.filter((item) => item.status === 'Completed').length },
+  ] as const
   const hasWorkOrders = data.workOrders.length > 0
   const visibleAssets = data.assets.filter((asset) => !form.clientId || asset.clientId === form.clientId)
   const activePmTemplates = data.pmTemplates.filter((template) => template.isActive)
@@ -137,6 +144,14 @@ export function WorkOrdersPage() {
     .filter((user): user is UserRecord & { linkedTechnicianId: string } => Boolean(user?.linkedTechnicianId)) ?? []
   const visibleUsers = dispatchableUsers.filter((user) => user.fullName.toLowerCase().includes(technicianQuery.toLowerCase()))
   const visibleGroups = availableGroups.filter((group) => `${group.name} ${group.skillArea || ''}`.toLowerCase().includes(groupQuery.toLowerCase()))
+  const overdueCount = data.workOrders.filter((item) => {
+    if (!item.dueDate || stringEquals(item.status, 'Completed') || stringEquals(item.status, 'Closed') || stringEquals(item.status, 'Cancelled')) {
+      return false
+    }
+    return new Date(item.dueDate).getTime() < Date.now()
+  }).length
+  const unassignedCount = data.workOrders.filter((item) => item.isUnassigned).length
+  const pmCount = data.workOrders.filter((item) => item.isPreventiveMaintenance).length
 
   function openCreateModal() {
     const defaultClientId = data.clients[0]?.id ?? ''
@@ -219,145 +234,161 @@ export function WorkOrdersPage() {
       setForm(emptyForm())
       setEditorOpen(false)
       await reload()
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to create work order.')
+    } catch (nextError) {
+      setSaveError(nextError instanceof Error ? nextError.message : 'Unable to create work order.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        eyebrow="Operations"
-        title="Work orders"
-        description="Track live work orders, assignments, due dates, and field progress."
-        actions={
-          <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openCreateModal()}>
-            <Plus className="h-4 w-4" />
-            New work order
-          </button>
-        }
-      />
+    <PageScaffold
+      eyebrow="Operations"
+      title="Work orders"
+      description="Track dispatch, live field progress, due dates, and unassigned backlog from one operational queue."
+      actions={
+        <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openCreateModal()}>
+          <Plus className="h-4 w-4" />
+          New work order
+        </button>
+      }
+    >
+      <MetricGrid>
+        <MetricCard label="Total queue" value={data.workOrders.length} meta={`${filteredRows.length} in current view`} emphasis="accent" />
+        <MetricCard label="In progress" value={data.workOrders.filter((item) => item.status === 'In Progress').length} meta="Active field jobs" />
+        <MetricCard label="Overdue" value={overdueCount} meta="Past due and still open" emphasis={overdueCount > 0 ? 'danger' : 'default'} />
+        <MetricCard label="Unassigned / PM" value={`${unassignedCount} / ${pmCount}`} meta="Dispatch backlog and preventive work" emphasis={unassignedCount > 0 ? 'warning' : 'default'} />
+      </MetricGrid>
 
-      <section className="surface-card space-y-4">
-        <div className="grid gap-3 xl:grid-cols-6">
-          <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3 xl:col-span-2">
-            <Search className="h-4 w-4 text-muted" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by work order, client, title, or assigned user"
-              className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
-            />
-          </label>
-          <select value={status} onChange={(event) => setStatus(event.target.value)} className="field-input">
-            <option value="All">All work statuses</option>
-            {['Open', 'In Progress', 'Awaiting Parts', 'Awaiting Client', 'Completed', 'Closed', 'Cancelled'].map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
-          <select value={priority} onChange={(event) => setPriority(event.target.value)} className="field-input">
-            <option value="All">All priorities</option>
-            {['Critical', 'High', 'Medium', 'Low'].map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
-          <select value={assignmentGroupFilter} onChange={(event) => setAssignmentGroupFilter(event.target.value)} className="field-input">
-            <option value="All">All groups</option>
-            {availableGroups.map((group) => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-          </select>
-          <select value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)} className="field-input">
-            <option value="All">All users</option>
-            {dispatchableUsers.map((user) => (
-              <option key={user.id} value={user.linkedTechnicianId}>{user.fullName}</option>
-            ))}
-          </select>
-        </div>
-        <label className="inline-flex items-center gap-2 text-sm text-muted">
-          <input type="checkbox" checked={showUnassignedOnly} onChange={(event) => setShowUnassignedOnly(event.target.checked)} />
-          Show only unassigned work orders
-        </label>
+      <SectionCard
+        title="Dispatch queue"
+        description="Use the same operational queue to triage reactive jobs, PM visits, and unassigned requests."
+        action={<div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{formatDateOnly(new Date().toISOString())}</div>}
+      >
+        <div className="space-y-4">
+          <SegmentedTabs tabs={statusTabs.map((tab) => ({ ...tab, meta: String(tab.meta) }))} activeTab={status} onChange={setStatus} />
 
-        {loading ? <LoadingState label="Loading work orders" /> : null}
-        {!loading && error ? <ErrorState title="Unable to load work orders" description={error} /> : null}
-        {!loading && !error ? (
-          <DataTable
-            rows={filteredRows}
-            rowKey={(row) => row.id}
-            pageSize={10}
-            emptyTitle={hasWorkOrders ? 'No matching work orders' : 'No records yet'}
-            emptyDescription={hasWorkOrders ? 'Adjust the filters or search text to see more results.' : 'Create the first work order for this branch scope to get started.'}
-            mobileCard={(row) => (
-              <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link to={`/work-orders/${row.id}`} className="font-semibold text-accent-strong hover:underline">
-                      {row.workOrderNumber}
-                    </Link>
-                    <p className="mt-1 text-sm text-app">{row.title}</p>
-                    <p className="mt-1 text-xs text-muted">{row.clientName || 'No client'} • {row.branchName || 'No branch assigned'}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={priorityTone(row.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{row.priority}</Badge>
-                    <Badge tone={statusTone(row.status as never)}>{row.status}</Badge>
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Detail label="Asset" value={row.assetName || 'No asset linked'} />
-                  <Detail label="Assigned Group" value={resolveAssignedGroupName(row)} />
-                  <Detail label="Assigned To" value={resolveAssignedToName(row)} />
-                  <Detail label="Due Date" value={formatDateOnly(row.dueDate || undefined)} />
-                </div>
-              </div>
+          <SearchToolbar
+            searchSlot={(
+              <label className="panel-subtle flex items-center gap-3 rounded-[18px] px-4 py-3">
+                <Search className="h-4 w-4 text-muted" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by work order, client, title, or assigned user"
+                  className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
+                />
+              </label>
             )}
-            columns={[
-              {
-                key: 'workOrder',
-                header: 'Work Order',
-                cell: (row) => (
-                  <div>
-                    <Link to={`/work-orders/${row.id}`} className="font-semibold text-accent-strong hover:underline">
-                      {row.workOrderNumber}
-                    </Link>
-                    <p className="mt-1 text-xs text-muted">{row.title}</p>
-                  </div>
-                ),
-              },
-              {
-                key: 'client',
-                header: 'Client',
-                cell: (row) => (
-                  <div>
-                    <p>{row.clientName || 'No client'}</p>
-                    <p className="mt-1 text-xs text-muted">{row.branchName || 'No branch assigned'}</p>
-                  </div>
-                ),
-              },
-              {
-                key: 'asset',
-                header: 'Asset',
-                cell: (row) => <span>{row.assetName || 'No asset linked'}</span>,
-              },
-              { key: 'priority', header: 'Priority', cell: (row) => <Badge tone={priorityTone(row.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{row.priority}</Badge> },
-              { key: 'status', header: 'Work Status', cell: (row) => <Badge tone={statusTone(row.status as never)}>{row.status}</Badge> },
-              {
-                key: 'assignedGroup',
-                header: 'Assigned Group',
-                cell: (row) => <span>{resolveAssignedGroupName(row)}</span>,
-              },
-              {
-                key: 'assignedTo',
-                header: 'Assigned To',
-                cell: (row) => <span>{resolveAssignedToName(row)}</span>,
-              },
-              { key: 'due', header: 'Due Date', cell: (row) => <span>{formatDateOnly(row.dueDate || undefined)}</span> },
-            ]}
+            filters={(
+              <>
+                <select value={priority} onChange={(event) => setPriority(event.target.value)} className="field-input">
+                  <option value="All">All priorities</option>
+                  {['Critical', 'High', 'Medium', 'Low'].map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+                <select value={assignmentGroupFilter} onChange={(event) => setAssignmentGroupFilter(event.target.value)} className="field-input">
+                  <option value="All">All groups</option>
+                  {availableGroups.map((group) => (
+                    <option key={group.id} value={group.id}>{group.name}</option>
+                  ))}
+                </select>
+                <select value={technicianFilter} onChange={(event) => setTechnicianFilter(event.target.value)} className="field-input">
+                  <option value="All">All users</option>
+                  {dispatchableUsers.map((user) => (
+                    <option key={user.id} value={user.linkedTechnicianId}>{user.fullName}</option>
+                  ))}
+                </select>
+              </>
+            )}
+            actions={(
+              <label className="inline-flex min-h-[44px] items-center gap-2 rounded-[14px] border border-app bg-[var(--app-surface)] px-4 text-sm text-muted">
+                <input type="checkbox" checked={showUnassignedOnly} onChange={(event) => setShowUnassignedOnly(event.target.checked)} />
+                Unassigned only
+              </label>
+            )}
           />
-        ) : null}
-      </section>
+
+          {loading ? <LoadingState label="Loading work orders" /> : null}
+          {!loading && error ? <ErrorState title="Unable to load work orders" description={error} /> : null}
+          {!loading && !error ? (
+            <DataTable
+              rows={filteredRows}
+              rowKey={(row) => row.id}
+              pageSize={10}
+              minTableWidth="min-w-[1120px] w-full"
+              emptyTitle={hasWorkOrders ? 'No matching work orders' : 'No records yet'}
+              emptyDescription={hasWorkOrders ? 'Adjust the filters or search text to see more results.' : 'Create the first work order for this branch scope to get started.'}
+              mobileCard={(row) => (
+                <div className="space-y-3 rounded-[24px] border border-app bg-[var(--app-card)] p-4 shadow-[var(--app-shadow-soft)]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to={`/work-orders/${row.id}`} className="font-semibold text-accent-strong hover:underline">
+                          {row.workOrderNumber}
+                        </Link>
+                        <Badge tone={statusTone(row.status as never)}>{row.status}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm font-medium text-app">{row.title}</p>
+                      <p className="mt-1 text-xs text-muted">{row.clientName || 'No client'} | {row.branchName || 'No branch assigned'}</p>
+                    </div>
+                    <Badge tone={priorityTone(row.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{row.priority}</Badge>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Detail label="Asset" value={row.assetName || 'No asset linked'} />
+                    <Detail label="Assigned group" value={resolveAssignedGroupName(row)} />
+                    <Detail label="Assigned to" value={resolveAssignedToName(row)} />
+                    <Detail label="Due date" value={formatDateOnly(row.dueDate || undefined)} />
+                  </div>
+                </div>
+              )}
+              columns={[
+                {
+                  key: 'workOrder',
+                  header: 'Work Order',
+                  cell: (row) => (
+                    <div>
+                      <Link to={`/work-orders/${row.id}`} className="font-semibold text-accent-strong hover:underline">
+                        {row.workOrderNumber}
+                      </Link>
+                      <p className="mt-1 text-xs text-muted">{row.title}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'client',
+                  header: 'Client',
+                  cell: (row) => (
+                    <div>
+                      <p>{row.clientName || 'No client'}</p>
+                      <p className="mt-1 text-xs text-muted">{row.branchName || 'No branch assigned'}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'asset',
+                  header: 'Asset',
+                  cell: (row) => <span>{row.assetName || 'No asset linked'}</span>,
+                },
+                { key: 'priority', header: 'Priority', cell: (row) => <Badge tone={priorityTone(row.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{row.priority}</Badge> },
+                { key: 'status', header: 'Work Status', cell: (row) => <Badge tone={statusTone(row.status as never)}>{row.status}</Badge> },
+                {
+                  key: 'assignedGroup',
+                  header: 'Assigned Group',
+                  cell: (row) => <span>{resolveAssignedGroupName(row)}</span>,
+                },
+                {
+                  key: 'assignedTo',
+                  header: 'Assigned To',
+                  cell: (row) => <span>{resolveAssignedToName(row)}</span>,
+                },
+                { key: 'due', header: 'Due Date', cell: (row) => <span>{formatDateOnly(row.dueDate || undefined)}</span> },
+              ]}
+            />
+          ) : null}
+        </div>
+      </SectionCard>
 
       <Modal
         open={editorOpen}
@@ -549,7 +580,7 @@ export function WorkOrdersPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </PageScaffold>
   )
 }
 
@@ -571,6 +602,10 @@ function resolveAssignedToName(workOrder: WorkOrder) {
   return 'Unassigned'
 }
 
+function stringEquals(value: string | null | undefined, expected: string) {
+  return value?.trim().toLowerCase() === expected.trim().toLowerCase()
+}
+
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-2">
@@ -582,7 +617,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-app bg-app/20 px-3 py-3">
+    <div className="rounded-2xl border border-app bg-[var(--app-surface)] px-3 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
       <p className="mt-1 break-words text-sm text-app">{value}</p>
     </div>

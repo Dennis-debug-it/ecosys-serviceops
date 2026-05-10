@@ -7,15 +7,15 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { InfoAlert } from '../../components/ui/InfoAlert'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useToast } from '../../components/ui/ToastProvider'
+import { ConfirmationModal, PageScaffold, SearchToolbar, SectionCard } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { platformLeadService } from '../../services/platformLeadService'
 import { platformService, toServiceError } from '../../services/platformService'
 import type { LicenseStatus, Tenant, TenantStatus } from '../../types/platform'
 import { formatDateOnly, formatDateTime } from '../../utils/date'
 import { getSlugValidationMessage, slugifyName } from '../../utils/slug'
-import { Field, SectionTitle, licenseStatusBadge, tenantStatusBadge } from './PlatformCommon'
+import { Field, licenseStatusBadge, tenantStatusBadge } from './PlatformCommon'
 import { TenantCommunicationSettingsPanel } from './TenantCommunicationSettingsPanel'
 
 const tenantStatuses: TenantStatus[] = ['Active', 'Trial', 'Suspended', 'Inactive']
@@ -247,41 +247,48 @@ export function PlatformTenantsPage() {
   }
 
   return (
-    <div data-testid="tenants-page" className="space-y-4">
-      <PageHeader eyebrow="Platform Command Centre" title="Tenants" description="Onboard and manage tenants, licensing posture, and activation state." />
+    <PageScaffold
+      eyebrow="Platform Command Centre"
+      title="Platform Tenants"
+      description="Onboard and manage tenants, licensing posture, and activation state."
+    >
 
       {loading ? <LoadingState label="Loading tenants" /> : null}
       {!loading && error ? (
-        <section className="surface-card space-y-3">
+        <SectionCard title="Unable to load tenants" description={error}>
           <InfoAlert title="Unable to load tenants" description={error} tone="danger" />
           <button type="button" className="button-secondary" onClick={() => void reload()}><RefreshCw className="h-4 w-4" />Retry</button>
-        </section>
+        </SectionCard>
       ) : null}
 
       {!loading && !error ? (
-        <section className="surface-card space-y-4">
-          <SectionTitle title="Tenant Directory" description="Search, filter, and execute tenant lifecycle actions." action={<button type="button" className="button-primary" onClick={openCreate}><Plus className="h-4 w-4" />Add Tenant</button>} />
+        <>
+          <SearchToolbar
+            searchSlot={
+              <label className="panel-subtle flex items-center gap-3 rounded-[14px] px-4 py-3">
+                <Search className="h-4 w-4 text-muted" />
+                <input data-testid="tenants-search-input" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted" placeholder="Search by tenant name, slug, or email" />
+              </label>
+            }
+            filters={
+              <>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field-input">
+                  <option value="All">All statuses</option>
+                  {tenantStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <select value={planFilter} onChange={(event) => setPlanFilter(event.target.value)} className="field-input">
+                  {plans.map((item) => <option key={item} value={item}>{item === 'All' ? 'All plans' : item}</option>)}
+                </select>
+                <select value={licenseFilter} onChange={(event) => setLicenseFilter(event.target.value as typeof licenseFilter)} className="field-input">
+                  <option value="All">All license states</option>
+                  {licenseStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </>
+            }
+            actions={<button type="button" className="button-primary" onClick={openCreate}><Plus className="h-4 w-4" />Add Tenant</button>}
+          />
 
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-            <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
-              <Search className="h-4 w-4 text-muted" />
-              <input data-testid="tenants-search-input" value={search} onChange={(event) => setSearch(event.target.value)} className="bg-transparent text-sm text-app outline-none placeholder:text-muted" placeholder="Search by tenant name, slug, or email" />
-            </label>
-
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field-input">
-              <option value="All">All statuses</option>
-              {tenantStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-
-            <select value={planFilter} onChange={(event) => setPlanFilter(event.target.value)} className="field-input">
-              {plans.map((item) => <option key={item} value={item}>{item === 'All' ? 'All plans' : item}</option>)}
-            </select>
-
-            <select value={licenseFilter} onChange={(event) => setLicenseFilter(event.target.value as typeof licenseFilter)} className="field-input">
-              <option value="All">All license states</option>
-              {licenseStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </div>
+          <SectionCard title="Tenant Directory" description="Search, filter, and execute tenant lifecycle actions.">
 
           {filtered.length === 0 ? <EmptyState title="No tenants found" description="Adjust filters or create a new tenant." /> : (
             <DataTable
@@ -316,7 +323,8 @@ export function PlatformTenantsPage() {
               ]}
             />
           )}
-        </section>
+          </SectionCard>
+        </>
       ) : null}
 
       <Modal open={modalOpen} title={mode === 'create' ? 'Add Tenant' : 'Edit Tenant'} description="Capture company profile, subscription, and access limits." onClose={() => !saving && setModalOpen(false)} maxWidth="max-w-5xl">
@@ -407,7 +415,7 @@ export function PlatformTenantsPage() {
       </Modal>
 
       <Modal open={Boolean(pendingStatus)} title="Update Tenant Status" description="Suspended means temporary blocked access. Deactivated means tenant is inactive." onClose={() => setPendingStatus(null)}>
-        <div className="space-y-4">
+        <ConfirmationModal title="Update Tenant Status" description="Suspended means temporary blocked access. Deactivated means tenant is inactive.">
           <p className="text-sm text-muted">
             Tenant: <span className="font-semibold text-app">{pendingStatus?.tenant.name}</span>
           </p>
@@ -418,7 +426,7 @@ export function PlatformTenantsPage() {
             <button type="button" className="button-secondary" onClick={() => setPendingStatus(null)}>Cancel</button>
             <button type="button" className="button-primary" onClick={() => void changeStatus()}>Apply</button>
           </div>
-        </div>
+        </ConfirmationModal>
       </Modal>
 
       <Drawer open={Boolean(selectedTenant)} title={selectedTenant?.name || 'Tenant'} description="Tenant profile and current controls." onClose={() => { setSelectedTenant(null); setActiveDetailSection('overview') }}>
@@ -471,7 +479,7 @@ export function PlatformTenantsPage() {
           </div>
         ) : null}
       </Drawer>
-    </div>
+    </PageScaffold>
   )
 }
 

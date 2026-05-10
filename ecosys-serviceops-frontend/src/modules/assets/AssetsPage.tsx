@@ -7,8 +7,8 @@ import { DataTable } from '../../components/ui/DataTable'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useToast } from '../../components/ui/ToastProvider'
+import { MetricCard, MetricGrid, PageScaffold, SearchToolbar, SectionCard, StickyActionFooter } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ApiError } from '../../lib/api'
 import { assetService } from '../../services/assetService'
@@ -90,6 +90,8 @@ export function AssetsPage() {
   )
 
   const hasFilters = useMemo(() => Boolean(debouncedSearch) || statusFilter !== 'active', [debouncedSearch, statusFilter])
+  const activeAssetsCount = data.assets.filter((asset) => asset.status === 'Active').length
+  const nextPmCount = data.assets.filter((asset) => Boolean(asset.nextPmDate)).length
 
   function openEditor(asset?: AssetRecord) {
     setEditing(asset ?? null)
@@ -162,8 +164,7 @@ export function AssetsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
+    <PageScaffold
         eyebrow="Assets"
         title="Asset register"
         description="Manage client assets, service details, and preventive maintenance dates."
@@ -182,43 +183,53 @@ export function AssetsPage() {
             </button>
           </>
         }
-      />
+      >
+      <MetricGrid className="xl:grid-cols-3">
+        <MetricCard label="Assets in view" value={data.assets.length} meta={hasFilters ? 'Filtered asset register' : 'Current branch scope'} emphasis="accent" />
+        <MetricCard label="Active assets" value={activeAssetsCount} meta={`${data.assets.length - activeAssetsCount} inactive`} />
+        <MetricCard label="PM scheduled" value={nextPmCount} meta="Assets with next PM date" />
+      </MetricGrid>
 
-      <section className="surface-card">
-        <div className="mb-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
-          <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
-            <Search className="h-4 w-4 text-muted" />
-            <input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
-              placeholder="Search by asset, tag, serial, make, model, client, or location"
-            />
-          </label>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field-input">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="all">All</option>
-          </select>
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => {
-              setSearchInput('')
-              setDebouncedSearch('')
-              setStatusFilter('active')
-            }}
-            disabled={!hasFilters}
-          >
-            <X className="h-4 w-4" />
-            Clear
-          </button>
-        </div>
+      <SectionCard title="Asset list" description="Keep serviceable equipment aligned to the correct client, location, and PM schedule.">
+        <div className="space-y-4">
+          <SearchToolbar
+            searchSlot={(
+              <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
+                <Search className="h-4 w-4 text-muted" />
+                <input
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
+                  placeholder="Search by asset, tag, serial, make, model, client, or location"
+                />
+              </label>
+            )}
+            filters={<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field-input">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="all">All</option>
+            </select>}
+            actions={(
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => {
+                  setSearchInput('')
+                  setDebouncedSearch('')
+                  setStatusFilter('active')
+                }}
+                disabled={!hasFilters}
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </button>
+            )}
+          />
 
-        {loading ? <LoadingState label="Loading assets" /> : null}
-        {!loading && error ? <ErrorState title="Unable to load assets" description={error} /> : null}
-        {!loading && !error ? (
-          <DataTable
+          {loading ? <LoadingState label="Loading assets" /> : null}
+          {!loading && error ? <ErrorState title="Unable to load assets" description={error} /> : null}
+          {!loading && !error ? (
+            <DataTable
             rows={data.assets}
             rowKey={(row) => row.id}
             pageSize={10}
@@ -260,9 +271,10 @@ export function AssetsPage() {
               { key: 'pm', header: 'Next PM', cell: (row) => <span>{formatDateOnly(row.nextPmDate || undefined)}</span> },
               { key: 'actions', header: 'Actions', cell: (row) => <button type="button" className="button-secondary px-3 py-2" onClick={() => openEditor(row)}>Edit</button> },
             ]}
-          />
-        ) : null}
-      </section>
+            />
+          ) : null}
+        </div>
+      </SectionCard>
 
       <Modal open={editorOpen} title={editing ? 'Edit asset' : 'Add asset'} description="Capture the asset details needed for service and maintenance." onClose={() => setEditorOpen(false)} maxWidth="max-w-4xl">
         <div className="grid gap-4 md:grid-cols-2">
@@ -311,12 +323,12 @@ export function AssetsPage() {
         </label>
         <Field label="Notes"><textarea value={form.notes || ''} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="field-input mt-4 min-h-[120px]" /></Field>
         {saveError ? <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{saveError}</div> : null}
-        <div className="mt-6 flex justify-end gap-3">
+        <StickyActionFooter className="mt-6">
           <button type="button" className="button-secondary" onClick={() => setEditorOpen(false)} disabled={saving}>Cancel</button>
           <button type="button" className="button-primary" onClick={() => void saveAsset()} disabled={saving}>{
             saving ? 'Saving asset...' : 'Save asset'
           }</button>
-        </div>
+        </StickyActionFooter>
       </Modal>
 
       <BulkImportModal
@@ -335,7 +347,7 @@ export function AssetsPage() {
           await reload()
         }}
       />
-    </div>
+    </PageScaffold>
   )
 }
 

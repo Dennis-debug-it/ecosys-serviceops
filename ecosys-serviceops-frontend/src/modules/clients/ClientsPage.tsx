@@ -5,8 +5,8 @@ import { DataTable } from '../../components/ui/DataTable'
 import { Drawer } from '../../components/ui/Drawer'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useToast } from '../../components/ui/ToastProvider'
+import { MetricCard, MetricGrid, PageScaffold, SearchToolbar, SectionCard, StickyActionFooter } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { clientService } from '../../services/clientService'
 import type { ClientRecord, UpsertClientInput } from '../../types/api'
@@ -48,6 +48,8 @@ export function ClientsPage() {
   )
 
   const hasFilters = useMemo(() => Boolean(debouncedSearch) || statusFilter !== 'active', [debouncedSearch, statusFilter])
+  const activeClientsCount = data.filter((client) => client.isActive).length
+  const inactiveClientsCount = data.filter((client) => !client.isActive).length
 
   function openEditor(client?: ClientRecord) {
     setEditing(client ?? null)
@@ -113,54 +115,63 @@ export function ClientsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        eyebrow="Clients"
-        title="Client register"
-        description="Search, filter, and manage active or inactive client accounts."
-        actions={
-          <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
-            <Plus className="h-4 w-4" />
-            Add client
-          </button>
-        }
-      />
+    <PageScaffold
+      eyebrow="Clients"
+      title="Client register"
+      description="Search, filter, and manage active or inactive client accounts."
+      actions={
+        <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
+          <Plus className="h-4 w-4" />
+          Add client
+        </button>
+      }
+    >
+      <MetricGrid className="xl:grid-cols-3">
+        <MetricCard label="Active clients" value={activeClientsCount} meta="Ready for service operations" emphasis="accent" />
+        <MetricCard label="Inactive clients" value={inactiveClientsCount} meta="Retained for historical records" />
+        <MetricCard label="Current result set" value={data.length} meta={hasFilters ? 'Filtered register view' : 'Full active register view'} />
+      </MetricGrid>
 
-      <section className="surface-card space-y-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
-          <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
-            <Search className="h-4 w-4 text-muted" />
-            <input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
-              placeholder="Search by client, contact, email, phone, or location"
-            />
-          </label>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ClientStatusFilter)} className="field-input">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="all">All</option>
-          </select>
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => {
-              setSearchInput('')
-              setDebouncedSearch('')
-              setStatusFilter('active')
-            }}
-            disabled={!hasFilters}
-          >
-            <X className="h-4 w-4" />
-            Clear
-          </button>
-        </div>
+      <SectionCard title="Client list" description="Use the register and side drawer workflow to maintain company details safely.">
+        <div className="space-y-4">
+          <SearchToolbar
+            searchSlot={(
+              <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
+                <Search className="h-4 w-4 text-muted" />
+                <input
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
+                  placeholder="Search by client, contact, email, phone, or location"
+                />
+              </label>
+            )}
+            filters={<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ClientStatusFilter)} className="field-input">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="all">All</option>
+            </select>}
+            actions={(
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => {
+                  setSearchInput('')
+                  setDebouncedSearch('')
+                  setStatusFilter('active')
+                }}
+                disabled={!hasFilters}
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </button>
+            )}
+          />
 
-        {loading ? <LoadingState label="Loading clients" /> : null}
-        {!loading && error ? <ErrorState title="Unable to load clients" description={error} /> : null}
-        {!loading && !error ? (
-          <DataTable
+          {loading ? <LoadingState label="Loading clients" /> : null}
+          {!loading && error ? <ErrorState title="Unable to load clients" description={error} /> : null}
+          {!loading && !error ? (
+            <DataTable
             rows={data}
             rowKey={(row) => row.id}
             pageSize={10}
@@ -228,9 +239,10 @@ export function ClientsPage() {
                 ),
               },
             ]}
-          />
-        ) : null}
-      </section>
+            />
+          ) : null}
+        </div>
+      </SectionCard>
 
       <Drawer open={drawerOpen} title={editing ? 'Edit client' : 'Add client'} description="Keep client details up to date for operations and support." onClose={() => setDrawerOpen(false)}>
         <div className="grid gap-4 md:grid-cols-2">
@@ -243,12 +255,12 @@ export function ClientsPage() {
           <Field label="Location"><input value={form.location || ''} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} className="field-input" /></Field>
         </div>
         <Field label="Notes"><textarea value={form.notes || ''} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className="field-input mt-4 min-h-[120px]" /></Field>
-        <div className="mt-6 flex justify-end gap-3">
+        <StickyActionFooter className="mt-6">
           <button type="button" className="button-secondary" onClick={() => setDrawerOpen(false)}>Cancel</button>
           <button type="button" className="button-primary" onClick={() => void saveClient()}>Save client</button>
-        </div>
+        </StickyActionFooter>
       </Drawer>
-    </div>
+    </PageScaffold>
   )
 }
 

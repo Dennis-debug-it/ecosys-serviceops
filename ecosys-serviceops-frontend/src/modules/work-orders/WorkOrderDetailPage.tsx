@@ -8,6 +8,7 @@ import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/ToastProvider'
+import { MetricCard, MetricGrid, PageScaffold, PageTabs, SectionCard, StickyActionFooter } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { materialService } from '../../services/materialService'
 import { pmTemplateService } from '../../services/pmTemplateService'
@@ -224,6 +225,8 @@ export function WorkOrderDetailPage() {
     { label: 'Arrived', value: formatDateTime(workOrder.arrivalAt || undefined) },
     { label: 'Departed', value: formatDateTime(workOrder.departureAt || undefined) },
   ]
+  const completedChecklistCount = checklistItems.filter((item) => item.isCompleted).length
+  const openMaterialRequests = data.materialRequests.filter((request) => !stringEquals(request.status, 'Closed')).length
 
   async function updateStatus(status: string) {
     try {
@@ -445,226 +448,213 @@ export function WorkOrderDetailPage() {
 
   return (
     <>
-      <div className="space-y-4">
-        <button type="button" className="button-secondary px-3 py-2" onClick={() => navigate('/work-orders')}>
-          <ArrowLeft className="h-4 w-4" />
-          Back to work orders
-        </button>
-
-        <section className="surface-card space-y-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
-                <span className="font-semibold text-app">{workOrder.workOrderNumber}</span>
-                <span>/</span>
-                <span>{workOrder.title}</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-app">{workOrder.clientName || 'Client not set'}</h1>
-                <p className="mt-1 text-sm text-muted">{locationLabel}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <InlineMeta label="Priority" value={<Badge tone={priorityTone(workOrder.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{workOrder.priority}</Badge>} />
-                <InlineMeta label="Status" value={<Badge tone={statusTone(workOrder.status as never)}>{workOrder.status}</Badge>} />
-                <InlineMeta label="Group" value={assignedGroupLabel} />
-                <InlineMeta label="Assigned To" value={assignedToLabel} />
-                <InlineMeta label="Due" value={formatDateOnly(workOrder.dueDate || undefined)} />
-                <InlineMeta label="Created" value={formatDateOnly(workOrder.createdAt)} />
-              </div>
+      <PageScaffold
+        eyebrow="Operations"
+        title={workOrder.clientName || 'Client not set'}
+        description={`${workOrder.workOrderNumber} · ${workOrder.title}`}
+        actions={(
+          <>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => navigate('/work-orders')}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to work orders
+            </button>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={openAssignmentWizard}>
+              {workOrder.assignmentGroupId || workOrder.technicianAssignments?.length ? 'Reassign' : 'Assign'}
+            </button>
+            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setMaterialsOpen(true)}>
+              <PackagePlus className="h-4 w-4" />
+              Request Materials
+            </button>
+            <button type="button" className="button-secondary w-full sm:w-auto" disabled={!stringEquals(workOrder.status, 'Completed')} onClick={() => void acknowledgeWorkOrder()}>
+              Close Work Order
+            </button>
+          </>
+        )}
+      >
+        <SectionCard title="Work order command centre" description={locationLabel}>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <InlineMeta label="Priority" value={<Badge tone={priorityTone(workOrder.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{workOrder.priority}</Badge>} />
+              <InlineMeta label="Status" value={<Badge tone={statusTone(workOrder.status as never)}>{workOrder.status}</Badge>} />
+              <InlineMeta label="Group" value={assignedGroupLabel} />
+              <InlineMeta label="Assigned to" value={assignedToLabel} />
+              <InlineMeta label="Due" value={formatDateOnly(workOrder.dueDate || undefined)} />
+              <InlineMeta label="Created" value={formatDateOnly(workOrder.createdAt)} />
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end xl:max-w-[520px]">
-              <button type="button" className="button-primary w-full sm:w-auto" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
-                <MessageSquarePlus className="h-4 w-4" />
-                Save Changes
-              </button>
-              <button type="button" className="button-secondary w-full sm:w-auto" onClick={openAssignmentWizard}>
-                {workOrder.assignmentGroupId || workOrder.technicianAssignments?.length ? 'Reassign' : 'Assign'}
-              </button>
-              <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setMaterialsOpen(true)}>
-                <PackagePlus className="h-4 w-4" />
-                Request Materials
-              </button>
-              <button type="button" className="button-secondary w-full sm:w-auto" disabled={!stringEquals(workOrder.status, 'Completed')} onClick={() => void acknowledgeWorkOrder()}>
-                Close Work Order
-              </button>
-            </div>
+            <MetricGrid className="xl:grid-cols-4">
+              <MetricCard label="Assignment" value={assignedToLabel} meta={assignedGroupLabel} emphasis="accent" />
+              <MetricCard label="Checklist" value={workOrder.isPreventiveMaintenance ? `${completedChecklistCount}/${checklistItems.length}` : 'N/A'} meta={workOrder.pmTemplateName || 'No PM template linked'} />
+              <MetricCard label="Materials open" value={openMaterialRequests} meta={`${data.materialRequests.length} requests linked`} emphasis={openMaterialRequests > 0 ? 'warning' : 'default'} />
+              <MetricCard label="Latest update" value={latestUpdate ? formatDateTime(latestUpdate.when) : 'No updates'} meta={latestUpdate?.title || 'Timeline is quiet'} />
+            </MetricGrid>
           </div>
-        </section>
+        </SectionCard>
 
-        <section className="surface-card space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {detailTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`${activeTab === tab.id ? 'button-primary' : 'button-secondary'} shrink-0 px-3 py-2`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          {activeTab === 'overview' ? (
-            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-4">
-                <Block title="Work description">
-                  <p className="text-sm leading-6 text-muted">{workOrder.description || 'No work description has been provided.'}</p>
-                </Block>
+        <SectionCard title="Work order detail" description="Track execution, field notes, materials, PM checklist progress, and audit events.">
+          <div className="space-y-4">
+            <PageTabs tabs={detailTabs} activeTab={activeTab} onChange={setActiveTab} />
 
-                <Block title="Latest technician update">
-                  {latestUpdate ? <TimelineCard entry={latestUpdate} /> : <EmptyPanel message="No updates have been added yet." />}
-                </Block>
+            {activeTab === 'overview' ? (
+              <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="space-y-4">
+                  <Block title="Work description">
+                    <p className="text-sm leading-6 text-muted">{workOrder.description || 'No work description has been provided.'}</p>
+                  </Block>
 
-                <Block title="Timeline snapshot">
-                  {activityFeed.length === 0 ? (
-                    <EmptyPanel message="No timeline activity has been recorded yet." />
-                  ) : (
-                    <div className="space-y-3">
-                      {activityFeed.slice(0, 4).map((entry) => (
-                        <TimelineCard key={entry.id} entry={entry} compact />
-                      ))}
+                  <Block title="Latest technician update">
+                    {latestUpdate ? <TimelineCard entry={latestUpdate} /> : <EmptyPanel message="No updates have been added yet." />}
+                  </Block>
+
+                  <Block title="Timeline snapshot">
+                    {activityFeed.length === 0 ? (
+                      <EmptyPanel message="No timeline activity has been recorded yet." />
+                    ) : (
+                      <div className="space-y-3">
+                        {activityFeed.slice(0, 4).map((entry) => (
+                          <TimelineCard key={entry.id} entry={entry} compact />
+                        ))}
+                      </div>
+                    )}
+                  </Block>
+
+                  <Block title="Add update">
+                    <textarea
+                      value={commentDraft}
+                      onChange={(event) => setCommentDraft(event.target.value)}
+                      className="field-input min-h-[140px]"
+                      placeholder="Add work update, findings, or action taken..."
+                    />
+                    <StickyActionFooter>
+                      <button type="button" className="button-primary w-full sm:w-auto" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
+                        <MessageSquarePlus className="h-4 w-4" />
+                        Save update
+                      </button>
+                    </StickyActionFooter>
+                  </Block>
+                </div>
+
+                <div className="space-y-4">
+                  <Block title="Assignment details">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <KeyValue label="Assigned group" value={assignedGroupLabel} />
+                      <KeyValue label="Assigned to" value={assignedToLabel} />
+                      <KeyValue label="Lead technician" value={workOrder.leadTechnicianName || 'Not selected'} />
+                      <KeyValue label="Assignment type" value={workOrder.assignmentType || 'Not set'} />
                     </div>
-                  )}
-                </Block>
-
-                <Block title="Add update">
-                  <textarea
-                    value={commentDraft}
-                    onChange={(event) => setCommentDraft(event.target.value)}
-                    className="field-input min-h-[140px]"
-                    placeholder="Add work update, findings, or action taken..."
-                  />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    <button type="button" className="button-primary w-full sm:w-auto" disabled={!commentDraft.trim()} onClick={() => void addComment()}>
-                      <MessageSquarePlus className="h-4 w-4" />
-                      Save Changes
-                    </button>
-                  </div>
-                </Block>
-              </div>
-
-              <div className="space-y-4">
-                <Block title="Assignment details">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <KeyValue label="Assigned group" value={assignedGroupLabel} />
-                    <KeyValue label="Assigned to" value={assignedToLabel} />
-                    <KeyValue label="Lead technician" value={workOrder.leadTechnicianName || 'Not selected'} />
-                    <KeyValue label="Assignment type" value={workOrder.assignmentType || 'Not set'} />
-                  </div>
-                  {workOrder.technicianAssignments?.length ? (
+                    {workOrder.technicianAssignments?.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {workOrder.technicianAssignments.map((assignment) => (
+                          <Badge key={assignment.id} tone={assignment.isLead ? 'info' : 'neutral'}>
+                            {assignment.technicianName || 'Technician'} {assignment.isLead ? '| Lead' : ''} {assignment.status ? `| ${assignment.status}` : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyPanel message="No technicians are assigned yet." />
+                    )}
+                    {workOrder.assignmentNotes ? (
+                      <div className="panel-subtle rounded-2xl p-4 text-sm text-muted">
+                        <span className="font-medium text-app">Notes:</span> {workOrder.assignmentNotes}
+                      </div>
+                    ) : null}
                     <div className="flex flex-wrap gap-2">
-                      {workOrder.technicianAssignments.map((assignment) => (
-                        <Badge key={assignment.id} tone={assignment.isLead ? 'info' : 'neutral'}>
-                          {assignment.technicianName || 'Technician'} {assignment.isLead ? '| Lead' : ''} {assignment.status ? `| ${assignment.status}` : ''}
-                        </Badge>
-                      ))}
+                      <button type="button" className="button-secondary" onClick={openAssignmentWizard}>
+                        {workOrder.assignmentGroupId || workOrder.technicianAssignments?.length ? 'Reassign work order' : 'Assign work order'}
+                      </button>
+                      <button type="button" className="button-secondary" onClick={openTechnicianResponse}>
+                        Record technician response
+                      </button>
                     </div>
-                  ) : (
-                    <EmptyPanel message="No technicians are assigned yet." />
-                  )}
-                  {workOrder.assignmentNotes ? (
-                    <div className="panel-subtle rounded-2xl p-4 text-sm text-muted">
-                      <span className="font-medium text-app">Notes:</span> {workOrder.assignmentNotes}
+                  </Block>
+
+                  <Block title="SLA & status">
+                    <Field label="Work status">
+                      <select className="field-input" value={workOrder.status} onChange={(event) => void updateStatus(event.target.value)}>
+                        {['Open', 'In Progress', 'Awaiting Parts', 'Awaiting Client', 'Cancelled'].map((item) => (
+                          <option key={item} value={item}>{item}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <KeyValue label="Due date" value={formatDateOnly(workOrder.dueDate || undefined)} />
+                      <KeyValue label="Created date" value={formatDateTime(workOrder.createdAt)} />
+                      <KeyValue label="Started" value={formatDateTime(workOrder.workStartedAt || undefined)} />
+                      <KeyValue label="Completed" value={formatDateTime(workOrder.completedAt || undefined)} />
                     </div>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className="button-secondary" onClick={openAssignmentWizard}>
-                      {workOrder.assignmentGroupId || workOrder.technicianAssignments?.length ? 'Reassign work order' : 'Assign work order'}
-                    </button>
-                    <button type="button" className="button-secondary" onClick={openTechnicianResponse}>
-                      Record technician response
-                    </button>
-                  </div>
-                </Block>
+                  </Block>
 
-                <Block title="SLA & status">
-                  <Field label="Work status">
-                    <select className="field-input" value={workOrder.status} onChange={(event) => void updateStatus(event.target.value)}>
-                      {['Open', 'In Progress', 'Awaiting Parts', 'Awaiting Client', 'Cancelled'].map((item) => (
-                        <option key={item} value={item}>{item}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <KeyValue label="Due date" value={formatDateOnly(workOrder.dueDate || undefined)} />
-                    <KeyValue label="Created date" value={formatDateTime(workOrder.createdAt)} />
-                    <KeyValue label="Started" value={formatDateTime(workOrder.workStartedAt || undefined)} />
-                    <KeyValue label="Completed" value={formatDateTime(workOrder.completedAt || undefined)} />
-                  </div>
-                </Block>
-
-                <Block title="Client & asset">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <KeyValue label="Client" value={workOrder.clientName || 'Not set'} />
-                    <KeyValue label="Site / branch" value={workOrder.branchName || 'Not set'} />
-                    <KeyValue label="Asset" value={workOrder.assetName || 'No linked asset'} />
-                    <KeyValue label="Work order" value={workOrder.workOrderNumber} />
-                  </div>
-                  {!workOrder.assetId ? (
-                    <div className="mt-3 rounded-2xl border border-app bg-app/40 px-4 py-3 text-sm text-muted">
-                      This work order is not linked to a registered asset.
+                  <Block title="Client & asset">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <KeyValue label="Client" value={workOrder.clientName || 'Not set'} />
+                      <KeyValue label="Site / branch" value={workOrder.branchName || 'Not set'} />
+                      <KeyValue label="Asset" value={workOrder.assetName || 'No linked asset'} />
+                      <KeyValue label="Work order" value={workOrder.workOrderNumber} />
                     </div>
-                  ) : null}
-                </Block>
+                    {!workOrder.assetId ? (
+                      <div className="mt-3 rounded-2xl border border-app bg-[var(--app-surface)] px-4 py-3 text-sm text-muted">
+                        This work order is not linked to a registered asset.
+                      </div>
+                    ) : null}
+                  </Block>
 
-                <Block title="Quick actions">
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className="button-secondary" onClick={() => void startWorkOrder()}>
-                      <Play className="h-4 w-4" />
-                      Start Job
-                    </button>
-                    <button type="button" className="button-secondary" onClick={() => openPresenceModal('arrival')}>
-                      <ClipboardCheck className="h-4 w-4" />
-                      Record Arrival
-                    </button>
-                    <button type="button" className="button-secondary" onClick={() => openPresenceModal('departure')}>
-                      <Square className="h-4 w-4" />
-                      Record Departure
-                    </button>
-                    <button type="button" className="button-secondary" onClick={() => setMaterialsOpen(true)}>
-                      <PackagePlus className="h-4 w-4" />
-                      Request Materials
-                    </button>
-                  </div>
-                </Block>
-
-                <Block title="Complete work order">
-                  <textarea
-                    value={completionNotes}
-                    onChange={(event) => setCompletionNotes(event.target.value)}
-                    className="field-input min-h-[140px]"
-                    placeholder="Describe the work done, findings, materials used, and follow-up actions."
-                  />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    <button type="button" className="button-primary w-full sm:w-auto" onClick={() => void completeWorkOrder()}>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Complete Work Order
-                    </button>
-                  </div>
-                </Block>
-
-                <Block title="Close work order">
-                  <Field label="Acknowledged by">
-                    <input value={ackName} onChange={(event) => setAckName(event.target.value)} className="field-input" />
-                  </Field>
-                  <Field label="Comments">
-                    <textarea value={ackComments} onChange={(event) => setAckComments(event.target.value)} className="field-input min-h-[110px]" />
-                  </Field>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    <button type="button" className="button-primary w-full sm:w-auto" disabled={!stringEquals(workOrder.status, 'Completed') || !ackName.trim()} onClick={() => void acknowledgeWorkOrder()}>
-                      Close Work Order
-                    </button>
-                  </div>
-                  {workOrder.acknowledgedByName ? (
-                    <div className="panel-subtle rounded-2xl p-4 text-sm text-muted">
-                      Last sign-off: <span className="text-app">{workOrder.acknowledgedByName}</span> on <span className="text-app">{formatDateTime(workOrder.acknowledgementDate || undefined)}</span>
+                  <Block title="Quick actions">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="button-secondary" onClick={() => void startWorkOrder()}>
+                        <Play className="h-4 w-4" />
+                        Start Job
+                      </button>
+                      <button type="button" className="button-secondary" onClick={() => openPresenceModal('arrival')}>
+                        <ClipboardCheck className="h-4 w-4" />
+                        Record Arrival
+                      </button>
+                      <button type="button" className="button-secondary" onClick={() => openPresenceModal('departure')}>
+                        <Square className="h-4 w-4" />
+                        Record Departure
+                      </button>
+                      <button type="button" className="button-secondary" onClick={() => setMaterialsOpen(true)}>
+                        <PackagePlus className="h-4 w-4" />
+                        Request Materials
+                      </button>
                     </div>
-                  ) : null}
-                </Block>
+                  </Block>
+
+                  <Block title="Complete work order">
+                    <textarea
+                      value={completionNotes}
+                      onChange={(event) => setCompletionNotes(event.target.value)}
+                      className="field-input min-h-[140px]"
+                      placeholder="Describe the work done, findings, materials used, and follow-up actions."
+                    />
+                    <StickyActionFooter>
+                      <button type="button" className="button-primary w-full sm:w-auto" onClick={() => void completeWorkOrder()}>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Complete work order
+                      </button>
+                    </StickyActionFooter>
+                  </Block>
+
+                  <Block title="Close work order">
+                    <Field label="Acknowledged by">
+                      <input value={ackName} onChange={(event) => setAckName(event.target.value)} className="field-input" />
+                    </Field>
+                    <Field label="Comments">
+                      <textarea value={ackComments} onChange={(event) => setAckComments(event.target.value)} className="field-input min-h-[110px]" />
+                    </Field>
+                    <StickyActionFooter>
+                      <button type="button" className="button-primary w-full sm:w-auto" disabled={!stringEquals(workOrder.status, 'Completed') || !ackName.trim()} onClick={() => void acknowledgeWorkOrder()}>
+                        Close work order
+                      </button>
+                    </StickyActionFooter>
+                    {workOrder.acknowledgedByName ? (
+                      <div className="panel-subtle rounded-2xl p-4 text-sm text-muted">
+                        Last sign-off: <span className="text-app">{workOrder.acknowledgedByName}</span> on <span className="text-app">{formatDateTime(workOrder.acknowledgementDate || undefined)}</span>
+                      </div>
+                    ) : null}
+                  </Block>
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
           {activeTab === 'timeline' ? (
             <Block title="Updates / Timeline">
@@ -908,8 +898,9 @@ export function WorkOrderDetailPage() {
               </Block>
             </div>
           ) : null}
-        </section>
-      </div>
+          </div>
+        </SectionCard>
+      </PageScaffold>
 
       <Modal open={assignmentModal === 'group'} title="Select assignment group" description="Choose the group that should own this work order." onClose={() => setAssignmentModal(null)}>
         <div className="space-y-4">

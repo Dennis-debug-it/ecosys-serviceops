@@ -10,8 +10,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useToast } from '../../components/ui/ToastProvider'
+import { MetricCard, MetricGrid, PageScaffold, PageTabs, SectionCard } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { branchService } from '../../services/branchService'
 import { settingsService } from '../../services/settingsService'
@@ -446,13 +446,16 @@ export function SettingsUsersPage() {
 
   const roleTemplates = tenantData?.settings.rolePermissions ?? []
   const permissionGroups = tenantData?.settings.permissionGroups ?? []
+  const activeUsersCount = data.users.filter((user) => user.isActive).length
+  const inactiveUsersCount = data.users.length - activeUsersCount
+  const activeGroupsCount = data.groups.filter((group) => group.isActive).length
+  const adminsCount = data.users.filter((user) => user.role === 'Admin').length
 
   return (
-    <div className="space-y-4">
-      <PageHeader
+    <PageScaffold
         eyebrow="Settings"
-        title="Users & Groups"
-        description="Manage workforce users, assignment groups, and permission controls from one connected module."
+        title="Users & roles"
+        description="Manage workforce identities, assignment groups, and permission controls from one connected operational module."
         actions={
           activeTab === 'users' ? (
             <button type="button" className="button-primary" onClick={() => openUserEditor()}>
@@ -466,36 +469,37 @@ export function SettingsUsersPage() {
             </button>
           ) : null
         }
-      />
+      >
+      <MetricGrid>
+        <MetricCard label="Active users" value={activeUsersCount} meta={`${inactiveUsersCount} inactive`} emphasis="accent" />
+        <MetricCard label="Assignment groups" value={data.groups.length} meta={`${activeGroupsCount} active groups`} />
+        <MetricCard label="Admins" value={adminsCount} meta="Named admin accounts" />
+        <MetricCard label="Role templates" value={roleTemplates.length} meta={`${permissionGroups.length} permission groups`} />
+      </MetricGrid>
 
-      <section className="surface-card space-y-5">
-        <div className="flex flex-wrap gap-3">
-          {([
-            ['users', 'Users'],
-            ['groups', 'Groups'],
-            ['roles', 'Roles & Permissions'],
-          ] as Array<[WorkforceTab, string]>).map(([tab, label]) => (
-            <button
-              key={tab}
-              type="button"
-              className={activeTab === tab ? 'button-primary' : 'button-secondary'}
-              onClick={() => setTab(tab)}
-            >
-              {label}
-            </button>
-          ))}
+      <SectionCard title="Access control workspace" description="Switch between directory management, assignment groups, and role permission review.">
+        <div className="space-y-5">
+          <PageTabs
+            tabs={[
+              { id: 'users', label: 'Users' },
+              { id: 'groups', label: 'Assignment Groups' },
+              { id: 'roles', label: 'Roles & Permissions' },
+            ]}
+            activeTab={activeTab}
+            onChange={setTab}
+          />
+
+          {activeTab === 'users' ? <UsersTab /> : null}
+          {activeTab === 'groups' ? <GroupsTab /> : null}
+          {activeTab === 'roles' ? <RolesTab /> : null}
         </div>
-
-        {activeTab === 'users' ? <UsersTab /> : null}
-        {activeTab === 'groups' ? <GroupsTab /> : null}
-        {activeTab === 'roles' ? <RolesTab /> : null}
-      </section>
+      </SectionCard>
 
       <UserEditor />
       <ResetPasswordModal />
       <UserActionModal />
       <GroupEditor />
-    </div>
+    </PageScaffold>
   )
 
   function UsersTab() {
