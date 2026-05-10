@@ -8,8 +8,13 @@ export interface Tenant {
   tenantId: string
   name: string
   slug: string
+  companyEmail?: string
+  companyPhone?: string
+  country?: string
+  industry?: string
   contactPerson: string
   contactEmail: string
+  contactPhone?: string
   plan: Plan
   licenseStatus: LicenseStatus
   users: number
@@ -18,10 +23,19 @@ export interface Tenant {
   createdAt: string
   maxUsers?: number | null
   maxBranches?: number | null
+  trialStartDate?: string | null
   trialEndDate?: string | null
+  trialExtensionUsed?: boolean
+  trialExtendedAt?: string | null
+  trialDaysRemaining?: number | null
+  trialStatus?: string
   createDefaultAdmin?: boolean
+  usePrimaryContactAsWorkspaceAdmin?: boolean
   adminFullName?: string
   adminEmail?: string
+  adminPhone?: string
+  initialAdminInvitationSent?: boolean | null
+  initialAdminInvitationMessage?: string | null
 }
 
 export type TenantNotificationKey =
@@ -206,6 +220,7 @@ export interface Invoice {
   taxAmount: number
   total: number
   paidAmount: number
+  balance: number
   templateId?: string
   notes?: string
 }
@@ -272,6 +287,11 @@ export interface FinanceSummary {
   expensesThisMonth: number
   profitEstimate: number
   quotationConversionRate: number
+  paidThisMonth?: number
+  netPosition?: number
+  activePaidTenants?: number
+  trialTenants?: number
+  expiredOrUnpaidTenants?: number
   recentPayments: Payment[]
   recentInvoices: Invoice[]
   overdueAccounts: Invoice[]

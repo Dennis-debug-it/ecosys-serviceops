@@ -1,5 +1,5 @@
 import { api } from '../lib/api'
-import type { LoginResponse, SignupResponse } from '../types/api'
+import type { ChangePasswordInput, LoginResponse, SignupResponse } from '../types/api'
 
 export type LoginInput = {
   email: string
@@ -53,6 +53,14 @@ export const authService = {
   resetPassword(input: ResetPasswordInput) {
     return api.post<{ message: string }>('/api/auth/reset-password', {
       token: input.token,
+      newPassword: input.newPassword,
+      confirmPassword: input.confirmPassword,
+    })
+  },
+
+  changePassword(input: ChangePasswordInput) {
+    return api.post<{ message: string }>('/api/auth/change-password', {
+      currentPassword: input.currentPassword,
       newPassword: input.newPassword,
       confirmPassword: input.confirmPassword,
     })

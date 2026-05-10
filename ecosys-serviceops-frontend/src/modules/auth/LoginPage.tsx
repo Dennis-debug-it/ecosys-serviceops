@@ -1,18 +1,21 @@
-import { ArrowRight, ShieldCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
-import { EcosysIcon, EcosysLogo } from '../../components/brand'
+import { EcosysLogo } from '../../components/brand'
+import { useThemeMode } from '../../context/ThemeContext'
 import { cleanupBodyInteractivity, dispatchUiReset } from '../../utils/appCleanup'
 import { roleHomePath } from '../../utils/roles'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const { login, loading } = useAuth()
+  const { theme } = useThemeMode()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [submitPhase, setSubmitPhase] = useState<'signing-in' | 'loading-workspace' | null>(null)
   const isSubmitting = submitPhase !== null
+  const passwordInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     cleanupBodyInteractivity()
@@ -33,6 +36,18 @@ export function LoginPage() {
     }
   }
 
+  function redirectTo(path: string) {
+    try {
+      cleanupBodyInteractivity()
+      dispatchUiReset()
+      navigate(path, { replace: true })
+    } catch (error) {
+      console.error('[auth] Failed to redirect after login.', { path, error })
+      setSubmitPhase(null)
+      setError(`Signed in successfully, but we could not open ${path} automatically.`)
+    }
+  }
+
   async function submit() {
     if (loading || isSubmitting) return
     setError('')
@@ -48,9 +63,15 @@ export function LoginPage() {
 
     try {
       const session = await login(form, (status) => setSubmitPhase(status))
+      if (session.mustChangePassword) {
+        redirectTo('/change-password')
+        return
+      }
       redirectToRoleHome(String(session.role))
     } catch (error) {
       setSubmitPhase(null)
+      setForm((current) => ({ ...current, password: '' }))
+      passwordInputRef.current?.focus()
       setError(error instanceof Error ? error.message : 'Login failed.')
     }
   }
@@ -72,68 +93,46 @@ export function LoginPage() {
           </div>
         </div>
       ) : null}
-      <div className="relative mx-auto flex min-h-screen max-w-container items-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,0.88fr)_minmax(320px,460px)] lg:items-stretch">
-          <section className="auth-showcase hidden min-h-[720px] flex-col justify-between rounded-[28px] p-8 shadow-[var(--shadow-elevated)] lg:flex">
-            <EcosysLogo
-              variant="light"
-              size="lg"
-              subtitle="ServiceOps Workspace"
-              subtitleClassName="text-[0.72rem] font-semibold normal-case tracking-[0.08em] auth-showcase-muted"
-            />
-            <div className="space-y-6">
-              <div className="max-w-xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#dded49]">Enterprise Control Layer</p>
-                <h1 className="mt-4 font-heading text-[3rem] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
-                  Enterprise service operations, ready when your team is.
-                </h1>
-                <p className="auth-showcase-muted mt-5 max-w-lg text-base leading-7">
-                  Sign in to manage workflows, teams, and customer service delivery from one Ecosys workspace.
-                </p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[20px] border border-white/10 bg-white/5 p-5">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-white/10">
-                    <ShieldCheck className="h-5 w-5 text-[#dded49]" />
-                  </div>
-                  <p className="mt-4 text-sm font-semibold text-white">Secure access</p>
-                  <p className="auth-showcase-muted mt-2 text-sm leading-6">Role-aware routing and protected tenant or platform workspaces after sign-in.</p>
-                </div>
-                <div className="rounded-[20px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#dded49]">Operational Focus</p>
-                  <p className="mt-4 text-2xl font-semibold text-white">Command centres, settings shells, and tenant controls in one system.</p>
-                </div>
-              </div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(183,226,109,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(18,122,120,0.16),transparent_32%)]" />
+      <div className="relative mx-auto flex min-h-screen max-w-[1280px] items-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid w-full items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)]">
+          <section className="auth-showcase hidden min-h-[680px] flex-col justify-center rounded-[32px] p-10 shadow-[var(--shadow-elevated)] lg:flex">
+            <div data-testid="login-brand-logo">
+              <EcosysLogo
+                variant="darkPanel"
+                size="lg"
+                subtitle="ServiceOps Suite"
+              />
             </div>
-            <div className="flex items-center gap-3 border-t border-white/10 pt-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/10 ring-1 ring-white/10">
-                <EcosysIcon size={28} title="Ecosys" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/80">Powered by Ecosys</p>
-                <p className="auth-showcase-muted text-sm">Connected tools for modern service operations.</p>
-              </div>
+            <div className="mt-14 max-w-xl">
+              <h1 className="font-heading text-[3.35rem] font-semibold leading-[1.02] tracking-[-0.06em] text-white">
+                Service operations, simplified.
+              </h1>
+              <p className="mt-5 max-w-lg text-lg leading-8 text-[#F2F7F4]">
+                Manage work orders, teams, clients, and assets from one workspace.
+              </p>
+              <p className="mt-6 text-sm font-medium leading-6 text-[#E0ECE6]">
+                Built for field service, maintenance, and operations teams.
+              </p>
             </div>
           </section>
 
           <section className="flex items-center">
-            <div className="surface-card mx-auto w-full max-w-[460px] overflow-hidden !p-0">
-              <div className="border-b border-app px-6 py-6 sm:px-8">
-                <div className="lg:hidden">
+            <div className="surface-card mx-auto w-full max-w-[460px] overflow-hidden rounded-[30px] !p-0">
+              <div className="px-6 pb-2 pt-6 sm:px-8 sm:pt-8">
+                <div className="mb-8 lg:hidden" data-testid="login-card-logo">
                   <EcosysLogo
-                    variant="dark"
+                    variant={theme === 'light' ? 'lightPanel' : 'darkPanel'}
                     size="md"
-                    subtitle="ServiceOps Workspace"
-                    subtitleClassName="text-[0.72rem] font-semibold normal-case tracking-[0.08em] text-muted"
+                    subtitle="ServiceOps Suite"
                   />
                 </div>
-                <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--app-primary-strong)]">Login</p>
                 <h2 className="mt-3 font-heading text-[2.15rem] font-semibold tracking-[-0.04em] text-app">Welcome back</h2>
-                <p className="mt-3 text-sm leading-6 text-muted">Access your Ecosys workspace and continue with platform or tenant operations.</p>
+                <p className="mt-3 text-sm leading-6 text-muted">Sign in to continue.</p>
               </div>
 
               <form
-                className="space-y-5 px-6 py-6 sm:px-8"
+                className="space-y-5 px-6 py-6 sm:px-8 sm:pb-8"
                 onSubmit={(event) => {
                   event.preventDefault()
                   void submit()
@@ -157,6 +156,7 @@ export function LoginPage() {
                     type="password"
                     value={form.password}
                     onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                    ref={passwordInputRef}
                     className="field-input"
                     placeholder="Enter your password"
                     autoComplete="current-password"
@@ -187,7 +187,7 @@ export function LoginPage() {
                 <p className="text-sm text-muted">
                   New to Ecosys?{' '}
                   <Link to="/get-started" className="font-semibold text-accent-strong hover:opacity-80">
-                    Get Started
+                    Get started
                   </Link>
                 </p>
               </div>

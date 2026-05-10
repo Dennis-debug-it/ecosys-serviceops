@@ -11,6 +11,7 @@ import {
   Settings2,
   ShieldCheck,
   Users,
+  Wallet,
   Wrench,
 } from 'lucide-react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
@@ -31,6 +32,7 @@ import { isPlatformRole, isTenantAdminRole, isTenantWorkspaceRole, PLATFORM_ROLE
 import { isKnownRole, roleHomePath } from './utils/roles'
 
 const LoginPage = lazy(async () => ({ default: (await import('./modules/auth/LoginPage')).LoginPage }))
+const ChangePasswordPage = lazy(async () => ({ default: (await import('./modules/auth/ChangePasswordPage')).ChangePasswordPage }))
 const ForgotPasswordPage = lazy(async () => ({ default: (await import('./modules/auth/ForgotPasswordPage')).ForgotPasswordPage }))
 const ResetPasswordPage = lazy(async () => ({ default: (await import('./modules/auth/ResetPasswordPage')).ResetPasswordPage }))
 const SignupPage = lazy(async () => ({ default: (await import('./modules/auth/SignupPage')).SignupPage }))
@@ -52,6 +54,12 @@ const PlatformUsersPage = lazy(async () => ({ default: (await import('./modules/
 const PlatformReportsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformOperationsPages')).PlatformReportsPage }))
 const PlatformAuditLogsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformOperationsPages')).PlatformAuditLogsPage }))
 const PlatformSettingsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformOperationsPages')).PlatformSettingsPage }))
+const PlatformFinancePage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformFinancePages')).PlatformFinancePage }))
+const FinanceSubscriptionsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformFinancePages')).FinanceSubscriptionsPage }))
+const FinanceInvoicesPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformFinancePages')).FinanceInvoicesPage }))
+const FinancePaymentsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformFinancePages')).FinancePaymentsPage }))
+const FinanceExpensesPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformFinancePages')).FinanceExpensesPage }))
+const FinanceReportsPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformFinancePages')).FinanceReportsPage }))
 
 const routeCatalog = [
   { label: 'Dashboard', path: '/dashboard', roles: TENANT_USER_ROLES, permission: null, icon: LayoutDashboard },
@@ -68,6 +76,7 @@ const routeCatalog = [
   { label: 'Leads & Enquiries', path: '/platform/leads', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Users },
   { label: 'Licenses & Subscriptions', path: '/platform/licenses', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: FileText },
   { label: 'Platform Users', path: '/platform/users', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Users },
+  { label: 'Finance', path: '/platform/finance', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Wallet },
   { label: 'Reports', path: '/platform/reports', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Activity },
   { label: 'Audit Logs', path: '/platform/audit-logs', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: FileText },
   { label: 'Settings', path: '/platform/settings', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: Settings2 },
@@ -90,6 +99,10 @@ function HomeRedirect() {
 
   if (!session) {
     return <Navigate to="/login" replace />
+  }
+
+  if (session.mustChangePassword) {
+    return <Navigate to="/change-password" replace />
   }
 
   return <Navigate to={roleHomePath(session.role)} replace />
@@ -291,6 +304,7 @@ function AppRoutes() {
 
         <Route element={<RequireAuth />}>
           <Route element={<AuthenticatedRouteBoundary />}>
+            <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/unsupported-role" element={<UnsupportedRoleRoute />} />
             <Route element={<AuthenticatedShell />}>
               <Route element={<TenantOnlyRoute />}>
@@ -324,6 +338,14 @@ function AppRoutes() {
                   <Route path="leads" element={<PlatformLeadsPage />} />
                   <Route path="licenses" element={<PlatformLicensesPage />} />
                   <Route path="users" element={<PlatformUsersPage />} />
+                  <Route path="finance" element={<PlatformFinancePage />}>
+                    <Route path="overview" element={<Navigate to="/platform/finance" replace />} />
+                    <Route path="subscriptions" element={<FinanceSubscriptionsPage />} />
+                    <Route path="invoices" element={<FinanceInvoicesPage />} />
+                    <Route path="payments" element={<FinancePaymentsPage />} />
+                    <Route path="expenses" element={<FinanceExpensesPage />} />
+                    <Route path="reports" element={<FinanceReportsPage />} />
+                  </Route>
                   <Route path="reports" element={<PlatformReportsPage />} />
                   <Route path="audit-logs" element={<PlatformAuditLogsPage />} />
                   <Route path="settings" element={<PlatformSettingsPage />} />
@@ -337,8 +359,7 @@ function AppRoutes() {
                 <Route path="/command-centre/platform-users" element={<Navigate to="/platform/users" replace />} />
                 <Route path="/command-centre/audit-logs" element={<Navigate to="/platform/audit-logs" replace />} />
                 <Route path="/command-centre/settings" element={<Navigate to="/platform/settings" replace />} />
-                <Route path="/platform/finance" element={<Navigate to="/platform" replace />} />
-                <Route path="/platform/finance/*" element={<Navigate to="/platform" replace />} />
+                <Route path="/command-centre/finance" element={<Navigate to="/platform/finance" replace />} />
                 <Route path="/command-centre/quotations" element={<Navigate to="/platform" replace />} />
                 <Route path="/command-centre/invoices" element={<Navigate to="/platform" replace />} />
                 <Route path="/command-centre/payments" element={<Navigate to="/platform" replace />} />

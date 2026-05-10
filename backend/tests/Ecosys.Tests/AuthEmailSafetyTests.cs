@@ -4,10 +4,13 @@ using Ecosys.Infrastructure.Data;
 using Ecosys.Infrastructure.Services;
 using Ecosys.Shared.Auth;
 using Ecosys.Shared.Contracts.Integration;
+using Ecosys.Shared.Errors;
+using Ecosys.Shared.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Ecosys.Tests;
 
@@ -234,6 +237,376 @@ public sealed class AuthEmailSafetyTests
             service.ResetAsync("used-token", "NewStrongPass123!", "NewStrongPass123!", CancellationToken.None));
     }
 
+    [Fact]
+    public async Task PlatformTenantCreate_CreatesInitialTenantWorkspaceAdmin_WithoutCreatingPlatformUser()
+    {
+        await using var dbContext = CreateDbContext();
+        var existingPlatformUser = await SeedPlatformUserAsync(dbContext, "owner@ecosys.test");
+        var controller = CreatePlatformTenantsController(dbContext, new FakeUserCredentialDeliveryService(dbContext, credentialSendSucceeds: true, resetSendSucceeds: true));
+        var beforeCreate = DateTime.UtcNow;
+
+        var request = new UpsertPlatformTenantRequest(
+            Name: "Acme Facilities",
+            CompanyName: null,
+            Slug: "acme-facilities",
+            CompanyEmail: "info@acme.test",
+            CompanyPhone: "+254700000001",
+            Industry: "Facilities",
+            ContactName: null,
+            ContactEmail: null,
+            ContactPhone: null,
+            PrimaryContactName: "Ada Contact",
+            PrimaryContactEmail: "ada.contact@acme.test",
+            PrimaryContactPhone: "+254700000002",
+            Country: "Kenya",
+            County: null,
+            City: null,
+            Address: null,
+            TaxPin: null,
+            PlanName: null,
+            MaxUsers: 12,
+            MaxBranches: 3,
+            TrialEndsAt: null,
+            SubscriptionEndsAt: null,
+            StartsAt: null,
+            ExpiresAt: null,
+            Status: "Active",
+            LicenseStatus: "Trial",
+            CreateDefaultAdmin: false,
+            UsePrimaryContactAsWorkspaceAdmin: false,
+            AdminFullName: "Grace Admin",
+            AdminEmail: "grace.admin@acme.test",
+            AdminPhone: "+254700000003");
+
+        var actionResult = await controller.Create(request, CancellationToken.None);
+
+        var created = Assert.IsType<CreatedAtActionResult>(actionResult.Result);
+        var response = Assert.IsType<PlatformTenantDetailResponse>(created.Value);
+        Assert.True(response.InitialAdminInvitationSent);
+
+        var tenant = await dbContext.Tenants.SingleAsync(x => x.Id == response.TenantId);
+        Assert.Equal("info@acme.test", tenant.Email);
+        Assert.Equal("+254700000001", tenant.Phone);
+        Assert.Equal("Facilities", tenant.Industry);
+        Assert.Equal("Trial", tenant.Status);
+        Assert.Equal("Trial", tenant.LicenseStatus);
+        Assert.False(tenant.TrialExtensionUsed);
+        Assert.NotNull(tenant.TrialStartsAt);
+        Assert.NotNull(tenant.TrialEndsAt);
+        Assert.InRange((tenant.TrialStartsAt!.Value - beforeCreate).TotalMinutes, -1, 1);
+        Assert.Equal(14, (tenant.TrialEndsAt!.Value - tenant.TrialStartsAt.Value).Days);
+        Assert.Equal("TrialActive", response.TrialStatus);
+
+        var tenantAdmin = await dbContext.Users.SingleAsync(x => x.TenantId == tenant.Id);
+        Assert.Equal(AppRoles.Admin, tenantAdmin.Role);
+        Assert.Equal("grace.admin@acme.test", tenantAdmin.Email);
+        Assert.Equal("+254700000003", tenantAdmin.Phone);
+        Assert.True(tenantAdmin.MustChangePassword);
+
+        var platformUserCount = await dbContext.Users.CountAsync(x => x.TenantId == PlatformConstants.RootTenantId);
+        Assert.Equal(1, platformUserCount);
+        Assert.Equal(existingPlatformUser.Id, await dbContext.Users.Where(x => x.TenantId == PlatformConstants.RootTenantId).Select(x => x.Id).SingleAsync());
+
+        var resetLog = await dbContext.EmailDeliveryLogs.SingleAsync(x => x.TemplateKey == "password-reset-link" && x.RecipientEmail == "grace.admin@acme.test");
+        Assert.Equal("Sent", resetLog.Status);
+
+        var onboarding = await dbContext.EmailOutboxMessages.SingleAsync(x => x.TemplateKey == "tenant-onboarding" && x.RecipientEmail == "grace.admin@acme.test");
+        Assert.Equal("Pending", onboarding.Status);
+    }
+
+    [Fact]
+    public async Task PlatformTenantCreate_SetsAutomaticFourteenDayTrial()
+    {
+        await using var dbContext = CreateDbContext();
+        await SeedPlatformUserAsync(dbContext, "owner2@ecosys.test");
+        var controller = CreatePlatformTenantsController(dbContext, new FakeUserCredentialDeliveryService(dbContext, credentialSendSucceeds: true, resetSendSucceeds: true));
+
+        var actionResult = await controller.Create(
+            new UpsertPlatformTenantRequest(
+                Name: "Trial First Tenant",
+                CompanyName: null,
+                Slug: "trial-first-tenant",
+                CompanyEmail: "hello@trial-first.test",
+                CompanyPhone: "+254700100001",
+                Industry: "Services",
+                ContactName: null,
+                ContactEmail: null,
+                ContactPhone: null,
+                PrimaryContactName: "Trial Owner",
+                PrimaryContactEmail: "trial.owner@trial-first.test",
+                PrimaryContactPhone: "+254700100002",
+                Country: "Kenya",
+                County: null,
+                City: null,
+                Address: null,
+                TaxPin: null,
+                PlanName: null,
+                MaxUsers: 8,
+                MaxBranches: 2,
+                TrialEndsAt: DateTime.UtcNow.AddDays(60),
+                SubscriptionEndsAt: null,
+                StartsAt: null,
+                ExpiresAt: null,
+                Status: "Active",
+                LicenseStatus: "Active",
+                CreateDefaultAdmin: false,
+                UsePrimaryContactAsWorkspaceAdmin: true,
+                AdminFullName: null,
+                AdminEmail: null,
+                AdminPhone: null),
+            CancellationToken.None);
+
+        var created = Assert.IsType<CreatedAtActionResult>(actionResult.Result);
+        var response = Assert.IsType<PlatformTenantDetailResponse>(created.Value);
+        Assert.Equal("Trial", response.Status);
+        Assert.Equal("Trial", response.LicenseStatus);
+        Assert.False(response.TrialExtensionUsed);
+        Assert.NotNull(response.TrialStartsAt);
+        Assert.NotNull(response.TrialEndsAt);
+        Assert.Equal(14, (response.TrialEndsAt!.Value - response.TrialStartsAt!.Value).Days);
+        Assert.Equal("TrialActive", response.TrialStatus);
+        Assert.InRange(response.TrialDaysRemaining ?? 0, 13, 14);
+    }
+
+    [Fact]
+    public async Task PlatformTenantExtendTrial_AddsFourteenDays_AndCannotBeUsedTwice()
+    {
+        await using var dbContext = CreateDbContext();
+        await SeedPlatformUserAsync(dbContext, "owner3@ecosys.test");
+        var controller = CreatePlatformTenantsController(dbContext, new FakeUserCredentialDeliveryService(dbContext, credentialSendSucceeds: true, resetSendSucceeds: true));
+
+        var createResult = await controller.Create(
+            new UpsertPlatformTenantRequest(
+                Name: "Extendable Tenant",
+                CompanyName: null,
+                Slug: "extendable-tenant",
+                CompanyEmail: "hello@extendable.test",
+                CompanyPhone: "+254700200001",
+                Industry: "Logistics",
+                ContactName: null,
+                ContactEmail: null,
+                ContactPhone: null,
+                PrimaryContactName: "Extension Owner",
+                PrimaryContactEmail: "owner@extendable.test",
+                PrimaryContactPhone: "+254700200002",
+                Country: "Kenya",
+                County: null,
+                City: null,
+                Address: null,
+                TaxPin: null,
+                PlanName: null,
+                MaxUsers: 10,
+                MaxBranches: 4,
+                TrialEndsAt: null,
+                SubscriptionEndsAt: null,
+                StartsAt: null,
+                ExpiresAt: null,
+                Status: "Trial",
+                LicenseStatus: "Trial",
+                CreateDefaultAdmin: false,
+                UsePrimaryContactAsWorkspaceAdmin: true,
+                AdminFullName: null,
+                AdminEmail: null,
+                AdminPhone: null),
+            CancellationToken.None);
+
+        var created = Assert.IsType<CreatedAtActionResult>(createResult.Result);
+        var tenant = Assert.IsType<PlatformTenantDetailResponse>(created.Value);
+
+        var extendResult = await controller.ExtendTrial(tenant.TenantId, CancellationToken.None);
+        var ok = Assert.IsType<OkObjectResult>(extendResult.Result);
+        var extended = Assert.IsType<PlatformTenantDetailResponse>(ok.Value);
+
+        Assert.True(extended.TrialExtensionUsed);
+        Assert.NotNull(extended.TrialExtendedAt);
+        Assert.Equal(28, (extended.TrialEndsAt!.Value - extended.TrialStartsAt!.Value).Days);
+        Assert.Equal("TrialExtended", extended.TrialStatus);
+
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() => controller.ExtendTrial(tenant.TenantId, CancellationToken.None));
+        Assert.Equal("This tenant has already used the trial extension.", error.Message);
+    }
+
+    [Fact]
+    public async Task PlatformTenantCreate_UsePrimaryContactAsWorkspaceAdmin_CopiesPrimaryContactDetails()
+    {
+        await using var dbContext = CreateDbContext();
+        await SeedTenantAsync(dbContext, PlatformConstants.RootTenantId, "Ecosys Platform", "support@ecosys.local");
+        var controller = CreatePlatformTenantsController(dbContext, new FakeUserCredentialDeliveryService(dbContext, credentialSendSucceeds: true, resetSendSucceeds: true));
+
+        var request = new UpsertPlatformTenantRequest(
+            Name: "Northwind ServiceOps",
+            CompanyName: null,
+            Slug: "northwind-serviceops",
+            CompanyEmail: "hello@northwind.test",
+            CompanyPhone: "+254700000010",
+            Industry: "Manufacturing",
+            ContactName: null,
+            ContactEmail: null,
+            ContactPhone: null,
+            PrimaryContactName: "Nia Contact",
+            PrimaryContactEmail: "nia.contact@northwind.test",
+            PrimaryContactPhone: "+254700000011",
+            Country: "Kenya",
+            County: null,
+            City: null,
+            Address: null,
+            TaxPin: null,
+            PlanName: null,
+            MaxUsers: 10,
+            MaxBranches: 2,
+            TrialEndsAt: DateTime.UtcNow.Date.AddDays(7),
+            SubscriptionEndsAt: null,
+            StartsAt: null,
+            ExpiresAt: null,
+            Status: "Active",
+            LicenseStatus: "Trial",
+            CreateDefaultAdmin: false,
+            UsePrimaryContactAsWorkspaceAdmin: true,
+            AdminFullName: null,
+            AdminEmail: null,
+            AdminPhone: null);
+
+        var actionResult = await controller.Create(request, CancellationToken.None);
+
+        var created = Assert.IsType<CreatedAtActionResult>(actionResult.Result);
+        var response = Assert.IsType<PlatformTenantDetailResponse>(created.Value);
+        Assert.True(response.InitialAdminInvitationSent);
+
+        var tenantAdmin = await dbContext.Users.SingleAsync(x => x.TenantId == response.TenantId);
+        Assert.Equal("Nia Contact", tenantAdmin.FullName);
+        Assert.Equal("nia.contact@northwind.test", tenantAdmin.Email);
+        Assert.Equal("+254700000011", tenantAdmin.Phone);
+    }
+
+    [Fact]
+    public async Task Login_InvalidCredentials_ReturnsUnauthorizedException()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantId = Guid.NewGuid();
+        await SeedTenantUserAsync(dbContext, tenantId, "login.user@tenant.test", mustChangePassword: false);
+        var service = CreateAuthService(dbContext);
+
+        var error = await Assert.ThrowsAsync<UnauthorizedException>(() =>
+            service.LoginAsync("login.user@tenant.test", "WrongPassword123!", CancellationToken.None));
+
+        Assert.Equal("Invalid email or password.", error.Message);
+        Assert.Equal(401, error.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_InactiveAccount_ReturnsFriendlyInactiveMessage()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantId = Guid.NewGuid();
+        var user = await SeedTenantUserAsync(dbContext, tenantId, "inactive.user@tenant.test", mustChangePassword: false);
+        user.IsActive = false;
+        await dbContext.SaveChangesAsync();
+        var service = CreateAuthService(dbContext);
+
+        var error = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.LoginAsync("inactive.user@tenant.test", "OriginalPass123!", CancellationToken.None));
+
+        Assert.Equal("Your account is inactive. Please contact your administrator.", error.Message);
+    }
+
+    [Fact]
+    public async Task LoginResponse_AndMePayload_IncludeMustChangePassword()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantId = Guid.NewGuid();
+        var user = await SeedTenantUserAsync(dbContext, tenantId, "first.login@tenant.test", mustChangePassword: true);
+        var controller = CreateAuthController(dbContext, tenantId, user.Id, CreateAuthService(dbContext));
+
+        var loginResult = await controller.Login(new LoginRequest(user.Email, "OriginalPass123!"), CancellationToken.None);
+        var loginOk = Assert.IsType<OkObjectResult>(loginResult.Result);
+        var loginResponse = Assert.IsType<LoginResponse>(loginOk.Value);
+        Assert.True(loginResponse.User.MustChangePassword);
+
+        var meResult = await controller.GetCurrentUser(CancellationToken.None);
+        var meOk = Assert.IsType<OkObjectResult>(meResult.Result);
+        var meResponse = Assert.IsType<AuthenticatedContextResponse>(meOk.Value);
+        Assert.True(meResponse.User.MustChangePassword);
+    }
+
+    [Fact]
+    public async Task ChangePassword_Succeeds_WithCorrectCurrentPassword_AndClearsMustChangePassword()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantId = Guid.NewGuid();
+        var user = await SeedTenantUserAsync(dbContext, tenantId, "change.me@tenant.test", mustChangePassword: true);
+        var originalHash = user.PasswordHash;
+        var currentSessionId = Guid.NewGuid();
+        dbContext.UserSessions.AddRange(
+            new UserSession
+            {
+                Id = currentSessionId,
+                TenantId = tenantId,
+                UserId = user.Id,
+                LoginAt = DateTime.UtcNow,
+                LastSeenAt = DateTime.UtcNow,
+                IsRevoked = false
+            },
+            new UserSession
+            {
+                TenantId = tenantId,
+                UserId = user.Id,
+                LoginAt = DateTime.UtcNow,
+                LastSeenAt = DateTime.UtcNow,
+                IsRevoked = false
+            });
+        await dbContext.SaveChangesAsync();
+
+        var controller = CreateAuthController(dbContext, tenantId, user.Id, CreateAuthService(dbContext), currentSessionId);
+
+        var actionResult = await controller.ChangePassword(
+            new ChangePasswordRequest("OriginalPass123!", "NewStrongPass123!", "NewStrongPass123!"),
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(actionResult.Result);
+        var response = Assert.IsType<MessageResponse>(ok.Value);
+        Assert.Equal("Your password has been changed successfully.", response.Message);
+
+        var updatedUser = await dbContext.Users.SingleAsync(x => x.Id == user.Id);
+        Assert.False(updatedUser.MustChangePassword);
+        Assert.NotEqual(originalHash, updatedUser.PasswordHash);
+
+        var sessions = await dbContext.UserSessions.Where(x => x.UserId == user.Id).ToListAsync();
+        Assert.False(sessions.Single(x => x.Id == currentSessionId).IsRevoked);
+        Assert.True(sessions.Single(x => x.Id != currentSessionId).IsRevoked);
+    }
+
+    [Fact]
+    public async Task ChangePassword_Fails_WithWrongCurrentPassword()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantId = Guid.NewGuid();
+        var user = await SeedTenantUserAsync(dbContext, tenantId, "wrong.current@tenant.test", mustChangePassword: true);
+        var controller = CreateAuthController(dbContext, tenantId, user.Id, CreateAuthService(dbContext));
+
+        var error = await Assert.ThrowsAsync<Shared.Errors.BusinessRuleException>(async () =>
+            await controller.ChangePassword(
+                new ChangePasswordRequest("WrongPassword123!", "NewStrongPass123!", "NewStrongPass123!"),
+                CancellationToken.None));
+
+        Assert.Equal("The current password is incorrect.", error.Message);
+    }
+
+    [Fact]
+    public async Task ChangePassword_RejectsWeakPassword()
+    {
+        await using var dbContext = CreateDbContext();
+        var tenantId = Guid.NewGuid();
+        var user = await SeedTenantUserAsync(dbContext, tenantId, "weak.password@tenant.test", mustChangePassword: true);
+        var controller = CreateAuthController(dbContext, tenantId, user.Id, CreateAuthService(dbContext));
+
+        var error = await Assert.ThrowsAsync<Shared.Errors.BusinessRuleException>(async () =>
+            await controller.ChangePassword(
+                new ChangePasswordRequest("OriginalPass123!", "weak", "weak"),
+                CancellationToken.None));
+
+        Assert.Contains("Password", error.Message, StringComparison.Ordinal);
+    }
+
     private static UsersController CreateUsersController(AppDbContext dbContext, Guid tenantId, FakeUserCredentialDeliveryService deliveryService)
     {
         return new UsersController(
@@ -242,11 +615,24 @@ public sealed class AuthEmailSafetyTests
             new NoOpUserAccessService(),
             new FakeUserPermissionTemplateService(),
             new PasswordHasher<User>(),
-            new NoOpLicenseGuardService(),
+            new NoOpLicenseGuardService(dbContext),
             new FakeTenantSecurityPolicyService(),
             new NoOpAuditLogService(),
             deliveryService,
             new TemporaryPasswordService());
+    }
+
+    private static AuthController CreateAuthController(AppDbContext dbContext, Guid tenantId, Guid userId, MvpAuthService authService, Guid? sessionId = null)
+    {
+        return new AuthController(
+            authService,
+            new FakeTenantContext(tenantId, userId, isAdmin: true, sessionId: sessionId),
+            new FakeUserSessionService(dbContext),
+            dbContext,
+            new NoOpAuditLogService(),
+            CreatePasswordResetService(dbContext, new FakeUserCredentialDeliveryService(dbContext, credentialSendSucceeds: true, resetSendSucceeds: true)),
+            new PasswordHasher<User>(),
+            new FakeTenantSecurityPolicyService());
     }
 
     private static PlatformUsersController CreatePlatformUsersController(AppDbContext dbContext, FakeUserCredentialDeliveryService deliveryService)
@@ -270,6 +656,50 @@ public sealed class AuthEmailSafetyTests
             new FakeUserSessionService(dbContext),
             deliveryService,
             new NoOpAuditLogService());
+    }
+
+    private static PlatformTenantsController CreatePlatformTenantsController(AppDbContext dbContext, FakeUserCredentialDeliveryService deliveryService)
+    {
+        var controller = new PlatformTenantsController(
+            dbContext,
+            new FakeTenantContext(PlatformConstants.RootTenantId, Guid.NewGuid(), isAdmin: true, isSuperAdmin: true),
+            new NoOpLicenseGuardService(dbContext),
+            new NoOpAuditLogService(),
+            new FakeEmailTemplateService(),
+            new FakeEmailSubjectRuleService(),
+            new EmailOutboxService(dbContext, new EmailDeliveryLogService(dbContext)),
+            new PasswordHasher<User>(),
+            new FakeUserPermissionTemplateService(),
+            deliveryService);
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        controller.ControllerContext.HttpContext.Request.Scheme = "https";
+        controller.ControllerContext.HttpContext.Request.Host = new HostString("app.ecosys.test");
+        controller.ControllerContext.HttpContext.Request.Headers.Origin = "https://app.ecosys.test";
+
+        return controller;
+    }
+
+    private static MvpAuthService CreateAuthService(AppDbContext dbContext)
+    {
+        return new MvpAuthService(
+            dbContext,
+            new PasswordHasher<User>(),
+            Options.Create(new JwtOptions
+            {
+                Issuer = "ecosys-tests",
+                Audience = "ecosys-tests",
+                SigningKey = "12345678901234567890123456789012",
+                ExpiryMinutes = 60
+            }),
+            new NoOpAuditLogService(),
+            new FakeUserPermissionTemplateService(),
+            new FakeUserSessionService(dbContext),
+            new NoOpLicenseGuardService(dbContext),
+            new FakeTenantSecurityPolicyService());
     }
 
     private static AppDbContext CreateDbContext()
@@ -359,11 +789,11 @@ public sealed class AuthEmailSafetyTests
 
     private sealed class FakeTenantContext : ITenantContext
     {
-        public FakeTenantContext(Guid tenantId, Guid userId, bool isAdmin, bool isSuperAdmin = false)
+        public FakeTenantContext(Guid tenantId, Guid userId, bool isAdmin, bool isSuperAdmin = false, Guid? sessionId = null)
         {
             TenantId = tenantId;
             UserId = userId;
-            SessionId = Guid.NewGuid();
+            SessionId = sessionId ?? Guid.NewGuid();
             IsAdmin = isAdmin;
             IsSuperAdmin = isSuperAdmin;
         }
@@ -450,6 +880,23 @@ public sealed class AuthEmailSafetyTests
             await dbContext.SaveChangesAsync(cancellationToken);
             return sessions.Count;
         }
+
+        public async Task<int> RevokeOthersForUserAsync(Guid userId, Guid currentSessionId, string? reason = null, CancellationToken cancellationToken = default)
+        {
+            var sessions = await dbContext.UserSessions
+                .Where(x => x.UserId == userId && x.Id != currentSessionId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var session in sessions)
+            {
+                session.IsRevoked = true;
+                session.RevokedAt = DateTime.UtcNow;
+                session.LogoutAt = session.RevokedAt;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return sessions.Count;
+        }
     }
 
     private sealed class NoOpUserAccessService : IUserAccessService
@@ -467,7 +914,7 @@ public sealed class AuthEmailSafetyTests
         public UserPermissionsModel Merge(string role, string? jobTitle, UserPermissionsModel? customPermissions) => customPermissions ?? GetFullTenantPermissions();
     }
 
-    private sealed class NoOpLicenseGuardService : ILicenseGuardService
+    private sealed class NoOpLicenseGuardService(AppDbContext dbContext) : ILicenseGuardService
     {
         public Task<TenantLicenseSnapshot> GetSnapshotAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<LicenseUsageSnapshot> GetUsageAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -478,7 +925,27 @@ public sealed class AuthEmailSafetyTests
         public Task EnsureCanCreateAssetAsync(Guid tenantId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task EnsureCanCreateWorkOrderAsync(Guid tenantId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task EnsureFeatureEnabledAsync(Guid tenantId, string featureName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<TenantLicense> GetOrCreateTenantLicenseAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public async Task<TenantLicense> GetOrCreateTenantLicenseAsync(Guid tenantId, CancellationToken cancellationToken = default)
+        {
+            var existing = await dbContext.TenantLicenses.SingleOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken);
+            if (existing is not null)
+            {
+                return existing;
+            }
+
+            var license = new TenantLicense
+            {
+                TenantId = tenantId,
+                LicensePlanId = Guid.NewGuid(),
+                Status = "Trial",
+                StartsAt = DateTime.UtcNow
+            };
+
+            dbContext.TenantLicenses.Add(license);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return license;
+        }
     }
 
     private sealed class NoOpAuditLogService : IAuditLogService
@@ -533,5 +1000,48 @@ public sealed class AuthEmailSafetyTests
                 ? new UserCredentialDeliveryResult(true, "Sent", "Password reset email sent.")
                 : new UserCredentialDeliveryResult(false, "Failed", "Password reset email could not be sent.");
         }
+    }
+
+    private sealed class FakeEmailTemplateService : IEmailTemplateService
+    {
+        public Task<IReadOnlyCollection<EmailTemplateDescriptor>> ListPlatformTemplatesAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyCollection<EmailTemplateDescriptor>> ListTenantTemplatesAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<EmailTemplateDescriptor> GetPlatformTemplateAsync(string eventKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<EmailTemplateDescriptor> GetTenantTemplateAsync(Guid tenantId, string eventKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<EmailTemplateDescriptor> SavePlatformTemplateAsync(string eventKey, EmailTemplateUpdateRequest request, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<EmailTemplateDescriptor> SaveTenantTemplateAsync(Guid tenantId, string eventKey, EmailTemplateUpdateRequest request, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<EmailTemplateDescriptor> ResetPlatformTemplateAsync(string eventKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<EmailTemplateDescriptor> ResetTenantTemplateAsync(Guid tenantId, string eventKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<RenderedEmailTemplate> RenderPlatformTemplateAsync(string eventKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RenderedEmailTemplate(
+                eventKey,
+                "Tenant onboarding",
+                "Workspace ready",
+                "<p>Workspace ready</p>",
+                "Workspace ready",
+                null,
+                null,
+                true));
+
+        public Task<RenderedEmailTemplate> RenderTenantTemplateAsync(Guid tenantId, string eventKey, IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RenderedEmailTemplate(
+                eventKey,
+                "Tenant template",
+                "Tenant message",
+                "<p>Tenant message</p>",
+                "Tenant message",
+                null,
+                null,
+                true));
+    }
+
+    private sealed class FakeEmailSubjectRuleService : IEmailSubjectRuleService
+    {
+        public Task<EmailSubjectRuleOptions> GetSettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(EmailSubjectRuleOptions.Default);
+
+        public Task<string> BuildFinalSubjectAsync(Guid? tenantId, string eventKey, string templateSubject, string? tenantNameOverride = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(templateSubject);
     }
 }

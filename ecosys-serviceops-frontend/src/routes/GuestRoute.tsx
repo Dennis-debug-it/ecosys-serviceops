@@ -11,6 +11,9 @@ export function GuestRoute() {
   }
 
   if (isAuthenticated && session) {
+    if (session.mustChangePassword) {
+      return <Navigate to="/change-password" replace />
+    }
     return <Navigate to={roleHomePath(session.role)} replace />
   }
 

@@ -23,7 +23,11 @@ public sealed class Tenant : AuditableEntity
     public string? LicenseStatus { get; set; }
     public int? MaxUsers { get; set; }
     public int? MaxBranches { get; set; }
+    public DateTime? TrialStartsAt { get; set; }
     public DateTime? TrialEndsAt { get; set; }
+    public bool TrialExtensionUsed { get; set; }
+    public DateTime? TrialExtendedAt { get; set; }
+    public Guid? TrialExtendedByUserId { get; set; }
     public DateTime? SubscriptionStartsAt { get; set; }
     public DateTime? SubscriptionEndsAt { get; set; }
     public DateTime? SuspendedAt { get; set; }

@@ -130,6 +130,11 @@ export function PlatformUsersPage() {
       {!loading && !error ? (
         <section className="surface-card space-y-4">
           <SectionTitle title="Users" description="Add, edit, activate, deactivate, and reset platform users." action={<button type="button" className="button-primary" onClick={() => setOpen(true)}>Add Platform User</button>} />
+          <InfoAlert
+            title="Platform user scope"
+            description="Platform users are Ecosys staff or support users with access to the Command Centre. Tenant users are managed inside each tenant workspace."
+            tone="info"
+          />
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Search"><input value={search} onChange={(event) => setSearch(event.target.value)} className="field-input" placeholder="Search name or email" /></Field>
             <Field label="Role">

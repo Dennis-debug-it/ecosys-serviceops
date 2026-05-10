@@ -158,6 +158,17 @@ app.Use(async (context, next) =>
         {
             logger.LogWarning(appException, "Request failed with handled application exception.");
             context.Response.StatusCode = appException.StatusCode;
+
+            if (appException.StatusCode == StatusCodes.Status401Unauthorized)
+            {
+                await Results.Json(new
+                {
+                    message = appException.Message,
+                    errorCode = "UNAUTHORIZED"
+                }).ExecuteAsync(context);
+                return;
+            }
+
             var extensions = new Dictionary<string, object?>
             {
                 ["traceId"] = context.TraceIdentifier

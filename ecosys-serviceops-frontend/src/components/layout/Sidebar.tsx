@@ -26,7 +26,7 @@ export const Sidebar = memo(function Sidebar({
   onCloseMobile: () => void
 }) {
   const { theme } = useThemeMode()
-  const logoVariant = theme === 'light' ? 'dark' : 'light'
+  const logoVariant = theme === 'light' ? 'lightPanel' : 'darkPanel'
   const poweredByTone = theme === 'light' ? 'light' : 'dark'
 
   const content = (

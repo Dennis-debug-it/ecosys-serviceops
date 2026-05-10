@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ApiError, clearStoredAuth, getStoredAuth, onUnauthorized, persistAuthToken } from '../lib/api'
 import { authService, type LoginInput, type SignupInput } from '../services/authService'
-import type { ApiBranch, ApiPermissions } from '../types/api'
+import type { ApiBranch, ApiPermissions, ChangePasswordInput, LoginResponse } from '../types/api'
 import type { AppSession, AuthBranch, Role } from '../types/app'
 import { asBoolean, asNullableString, asString, normalizeBranches, normalizePermissions, pickRecord } from '../utils/apiDefaults'
 import { cleanupBodyInteractivity, clearTransientAppState, dispatchUiReset } from '../utils/appCleanup'
@@ -23,6 +23,7 @@ type AuthContextValue = {
   canAccess: (roles: Role[]) => boolean
   login: (input: LoginInput, onStatusChange?: (status: 'signing-in' | 'loading-workspace') => void) => Promise<AppSession>
   signup: (input: SignupInput) => Promise<AppSession>
+  changePassword: (input: ChangePasswordInput) => Promise<string>
   logout: () => Promise<void>
 }
 
@@ -79,6 +80,7 @@ function buildSessionFromMe(payload: unknown, token: string): AppSession {
   const jobTitle = asNullableString(user.jobTitle ?? container.jobTitle ?? root.jobTitle)
   const department = asNullableString(user.department ?? container.department ?? root.department)
   const defaultBranchId = asNullableString(user.defaultBranchId ?? container.defaultBranchId ?? root.defaultBranchId) ?? undefined
+  const mustChangePassword = asBoolean(user.mustChangePassword ?? user.MustChangePassword ?? container.mustChangePassword ?? root.mustChangePassword)
 
   if (!userId || !email) {
     logSessionMappingFailure(payload)
@@ -105,11 +107,19 @@ function buildSessionFromMe(payload: unknown, token: string): AppSession {
     branches: mapBranches(normalizedBranches),
     department: department ?? undefined,
     hasAllBranchAccess: asBoolean(user.hasAllBranchAccess ?? container.hasAllBranchAccess ?? root.hasAllBranchAccess),
+    mustChangePassword,
     country: asNullableString(tenant.country ?? container.country ?? root.country) ?? undefined,
     industry: asNullableString(tenant.industry ?? container.industry ?? root.industry) ?? undefined,
     logoUrl: asNullableString(tenant.logoUrl ?? container.logoUrl ?? root.logoUrl),
     primaryColor: asNullableString(tenant.primaryColor ?? container.primaryColor ?? root.primaryColor) ?? undefined,
     secondaryColor: asNullableString(tenant.secondaryColor ?? container.secondaryColor ?? root.secondaryColor) ?? undefined,
+  }
+}
+
+function mergeMustChangePassword(session: AppSession, loginResponse: LoginResponse): AppSession {
+  return {
+    ...session,
+    mustChangePassword: asBoolean(loginResponse.user?.mustChangePassword, session.mustChangePassword),
   }
 }
 
@@ -243,18 +253,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error('We could not load your session. Please try again.')
           }
           const nextSession = buildSessionFromMe(me, loginResponse.token)
-          setSession(nextSession)
-          persistSession(nextSession)
+          const hydratedSession = mergeMustChangePassword(nextSession, loginResponse)
+          setSession(hydratedSession)
+          persistSession(hydratedSession)
           cleanupBodyInteractivity()
           setIsReady(true)
-          return nextSession
+          return hydratedSession
         } catch (error) {
           clearLocalSessionState()
           setSession(null)
           setIsReady(true)
           if (error instanceof ApiError) {
             if (error.status === 401) {
-              throw new Error('Invalid email or password. Please check your credentials and try again.', { cause: error })
+              throw new Error('Wrong email or password. Please check your details and try again.', { cause: error })
+            }
+
+            if (error.status === 403) {
+              if (typeof error.message === 'string' && error.message.toLowerCase().includes('inactive')) {
+                throw new Error('Your account is inactive. Please contact your administrator.', { cause: error })
+              }
+
+              throw new Error('Wrong email or password. Please check your details and try again.', { cause: error })
             }
 
             if (error.status === 0) {
@@ -290,6 +309,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null)
           setIsReady(true)
           throw error
+        } finally {
+          setLoading(false)
+        }
+      },
+      changePassword: async (input) => {
+        if (!session) {
+          throw new Error('Your session has expired. Please sign in again.')
+        }
+
+        setLoading(true)
+        try {
+          const response = await authService.changePassword(input)
+          const nextSession = { ...session, mustChangePassword: false }
+          setSession(nextSession)
+          persistSession(nextSession)
+          return response.message
         } finally {
           setLoading(false)
         }

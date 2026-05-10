@@ -1,6 +1,7 @@
 using System.Net.Mail;
-using System.Text.RegularExpressions;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Infrastructure.Services;
@@ -29,6 +30,9 @@ public sealed class PlatformTenantsController(
     IUserPermissionTemplateService permissionTemplateService,
     IUserCredentialDeliveryService credentialDeliveryService) : ControllerBase
 {
+    private const int TrialPeriodDays = 14;
+    private const int TrialExpiringSoonDays = 3;
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<PlatformTenantListResponse>>> GetAll(CancellationToken cancellationToken)
     {
@@ -72,8 +76,9 @@ public sealed class PlatformTenantsController(
     [HttpPost]
     public async Task<ActionResult<PlatformTenantDetailResponse>> Create([FromBody] UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
     {
-        ValidateDefaultAdminRequest(request);
-        await ValidateDefaultAdminAvailabilityAsync(request, cancellationToken);
+        var adminProfile = BuildInitialAdminProfile(request);
+        ValidateInitialAdminRequest(adminProfile);
+        await ValidateInitialAdminAvailabilityAsync(adminProfile.Email, cancellationToken);
 
         var tenant = new Tenant
         {
@@ -85,11 +90,15 @@ public sealed class PlatformTenantsController(
         await EnsureTenantSupportRecordsAsync(tenant, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await CreateDefaultAdminAsync(tenant, request, cancellationToken);
+        var initialAdminDelivery = await CreateInitialAdminAsync(tenant, adminProfile, cancellationToken);
         await WriteAuditAsync(tenant, "TenantCreated", $"Tenant '{tenant.Name}' was created.", cancellationToken);
-        await TrySendOnboardingEmailAsync(tenant, cancellationToken);
+        await TryQueueTenantOnboardingEmailAsync(tenant, adminProfile, cancellationToken);
 
-        var response = await BuildDetailResponseAsync(tenant, cancellationToken);
+        var response = await BuildDetailResponseAsync(
+            tenant,
+            cancellationToken,
+            initialAdminDelivery.Success,
+            initialAdminDelivery.Message);
         return CreatedAtAction(nameof(Get), new { tenantId = tenant.Id }, response);
     }
 
@@ -156,6 +165,63 @@ public sealed class PlatformTenantsController(
         return Ok(summary);
     }
 
+    [HttpPost("{tenantId:guid}/extend-trial")]
+    public async Task<ActionResult<PlatformTenantDetailResponse>> ExtendTrial(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var tenant = await LoadManagedTenantAsync(tenantId, cancellationToken);
+        if (tenant.TrialExtensionUsed)
+        {
+            throw new BusinessRuleException("This tenant has already used the trial extension.");
+        }
+
+        var now = DateTime.UtcNow;
+        var currentEnd = EnsureUtc(tenant.TrialEndsAt);
+        var extensionBase = currentEnd.HasValue && currentEnd.Value > now
+            ? currentEnd.Value
+            : now;
+        var extendedEnd = extensionBase.AddDays(TrialPeriodDays);
+        var license = await licenseGuardService.GetOrCreateTenantLicenseAsync(tenant.Id, cancellationToken);
+
+        tenant.TrialStartsAt ??= tenant.CreatedAt == default ? now : EnsureUtc(tenant.CreatedAt);
+        tenant.TrialEndsAt = extendedEnd;
+        tenant.TrialExtensionUsed = true;
+        tenant.TrialExtendedAt = now;
+        tenant.TrialExtendedByUserId = tenantContext.GetRequiredUserId();
+        tenant.UpdatedByUserId = tenantContext.GetRequiredUserId();
+        tenant.UpdatedAt = now;
+
+        if (tenant.Status != PlatformTenantStatuses.Suspended)
+        {
+            tenant.Status = PlatformTenantStatuses.Trial;
+            tenant.IsActive = true;
+            tenant.SuspendedAt = null;
+            tenant.DeactivatedAt = null;
+            tenant.DeactivatedByUserId = null;
+            tenant.DeactivationReason = null;
+        }
+
+        tenant.LicenseStatus = tenant.Status == PlatformTenantStatuses.Suspended
+            ? PlatformTenantLicenseStatuses.Suspended
+            : PlatformTenantLicenseStatuses.Trial;
+
+        license.Status = tenant.LicenseStatus;
+        license.TrialEndsAt = extendedEnd;
+        license.ExpiresAt = extendedEnd;
+        license.SuspendedAt = tenant.Status == PlatformTenantStatuses.Suspended ? tenant.SuspendedAt : null;
+        license.CancelledAt = null;
+        license.UpdatedAt = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await WriteAuditAsync(
+            tenant,
+            "platform.tenant.trial-extended",
+            $"Tenant '{tenant.Name}' trial extended by 14 days until {extendedEnd:yyyy-MM-dd}.",
+            cancellationToken);
+
+        return Ok(await BuildDetailResponseAsync(tenant, cancellationToken));
+    }
+
     [HttpGet("{tenantId:guid}/audit-logs")]
     public async Task<ActionResult<IReadOnlyCollection<PlatformTenantAuditLogResponse>>> GetAuditLogs(Guid tenantId, CancellationToken cancellationToken)
     {
@@ -186,13 +252,15 @@ public sealed class PlatformTenantsController(
 
     private async Task ApplyTenantAsync(Tenant tenant, UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
     {
+        var isNewTenant = dbContext.Entry(tenant).State == EntityState.Added;
         var now = DateTime.UtcNow;
         var todayUtc = StartOfUtcDay(now);
         var trimmedName = NormalizeRequired(request.Name ?? request.CompanyName, "Company name is required.");
         var slug = await NormalizeAndValidateSlugAsync(request.Slug, trimmedName, tenant.Id, cancellationToken);
         var normalizedStatus = NormalizeTenantStatus(request.Status);
         var normalizedLicenseStatus = NormalizeLicenseStatus(request.LicenseStatus);
-        var normalizedContactEmail = NormalizeEmail(request.ContactEmail);
+        var normalizedCompanyEmail = NormalizeEmail(request.CompanyEmail) ?? NormalizeEmail(request.ContactEmail);
+        var normalizedContactEmail = NormalizeEmail(request.PrimaryContactEmail ?? request.ContactEmail) ?? normalizedCompanyEmail;
         var normalizedTrialEndsAt = EnsureUtc(request.TrialEndsAt);
         var normalizedSubscriptionEndsAt = EnsureUtc(request.SubscriptionEndsAt);
         var normalizedStartsAt = EnsureUtc(request.StartsAt);
@@ -229,36 +297,67 @@ public sealed class PlatformTenantsController(
         tenant.Name = trimmedName;
         tenant.CompanyName = trimmedName;
         tenant.Slug = slug;
-        tenant.ContactName = NormalizeOptional(request.ContactName);
+        tenant.ContactName = NormalizeOptional(request.PrimaryContactName ?? request.ContactName);
         tenant.ContactEmail = normalizedContactEmail;
-        tenant.ContactPhone = NormalizeOptional(request.ContactPhone);
-        tenant.Email = normalizedContactEmail ?? tenant.Email ?? $"{slug}@tenant.local";
-        tenant.Phone = tenant.ContactPhone;
-        tenant.Country = NormalizeOptional(request.Country) ?? "Kenya";
+        tenant.ContactPhone = NormalizeOptional(request.PrimaryContactPhone ?? request.ContactPhone);
+        tenant.Email = normalizedCompanyEmail ?? tenant.Email ?? $"{slug}@tenant.local";
+        tenant.Phone = NormalizeOptional(request.CompanyPhone) ?? tenant.Phone;
+        tenant.Country = NormalizeOptional(request.Country) ?? tenant.Country ?? "Kenya";
+        tenant.Industry = NormalizeOptional(request.Industry) ?? tenant.Industry;
         tenant.County = NormalizeOptional(request.County);
         tenant.City = NormalizeOptional(request.City);
         tenant.Address = NormalizeOptional(request.Address);
         tenant.TaxPin = NormalizeOptional(request.TaxPin);
-        tenant.Status = normalizedStatus;
         tenant.PlanName = plan?.DisplayName ?? requestedPlanName;
-        tenant.LicenseStatus = normalizedLicenseStatus;
         tenant.MaxUsers = request.MaxUsers;
         tenant.MaxBranches = request.MaxBranches;
-        tenant.TrialEndsAt = normalizedTrialEndsAt;
-        tenant.SubscriptionStartsAt = normalizedStartsAt ?? tenant.SubscriptionStartsAt ?? now;
+        tenant.CreatedByUserId ??= tenantContext.GetRequiredUserId();
+        tenant.UpdatedByUserId = tenantContext.GetRequiredUserId();
+        tenant.CreatedAt = EnsureUtc(tenant.CreatedAt);
+        tenant.UpdatedAt = EnsureUtc(tenant.UpdatedAt);
+        tenant.TrialStartsAt = EnsureUtc(tenant.TrialStartsAt);
+        tenant.TrialEndsAt = EnsureUtc(tenant.TrialEndsAt);
+        tenant.TrialExtendedAt = EnsureUtc(tenant.TrialExtendedAt);
+        tenant.SubscriptionStartsAt = EnsureUtc(tenant.SubscriptionStartsAt);
+        tenant.SubscriptionEndsAt = EnsureUtc(tenant.SubscriptionEndsAt);
+        tenant.SuspendedAt = EnsureUtc(tenant.SuspendedAt);
+        tenant.DeactivatedAt = EnsureUtc(tenant.DeactivatedAt);
+
+        var trialStartsAt = isNewTenant
+            ? now
+            : tenant.TrialStartsAt ?? (tenant.CreatedAt == default ? now : EnsureUtc(tenant.CreatedAt));
+        var trialEndsAt = isNewTenant
+            ? trialStartsAt.AddDays(TrialPeriodDays)
+            : normalizedTrialEndsAt ?? tenant.TrialEndsAt;
+
+        if (isNewTenant)
+        {
+            normalizedStatus = normalizedStatus is PlatformTenantStatuses.Suspended or PlatformTenantStatuses.Inactive
+                ? normalizedStatus
+                : PlatformTenantStatuses.Trial;
+            normalizedLicenseStatus = normalizedStatus switch
+            {
+                PlatformTenantStatuses.Suspended => PlatformTenantLicenseStatuses.Suspended,
+                PlatformTenantStatuses.Inactive => PlatformTenantLicenseStatuses.Cancelled,
+                _ => PlatformTenantLicenseStatuses.Trial
+            };
+            tenant.TrialExtensionUsed = false;
+            tenant.TrialExtendedAt = null;
+            tenant.TrialExtendedByUserId = null;
+        }
+
+        tenant.Status = normalizedStatus;
+        tenant.LicenseStatus = normalizedLicenseStatus;
+        tenant.TrialStartsAt = trialStartsAt;
+        tenant.TrialEndsAt = trialEndsAt;
+        tenant.SubscriptionStartsAt = normalizedStartsAt ?? tenant.SubscriptionStartsAt ?? trialStartsAt;
         tenant.SubscriptionEndsAt = normalizedSubscriptionEndsAt;
         tenant.IsActive = ComputeIsActive(normalizedStatus, normalizedLicenseStatus);
         tenant.SuspendedAt = normalizedStatus == PlatformTenantStatuses.Suspended ? now : null;
         tenant.DeactivatedAt = normalizedStatus == PlatformTenantStatuses.Inactive ? now : null;
         tenant.DeactivatedByUserId = normalizedStatus == PlatformTenantStatuses.Inactive ? tenantContext.GetRequiredUserId() : null;
         tenant.DeactivationReason = normalizedStatus == PlatformTenantStatuses.Inactive ? tenant.DeactivationReason : null;
-        tenant.CreatedByUserId ??= tenantContext.GetRequiredUserId();
-        tenant.UpdatedByUserId = tenantContext.GetRequiredUserId();
-        tenant.CreatedAt = EnsureUtc(tenant.CreatedAt);
-        tenant.UpdatedAt = EnsureUtc(tenant.UpdatedAt);
         tenant.SubscriptionStartsAt = EnsureUtc(tenant.SubscriptionStartsAt);
-        tenant.SuspendedAt = EnsureUtc(tenant.SuspendedAt);
-        tenant.DeactivatedAt = EnsureUtc(tenant.DeactivatedAt);
 
         var license = await licenseGuardService.GetOrCreateTenantLicenseAsync(tenant.Id, cancellationToken);
         if (plan is not null)
@@ -270,8 +369,8 @@ public sealed class PlatformTenantsController(
 
         license.Status = normalizedLicenseStatus;
         license.StartsAt = normalizedStartsAt ?? tenant.SubscriptionStartsAt ?? license.StartsAt;
-        license.TrialEndsAt = normalizedTrialEndsAt;
-        license.ExpiresAt = normalizedExpiresAt ?? normalizedSubscriptionEndsAt;
+        license.TrialEndsAt = trialEndsAt;
+        license.ExpiresAt = normalizedExpiresAt ?? normalizedSubscriptionEndsAt ?? trialEndsAt;
         license.MaxUsersOverride = request.MaxUsers;
         license.MaxBranchesOverride = request.MaxBranches;
         license.SuspendedAt = normalizedLicenseStatus == PlatformTenantLicenseStatuses.Suspended ? now : null;
@@ -336,14 +435,9 @@ public sealed class PlatformTenantsController(
         }
     }
 
-    private async Task ValidateDefaultAdminAvailabilityAsync(UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
+    private async Task ValidateInitialAdminAvailabilityAsync(string adminEmail, CancellationToken cancellationToken)
     {
-        if (!request.CreateDefaultAdmin)
-        {
-            return;
-        }
-
-        var normalizedAdminEmail = NormalizeEmail(request.AdminEmail)!;
+        var normalizedAdminEmail = NormalizeEmail(adminEmail)!;
         var emailInUse = await dbContext.Users.AnyAsync(x => x.Email.ToLower() == normalizedAdminEmail.ToLower(), cancellationToken);
         if (emailInUse)
         {
@@ -351,20 +445,15 @@ public sealed class PlatformTenantsController(
         }
     }
 
-    private async Task CreateDefaultAdminAsync(Tenant tenant, UpsertPlatformTenantRequest request, CancellationToken cancellationToken)
+    private async Task<UserCredentialDeliveryResult> CreateInitialAdminAsync(Tenant tenant, InitialAdminProfile adminProfile, CancellationToken cancellationToken)
     {
-        if (!request.CreateDefaultAdmin)
-        {
-            return;
-        }
-
-        var adminEmail = NormalizeEmail(request.AdminEmail)!;
+        var adminEmail = NormalizeEmail(adminProfile.Email)!;
         var existingAdmin = await dbContext.Users.AnyAsync(
             x => x.TenantId == tenant.Id && x.Email.ToLower() == adminEmail.ToLower(),
             cancellationToken);
         if (existingAdmin)
         {
-            return;
+            return new UserCredentialDeliveryResult(true, "AlreadyExists", "Initial admin already exists.");
         }
 
         var password = GenerateTemporaryPassword();
@@ -372,10 +461,11 @@ public sealed class PlatformTenantsController(
         var adminUser = new User
         {
             TenantId = tenant.Id,
-            FullName = NormalizeRequired(request.AdminFullName, "Admin full name is required when creating a default admin."),
+            FullName = NormalizeRequired(adminProfile.FullName, "Admin full name is required when creating a default admin."),
             Email = adminEmail,
+            Phone = NormalizeOptional(adminProfile.Phone),
             Role = AppRoles.Admin,
-            JobTitle = "Tenant Administrator",
+            JobTitle = "Tenant workspace admin",
             IsActive = true,
             HasAllBranchAccess = true,
             MustChangePassword = true,
@@ -386,15 +476,9 @@ public sealed class PlatformTenantsController(
         dbContext.Users.Add(adminUser);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var delivery = await credentialDeliveryService.SendAsync(
+        var delivery = await SendInitialAdminSetupAsync(
             tenant.Id,
             adminUser,
-            new UserCredentialDeliveryRequest(
-                "user-credentials",
-                credentialDeliveryService.BuildLoginUrl(),
-                password,
-                null,
-                true),
             cancellationToken);
 
         if (delivery.Success)
@@ -409,7 +493,7 @@ public sealed class PlatformTenantsController(
             "User created",
             nameof(User),
             adminUser.Id.ToString(),
-            $"Created default tenant admin '{adminUser.Email}'.",
+            $"Created initial tenant workspace admin '{adminUser.Email}'.",
             cancellationToken);
 
         if (delivery.Success)
@@ -420,14 +504,39 @@ public sealed class PlatformTenantsController(
                 "User credentials sent",
                 nameof(User),
                 adminUser.Id.ToString(),
-                $"User credentials sent to '{adminUser.Email}'.",
+                $"Tenant workspace admin invitation sent to '{adminUser.Email}'.",
                 cancellationToken);
         }
+
+        return delivery;
     }
 
-    private async Task TrySendOnboardingEmailAsync(Tenant tenant, CancellationToken cancellationToken)
+    private async Task<UserCredentialDeliveryResult> SendInitialAdminSetupAsync(Guid tenantId, User adminUser, CancellationToken cancellationToken)
     {
-        var recipient = NormalizeOptional(tenant.ContactEmail) ?? NormalizeOptional(tenant.Email);
+        var rawToken = CreateRawResetToken();
+        var expiresAt = DateTime.UtcNow.AddMinutes(45);
+
+        dbContext.PasswordResetTokens.Add(new PasswordResetToken
+        {
+            UserId = adminUser.Id,
+            TokenHash = HashToken(rawToken),
+            ExpiresAt = expiresAt
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return await credentialDeliveryService.SendPasswordResetLinkAsync(
+            tenantId,
+            adminUser,
+            new PasswordResetLinkDeliveryRequest(
+                credentialDeliveryService.BuildResetPasswordUrl(rawToken),
+                expiresAt),
+            cancellationToken);
+    }
+
+    private async Task TryQueueTenantOnboardingEmailAsync(Tenant tenant, InitialAdminProfile adminProfile, CancellationToken cancellationToken)
+    {
+        var recipient = NormalizeEmail(adminProfile.Email) ?? NormalizeOptional(tenant.ContactEmail) ?? NormalizeOptional(tenant.Email);
         if (string.IsNullOrWhiteSpace(recipient))
         {
             return;
@@ -442,7 +551,7 @@ public sealed class PlatformTenantsController(
         var template = await emailTemplateService.RenderPlatformTemplateAsync(
             "tenant-onboarding",
             EmailTemplateVariables.WithRecipientAndActorAliases(
-                tenant.ContactName ?? tenant.Name,
+                adminProfile.FullName,
                 tenantContext.Email,
                 new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -474,7 +583,7 @@ public sealed class PlatformTenantsController(
                 "tenant.onboarding",
                 "tenant-onboarding",
                 recipient,
-                tenant.ContactName ?? tenant.Name,
+                adminProfile.FullName,
                 template.SenderNameOverride ?? platformEmail.SenderName,
                 platformEmail.SenderAddress,
                 template.ReplyToOverride ?? platformEmail.ReplyToEmail,
@@ -574,9 +683,14 @@ public sealed class PlatformTenantsController(
         return tenant;
     }
 
-    private async Task<PlatformTenantDetailResponse> BuildDetailResponseAsync(Tenant tenant, CancellationToken cancellationToken)
+    private async Task<PlatformTenantDetailResponse> BuildDetailResponseAsync(
+        Tenant tenant,
+        CancellationToken cancellationToken,
+        bool? initialAdminInvitationSent = null,
+        string? initialAdminInvitationMessage = null)
     {
         var summary = await BuildSummaryResponseAsync(tenant, cancellationToken);
+        var trial = BuildTrialSnapshot(tenant);
 
         return new PlatformTenantDetailResponse(
             tenant.Id,
@@ -595,7 +709,12 @@ public sealed class PlatformTenantsController(
             ResolveLicenseStatus(tenant, tenant.TenantLicenses.OrderByDescending(x => x.CreatedAt).FirstOrDefault()),
             tenant.MaxUsers,
             tenant.MaxBranches,
+            trial.StartsAt,
             tenant.TrialEndsAt,
+            tenant.TrialExtensionUsed,
+            tenant.TrialExtendedAt,
+            trial.DaysRemaining,
+            trial.Status,
             tenant.SubscriptionStartsAt,
             tenant.SubscriptionEndsAt,
             tenant.CreatedAt,
@@ -608,7 +727,9 @@ public sealed class PlatformTenantsController(
             summary.BranchCount,
             summary.WorkOrderCount,
             summary.ActiveUsersNow,
-            summary.LastActivityAt);
+            summary.LastActivityAt,
+            initialAdminInvitationSent,
+            initialAdminInvitationMessage);
     }
 
     private async Task<PlatformTenantSummaryResponse> BuildSummaryResponseAsync(Tenant tenant, CancellationToken cancellationToken)
@@ -656,6 +777,7 @@ public sealed class PlatformTenantsController(
     private static PlatformTenantListResponse MapListItem(Tenant tenant, int userCount, int branchCount)
     {
         var license = tenant.TenantLicenses.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+        var trial = BuildTrialSnapshot(tenant);
 
         return new PlatformTenantListResponse(
             tenant.Id,
@@ -668,6 +790,12 @@ public sealed class PlatformTenantsController(
             userCount,
             branchCount,
             ResolveTenantStatus(tenant),
+            trial.StartsAt,
+            tenant.TrialEndsAt,
+            tenant.TrialExtensionUsed,
+            tenant.TrialExtendedAt,
+            trial.DaysRemaining,
+            trial.Status,
             tenant.CreatedAt);
     }
 
@@ -683,6 +811,11 @@ public sealed class PlatformTenantsController(
 
     private static string ResolveLicenseStatus(Tenant tenant, TenantLicense? license)
     {
+        if (IsTrialExpired(tenant))
+        {
+            return PlatformTenantLicenseStatuses.Expired;
+        }
+
         if (!string.IsNullOrWhiteSpace(tenant.LicenseStatus))
         {
             return tenant.LicenseStatus!;
@@ -723,6 +856,72 @@ public sealed class PlatformTenantsController(
         (status == PlatformTenantStatuses.Active || status == PlatformTenantStatuses.Trial)
         && licenseStatus != PlatformTenantLicenseStatuses.Suspended
         && licenseStatus != PlatformTenantLicenseStatuses.Cancelled;
+
+    private static TrialSnapshot BuildTrialSnapshot(Tenant tenant)
+    {
+        DateTime? startsAt = EnsureUtc(tenant.TrialStartsAt) ?? (tenant.CreatedAt == default ? null : EnsureUtc(tenant.CreatedAt));
+        var endsAt = EnsureUtc(tenant.TrialEndsAt);
+        if (!startsAt.HasValue || !endsAt.HasValue)
+        {
+            return new TrialSnapshot(null, null, null, "NotConfigured");
+        }
+
+        var tenantStatus = ResolveTenantStatus(tenant);
+        var licenseStatus = ResolveLicenseStatusForTrial(tenant);
+
+        if (tenantStatus == PlatformTenantStatuses.Inactive)
+        {
+            return new TrialSnapshot(startsAt, endsAt, null, "Inactive");
+        }
+
+        if (tenantStatus == PlatformTenantStatuses.Suspended || licenseStatus == PlatformTenantLicenseStatuses.Suspended)
+        {
+            return new TrialSnapshot(startsAt, endsAt, null, "Suspended");
+        }
+
+        if (licenseStatus == PlatformTenantLicenseStatuses.Active)
+        {
+            return new TrialSnapshot(startsAt, endsAt, null, "PaidActive");
+        }
+
+        if (DateTime.UtcNow > endsAt.Value)
+        {
+            return new TrialSnapshot(startsAt, endsAt, 0, "TrialExpired");
+        }
+
+        var daysRemaining = Math.Max(0, (int)Math.Ceiling((endsAt.Value - DateTime.UtcNow).TotalDays));
+        if (daysRemaining <= TrialExpiringSoonDays)
+        {
+            return new TrialSnapshot(startsAt, endsAt, daysRemaining, "TrialExpiringSoon");
+        }
+
+        return new TrialSnapshot(
+            startsAt,
+            endsAt,
+            daysRemaining,
+            tenant.TrialExtensionUsed ? "TrialExtended" : "TrialActive");
+    }
+
+    private static string ResolveLicenseStatusForTrial(Tenant tenant) =>
+        string.IsNullOrWhiteSpace(tenant.LicenseStatus) ? PlatformTenantLicenseStatuses.Trial : tenant.LicenseStatus!;
+
+    private static bool IsTrialExpired(Tenant tenant)
+    {
+        var trialEndsAt = EnsureUtc(tenant.TrialEndsAt);
+        if (!trialEndsAt.HasValue)
+        {
+            return false;
+        }
+
+        var tenantStatus = ResolveTenantStatus(tenant);
+        var licenseStatus = ResolveLicenseStatusForTrial(tenant);
+        return DateTime.UtcNow > trialEndsAt.Value
+            && tenantStatus != PlatformTenantStatuses.Inactive
+            && tenantStatus != PlatformTenantStatuses.Suspended
+            && !string.Equals(licenseStatus, PlatformTenantLicenseStatuses.Active, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(licenseStatus, PlatformTenantLicenseStatuses.Cancelled, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(licenseStatus, PlatformTenantLicenseStatuses.Suspended, StringComparison.OrdinalIgnoreCase);
+    }
 
     private static void ValidateNotInPast(DateTime? value, DateTime todayUtc, string label)
     {
@@ -846,24 +1045,35 @@ public sealed class PlatformTenantsController(
         };
     }
 
-    private static void ValidateDefaultAdminRequest(UpsertPlatformTenantRequest request)
+    private static InitialAdminProfile BuildInitialAdminProfile(UpsertPlatformTenantRequest request)
     {
-        if (!request.CreateDefaultAdmin)
+        if (request.UsePrimaryContactAsWorkspaceAdmin)
         {
-            return;
+            return new InitialAdminProfile(
+                NormalizeRequired(request.PrimaryContactName ?? request.ContactName, "Primary contact name is required."),
+                NormalizeRequired(request.PrimaryContactEmail ?? request.ContactEmail, "Primary contact email is required."),
+                NormalizeOptional(request.PrimaryContactPhone ?? request.ContactPhone));
         }
 
-        if (string.IsNullOrWhiteSpace(request.AdminFullName))
+        return new InitialAdminProfile(
+            NormalizeRequired(request.AdminFullName, "Initial admin full name is required."),
+            NormalizeRequired(request.AdminEmail, "Initial admin email is required."),
+            NormalizeOptional(request.AdminPhone));
+    }
+
+    private static void ValidateInitialAdminRequest(InitialAdminProfile adminProfile)
+    {
+        if (string.IsNullOrWhiteSpace(adminProfile.FullName))
         {
-            throw new BusinessRuleException("Admin full name is required when creating a default admin.");
+            throw new BusinessRuleException("Initial admin full name is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.AdminEmail))
+        if (string.IsNullOrWhiteSpace(adminProfile.Email))
         {
-            throw new BusinessRuleException("Admin email is required when creating a default admin.");
+            throw new BusinessRuleException("Initial admin email is required.");
         }
 
-        _ = NormalizeEmail(request.AdminEmail);
+        _ = NormalizeEmail(adminProfile.Email);
     }
 
     private static DateTime StartOfUtcDay(DateTime value) =>
@@ -907,6 +1117,21 @@ public sealed class PlatformTenantsController(
         return $"Eco!{Convert.ToBase64String(buffer).Replace('+', 'A').Replace('/', 'B').TrimEnd('=').Substring(0, 12)}9";
     }
 
+    private static string CreateRawResetToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = Encoding.UTF8.GetBytes(token);
+        return Convert.ToHexString(SHA256.HashData(bytes));
+    }
+
     private static class PlatformTenantStatuses
     {
         public const string Active = "Active";
@@ -929,9 +1154,15 @@ public sealed record UpsertPlatformTenantRequest(
     string? Name,
     string? CompanyName,
     string? Slug,
+    string? CompanyEmail,
+    string? CompanyPhone,
+    string? Industry,
     string? ContactName,
     string? ContactEmail,
     string? ContactPhone,
+    string? PrimaryContactName,
+    string? PrimaryContactEmail,
+    string? PrimaryContactPhone,
     string? Country,
     string? County,
     string? City,
@@ -947,8 +1178,10 @@ public sealed record UpsertPlatformTenantRequest(
     string? Status,
     string? LicenseStatus,
     bool CreateDefaultAdmin = false,
+    bool UsePrimaryContactAsWorkspaceAdmin = false,
     string? AdminFullName = null,
-    string? AdminEmail = null);
+    string? AdminEmail = null,
+    string? AdminPhone = null);
 
 public sealed record UpdatePlatformTenantStatusRequest(string Status, string? Reason);
 public sealed record UpdatePlatformTenantStatusReasonRequest(string? Reason);
@@ -964,6 +1197,12 @@ public sealed record PlatformTenantListResponse(
     int UserCount,
     int BranchCount,
     string Status,
+    DateTime? TrialStartsAt,
+    DateTime? TrialEndsAt,
+    bool TrialExtensionUsed,
+    DateTime? TrialExtendedAt,
+    int? TrialDaysRemaining,
+    string TrialStatus,
     DateTime CreatedAt);
 
 public sealed record PlatformTenantDetailResponse(
@@ -983,7 +1222,12 @@ public sealed record PlatformTenantDetailResponse(
     string LicenseStatus,
     int? MaxUsers,
     int? MaxBranches,
+    DateTime? TrialStartsAt,
     DateTime? TrialEndsAt,
+    bool TrialExtensionUsed,
+    DateTime? TrialExtendedAt,
+    int? TrialDaysRemaining,
+    string TrialStatus,
     DateTime? SubscriptionStartsAt,
     DateTime? SubscriptionEndsAt,
     DateTime CreatedAt,
@@ -996,7 +1240,9 @@ public sealed record PlatformTenantDetailResponse(
     int BranchCount,
     int WorkOrderCount,
     int ActiveUsersNow,
-    DateTime? LastActivityAt);
+    DateTime? LastActivityAt,
+    bool? InitialAdminInvitationSent,
+    string? InitialAdminInvitationMessage);
 
 public sealed record PlatformTenantSummaryResponse(
     Guid TenantId,
@@ -1012,3 +1258,14 @@ public sealed record PlatformTenantAuditLogResponse(
     string Actor,
     string? Details,
     DateTime CreatedAt);
+
+internal sealed record InitialAdminProfile(
+    string FullName,
+    string Email,
+    string? Phone);
+
+internal sealed record TrialSnapshot(
+    DateTime? StartsAt,
+    DateTime? EndsAt,
+    int? DaysRemaining,
+    string Status);

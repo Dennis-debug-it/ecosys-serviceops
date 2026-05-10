@@ -11,19 +11,17 @@ import { StatCard } from '../../components/ui/StatCard'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { platformService, toServiceError } from '../../services/platformService'
-import type { Invoice, PaymentMethod, PaymentStatus, Quotation } from '../../types/platform'
+import type { Invoice, PaymentMethod, PaymentStatus, Quotation, Tenant } from '../../types/platform'
 import { formatDateOnly } from '../../utils/date'
 import { Field, SectionTitle, TabLinks } from './PlatformCommon'
 
 const financeTabs = [
-  { label: 'Dashboard', to: '/platform/finance' },
-  { label: 'Quotations', to: '/platform/finance/quotations' },
+  { label: 'Overview', to: '/platform/finance' },
+  { label: 'Subscriptions', to: '/platform/finance/subscriptions' },
   { label: 'Invoices', to: '/platform/finance/invoices' },
   { label: 'Payments', to: '/platform/finance/payments' },
-  { label: 'Revenue', to: '/platform/finance/revenue' },
   { label: 'Expenses', to: '/platform/finance/expenses' },
-  { label: 'Tax Settings', to: '/platform/finance/tax-settings' },
-  { label: 'Document Templates', to: '/platform/finance/templates' },
+  { label: 'Reports', to: '/platform/finance/reports' },
 ]
 
 function useFinanceState() {
@@ -40,17 +38,30 @@ export function PlatformFinancePage() {
     <div className="space-y-4">
       <PageHeader eyebrow="Platform Command Centre" title="Finance" description="Billing, collections, revenue, and spending in one module." />
       <TabLinks links={financeTabs} />
-      {location.pathname === '/platform/finance' ? <FinanceDashboard /> : <Outlet />}
+      {location.pathname === '/platform/finance' || location.pathname === '/platform/finance/overview' ? <FinanceDashboard /> : <Outlet />}
     </div>
   )
 }
 
 function FinanceDashboard() {
   const { data, loading, error, reload } = useAsyncData(
-    async () => platformService.financeApi.getSummary(),
-    { data: { totalRevenue: 0, outstandingInvoices: 0, overdueInvoices: 0, expensesThisMonth: 0, profitEstimate: 0, quotationConversionRate: 0, recentPayments: [], recentInvoices: [], overdueAccounts: [] }, backendAvailable: true, message: '' },
+    async () => {
+      const [summary, tenants, records] = await Promise.all([
+        platformService.financeApi.getSummary(),
+        platformService.tenantsApi.list(),
+        platformService.financeApi.getAll(),
+      ])
+      return { summary: summary.data, tenants: tenants.data, records: records.data }
+    },
+    { summary: { totalRevenue: 0, outstandingInvoices: 0, overdueInvoices: 0, expensesThisMonth: 0, profitEstimate: 0, quotationConversionRate: 0, paidThisMonth: 0, netPosition: 0, recentPayments: [], recentInvoices: [], overdueAccounts: [] }, tenants: [] as Tenant[], records: { quotations: [], invoices: [], payments: [], expenses: [], taxSetting: { name: 'VAT', defaultRate: 16, mode: 'Exclusive' }, templates: [] } },
     [],
   )
+  const trialTenants = data.tenants.filter((item) => ['TrialActive', 'TrialExtended', 'TrialExpiringSoon'].includes(item.trialStatus || '')).length
+  const expiredOrUnpaidTenants = data.tenants.filter((item) => item.trialStatus === 'TrialExpired' || item.licenseStatus === 'Expired' || item.licenseStatus === 'Suspended').length
+  const activePaidTenants = data.tenants.filter((item) => item.licenseStatus === 'Active').length
+  const tenantsRequiringAttention = data.tenants
+    .filter((item) => item.trialStatus === 'TrialExpired' || item.trialStatus === 'TrialExpiringSoon' || item.licenseStatus === 'Suspended')
+    .slice(0, 8)
 
   return (
     <div className="space-y-4">
@@ -65,19 +76,21 @@ function FinanceDashboard() {
       {!loading && !error ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Total Revenue" value={`KES ${data.data.totalRevenue.toLocaleString()}`} detail="Collected from paid payments." icon={Wallet} />
-            <StatCard title="Outstanding Invoices" value={`KES ${data.data.outstandingInvoices.toLocaleString()}`} detail="Issued but unpaid invoice balance." icon={FileText} />
-            <StatCard title="Overdue Invoices" value={`KES ${data.data.overdueInvoices.toLocaleString()}`} detail="Past due invoice amount." icon={FileText} accent="amber" />
-            <StatCard title="Expenses This Month" value={`KES ${data.data.expensesThisMonth.toLocaleString()}`} detail="Monthly platform expenses." icon={Receipt} />
-            <StatCard title="Profit Estimate" value={`KES ${data.data.profitEstimate.toLocaleString()}`} detail="Revenue minus expenses." icon={Wallet} accent="emerald" />
-            <StatCard title="Quotation Conversion" value={`${data.data.quotationConversionRate.toLocaleString()}%`} detail="Converted quotation ratio." icon={FileText} />
+            <StatCard title="Total Revenue" value={`KES ${data.summary.totalRevenue.toLocaleString()}`} detail="Collected from paid payments." icon={Wallet} />
+            <StatCard title="Outstanding Balance" value={`KES ${data.summary.outstandingInvoices.toLocaleString()}`} detail="Issued but unpaid invoice balance." icon={FileText} />
+            <StatCard title="Paid This Month" value={`KES ${(data.summary.paidThisMonth || 0).toLocaleString()}`} detail="Payments received this month." icon={Wallet} />
+            <StatCard title="Expenses This Month" value={`KES ${data.summary.expensesThisMonth.toLocaleString()}`} detail="Monthly platform expenses." icon={Receipt} />
+            <StatCard title="Net Position" value={`KES ${(data.summary.netPosition || data.summary.profitEstimate).toLocaleString()}`} detail="Collected revenue minus expenses." icon={Wallet} accent="emerald" />
+            <StatCard title="Active Paid Tenants" value={String(activePaidTenants)} detail="Tenants on active paid subscriptions." icon={FileText} />
+            <StatCard title="Trial Tenants" value={String(trialTenants)} detail="Tenants currently in trial." icon={FileText} />
+            <StatCard title="Expired / Unpaid Tenants" value={String(expiredOrUnpaidTenants)} detail="Tenants needing finance follow-up." icon={Receipt} accent="amber" />
           </section>
           <section className="grid gap-4 xl:grid-cols-2">
             <section className="surface-card space-y-3">
               <SectionTitle title="Recent Payments" description="Latest captured transactions." />
-              {data.data.recentPayments.length === 0 ? <EmptyState title="No recent payments" description="Payments will appear after collection records are created." /> : (
+              {data.summary.recentPayments.length === 0 ? <EmptyState title="No recent payments" description="Payments will appear after collection records are created." /> : (
                 <DataTable
-                  rows={data.data.recentPayments}
+                  rows={data.summary.recentPayments}
                   rowKey={(row) => row.id}
                   minTableWidth="min-w-[780px] w-full"
                   columns={[
@@ -92,9 +105,9 @@ function FinanceDashboard() {
             </section>
             <section className="surface-card space-y-3">
               <SectionTitle title="Recent Invoices" description="Most recent billing records." />
-              {data.data.recentInvoices.length === 0 ? <EmptyState title="No recent invoices" description="Invoices will appear here once created." /> : (
+              {data.summary.recentInvoices.length === 0 ? <EmptyState title="No recent invoices" description="Invoices will appear here once created." /> : (
                 <DataTable
-                  rows={data.data.recentInvoices}
+                  rows={data.summary.recentInvoices}
                   rowKey={(row) => row.id}
                   minTableWidth="min-w-[780px] w-full"
                   columns={[
@@ -108,9 +121,82 @@ function FinanceDashboard() {
               )}
             </section>
           </section>
+          <section className="grid gap-4 xl:grid-cols-2">
+            <section className="surface-card space-y-3">
+              <SectionTitle title="Recent Expenses" description="Latest operating costs recorded." />
+              {data.records.expenses.length === 0 ? <EmptyState title="No recent expenses" description="Expense trends will appear as records are added." /> : (
+                <DataTable
+                  rows={data.records.expenses.slice(0, 5)}
+                  rowKey={(row) => row.id}
+                  columns={[
+                    { key: 'date', header: 'Date', cell: (row) => formatDateOnly(row.expenseDate) },
+                    { key: 'category', header: 'Category', cell: (row) => row.category },
+                    { key: 'vendor', header: 'Vendor', cell: (row) => row.vendor || '-' },
+                    { key: 'amount', header: 'Amount', cell: (row) => `KES ${row.amount.toLocaleString()}` },
+                  ]}
+                />
+              )}
+            </section>
+            <section className="surface-card space-y-3">
+              <SectionTitle title="Tenants Requiring Attention" description="Expired trials, expiring trials, and suspended finance posture." />
+              {tenantsRequiringAttention.length === 0 ? <EmptyState title="No tenants need attention" description="Trial and payment follow-up items will appear here." /> : (
+                <DataTable
+                  rows={tenantsRequiringAttention}
+                  rowKey={(row) => row.tenantId}
+                  columns={[
+                    { key: 'tenant', header: 'Tenant', cell: (row) => row.name },
+                    { key: 'plan', header: 'Plan', cell: (row) => row.plan },
+                    { key: 'trial', header: 'Trial', cell: (row) => row.trialStatus || '-' },
+                    { key: 'license', header: 'License', cell: (row) => row.licenseStatus },
+                  ]}
+                />
+              )}
+            </section>
+          </section>
         </>
       ) : null}
     </div>
+  )
+}
+
+export function FinanceSubscriptionsPage() {
+  const { data, loading, error } = useAsyncData(
+    async () => {
+      const [tenants, subscriptions] = await Promise.all([
+        platformService.tenantsApi.list(),
+        platformService.licensesApi.getSubscriptions(),
+      ])
+      return { tenants: tenants.data, subscriptions }
+    },
+    { tenants: [] as Tenant[], subscriptions: [] as Array<Record<string, unknown>> },
+    [],
+  )
+
+  return (
+    <section className="surface-card space-y-4">
+      <SectionTitle title="Subscriptions" description="Trial and paid tenant subscription posture." />
+      {loading ? <LoadingState label="Loading subscriptions" /> : null}
+      {!loading && error ? <InfoAlert title="Unable to load subscriptions" description={error} tone="danger" /> : null}
+      {!loading && !error ? (
+        data.tenants.length === 0 ? <EmptyState title="No tenants found" description="Tenants will appear here as they are onboarded." /> : (
+          <DataTable
+            rows={data.tenants}
+            rowKey={(row) => row.tenantId}
+            minTableWidth="min-w-[1200px] w-full"
+            columns={[
+              { key: 'tenant', header: 'Tenant', cell: (row) => row.name },
+              { key: 'plan', header: 'Plan', cell: (row) => row.plan },
+              { key: 'trial', header: 'Trial Status', cell: (row) => row.trialStatus || '-' },
+              { key: 'subscription', header: 'Subscription Status', cell: (row) => row.licenseStatus },
+              { key: 'start', header: 'Start Date', cell: (row) => row.trialStartDate ? formatDateOnly(row.trialStartDate) : '-' },
+              { key: 'end', header: 'End Date', cell: (row) => row.trialEndDate ? formatDateOnly(row.trialEndDate) : '-' },
+              { key: 'amount', header: 'Amount', cell: () => '-' },
+              { key: 'action', header: 'Action', cell: (row) => <Link className="button-secondary px-3 py-2" to={`/platform/tenants?tenantId=${row.tenantId}`}>View tenant</Link> },
+            ]}
+          />
+        )
+      ) : null}
+    </section>
   )
 }
 
@@ -174,6 +260,61 @@ export function FinanceRevenuePage() {
 
 export function FinanceExpensesPage() {
   return <FinanceRecordPage mode="expense" />
+}
+
+export function FinanceReportsPage() {
+  const { data, loading, error, reload } = useAsyncData(
+    async () => {
+      const [summary, records] = await Promise.all([
+        platformService.financeApi.getSummary(),
+        platformService.financeApi.getAll(),
+      ])
+      return { summary: summary.data, records: records.data }
+    },
+    {
+      summary: { totalRevenue: 0, outstandingInvoices: 0, overdueInvoices: 0, expensesThisMonth: 0, profitEstimate: 0, quotationConversionRate: 0, paidThisMonth: 0, netPosition: 0, recentPayments: [], recentInvoices: [], overdueAccounts: [] },
+      records: { quotations: [], invoices: [], payments: [], expenses: [], taxSetting: { name: 'VAT', defaultRate: 16, mode: 'Exclusive' }, templates: [] },
+    },
+    [],
+  )
+
+  return (
+    <div className="space-y-4">
+      {loading ? <LoadingState label="Loading finance reports" /> : null}
+      {!loading && error ? (
+        <section className="surface-card space-y-3">
+          <InfoAlert title="Unable to load finance reports" description={error} tone="danger" />
+          <button type="button" className="button-secondary" onClick={() => void reload()}><RefreshCw className="h-4 w-4" />Retry</button>
+        </section>
+      ) : null}
+      {!loading && !error ? (
+        <>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard title="Revenue Summary" value={`KES ${data.summary.totalRevenue.toLocaleString()}`} detail="Total collected revenue." icon={Wallet} />
+            <StatCard title="Outstanding Balances" value={`KES ${data.summary.outstandingInvoices.toLocaleString()}`} detail="Open invoice balance." icon={FileText} />
+            <StatCard title="Expense Breakdown" value={`KES ${data.summary.expensesThisMonth.toLocaleString()}`} detail="Current month expenses." icon={Receipt} />
+            <StatCard title="Net Position" value={`KES ${(data.summary.netPosition || data.summary.profitEstimate).toLocaleString()}`} detail="Collected revenue less expenses." icon={Wallet} accent="emerald" />
+          </section>
+          <section className="surface-card space-y-3">
+            <SectionTitle title="Outstanding Invoices" description="Invoices still awaiting payment." />
+            {data.records.invoices.length === 0 ? <EmptyState title="No invoices yet" description="Outstanding balances will appear after invoices are issued." /> : (
+              <DataTable
+                rows={data.records.invoices.filter((item) => item.balance > 0)}
+                rowKey={(row) => row.id}
+                columns={[
+                  { key: 'number', header: 'Invoice', cell: (row) => row.number },
+                  { key: 'tenant', header: 'Tenant', cell: (row) => row.tenantName },
+                  { key: 'issueDate', header: 'Issue Date', cell: (row) => formatDateOnly(row.issueDate) },
+                  { key: 'balance', header: 'Balance', cell: (row) => `KES ${row.balance.toLocaleString()}` },
+                  { key: 'status', header: 'Status', cell: (row) => row.status },
+                ]}
+              />
+            )}
+          </section>
+        </>
+      ) : null}
+    </div>
+  )
 }
 
 export function FinanceTaxSettingsPage() {
@@ -285,7 +426,7 @@ function FinanceRecordPage({ mode }: { mode: 'quotation' | 'invoice' | 'payment'
       if (mode === 'quotation') {
         await platformService.financeApi.saveQuotation({ id: '', number: '', tenantName, issueDate: new Date(dateValue).toISOString(), dueDate: null, status: status as Quotation['status'], taxRate: data.data.taxSetting.defaultRate, taxMode: data.data.taxSetting.mode, lines: [{ id: '', description, quantity, unitPrice }], subtotal: amount, taxAmount: 0, total: amount })
       } else if (mode === 'invoice') {
-        await platformService.financeApi.saveInvoice({ id: '', number: '', tenantName, issueDate: new Date(dateValue).toISOString(), dueDate: null, status: status as Invoice['status'], taxRate: data.data.taxSetting.defaultRate, taxMode: data.data.taxSetting.mode, lines: [{ id: '', description, quantity, unitPrice }], subtotal: amount, taxAmount: 0, total: amount, paidAmount: 0 })
+        await platformService.financeApi.saveInvoice({ id: '', number: '', tenantName, issueDate: new Date(dateValue).toISOString(), dueDate: null, status: status as Invoice['status'], taxRate: data.data.taxSetting.defaultRate, taxMode: data.data.taxSetting.mode, lines: [{ id: '', description, quantity, unitPrice }], subtotal: amount, taxAmount: 0, total: amount, paidAmount: 0, balance: amount })
       } else if (mode === 'payment') {
         await platformService.financeApi.savePayment({ id: '', invoiceId: invoiceId || undefined, amount, paymentDate: new Date(dateValue).toISOString(), method, status: status as PaymentStatus })
       } else {

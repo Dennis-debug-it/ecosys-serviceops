@@ -1,9 +1,10 @@
 import { memo, useEffect, useState } from 'react'
 import { Bell, ChevronDown, LogOut, Menu, Search, ShieldCheck } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
-import { EcosysIcon } from '../brand'
+import { EcosysIcon, EcosysLogo } from '../brand'
 import { Badge } from '../ui/Badge'
 import { ThemeToggle } from '../ui/ThemeToggle'
+import { useThemeMode } from '../../context/ThemeContext'
 import type { AppSession, Branch, NotificationItem, SearchItem } from '../../types/app'
 import { UI_RESET_EVENT } from '../../utils/appCleanup'
 
@@ -41,8 +42,10 @@ export const Topbar = memo(function Topbar({
   onLogout: () => void
 }) {
   const location = useLocation()
+  const { theme } = useThemeMode()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const logoVariant = theme === 'light' ? 'lightPanel' : 'darkPanel'
 
   useEffect(() => {
     setUserMenuOpen(false)
@@ -67,11 +70,17 @@ export const Topbar = memo(function Topbar({
             <Menu className="h-5 w-5" />
           </button>
           {mode === 'platform' ? (
-            <EcosysIcon className="hidden sm:block" size={36} />
+            <>
+              <EcosysIcon className="sm:hidden" size={28} />
+              <EcosysLogo className="hidden sm:flex" variant={logoVariant} size="sm" subtitle="Platform" />
+            </>
           ) : tenantLogoUrl ? (
             <img src={tenantLogoUrl} alt={`${tenantName} logo`} className="hidden h-9 w-auto max-w-[120px] object-contain sm:block" />
           ) : (
-            <EcosysIcon className="hidden sm:block" size={36} />
+            <>
+              <EcosysIcon className="sm:hidden" size={28} />
+              <EcosysLogo className="hidden sm:flex" variant={logoVariant} size="sm" subtitle="ServiceOps Suite" />
+            </>
           )}
         </div>
 

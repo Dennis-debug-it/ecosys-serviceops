@@ -38,6 +38,7 @@ public sealed record LoginResult(
     string Role,
     string? JobTitle,
     string? Department,
+    bool MustChangePassword,
     UserPermissionsModel Permissions,
     string CompanyName,
     string Country,
@@ -163,18 +164,23 @@ internal sealed class MvpAuthService(
         var user = await dbContext.Users
             .Include(x => x.Tenant)
             .Include(x => x.Permission)
-            .SingleOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail && x.IsActive, cancellationToken)
-            ?? throw new ForbiddenException("Invalid email or password.");
+            .SingleOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail, cancellationToken)
+            ?? throw new UnauthorizedException("Invalid email or password.");
+
+        if (!user.IsActive)
+        {
+            throw new ForbiddenException("Your account is inactive. Please contact your administrator.");
+        }
 
         if (user.Tenant is null || !user.Tenant.IsActive)
         {
-            throw new ForbiddenException("Tenant is inactive.");
+            throw new ForbiddenException("Your account is inactive. Please contact your administrator.");
         }
 
         var passwordResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
         if (passwordResult == PasswordVerificationResult.Failed)
         {
-            throw new ForbiddenException("Invalid email or password.");
+            throw new UnauthorizedException("Invalid email or password.");
         }
 
         var permissions = ResolvePermissions(user);
@@ -198,6 +204,7 @@ internal sealed class MvpAuthService(
             user.Role,
             user.JobTitle,
             user.Department,
+            user.MustChangePassword,
             permissions,
             user.Tenant.CompanyName,
             user.Tenant.Country,

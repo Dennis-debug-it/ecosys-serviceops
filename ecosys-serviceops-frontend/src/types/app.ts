@@ -91,6 +91,7 @@ export interface AppSession {
   branches?: AuthBranch[]
   department?: string
   hasAllBranchAccess?: boolean
+  mustChangePassword: boolean
   country?: string
   industry?: string
   logoUrl?: string | null

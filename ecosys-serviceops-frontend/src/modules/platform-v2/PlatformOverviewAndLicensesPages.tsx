@@ -50,6 +50,9 @@ export function PlatformOverviewPage() {
   const activeTenants = asNumber(data.dashboard.totalTenants ? data.dashboard.activeTenants : data.tenants.filter((item) => item.status === 'Active').length)
   const suspendedTenants = asNumber(data.dashboard.suspendedTenants)
   const deactivatedTenants = asNumber(data.dashboard.deactivatedTenants)
+  const activeTrials = data.tenants.filter((item) => item.trialStatus === 'TrialActive' || item.trialStatus === 'TrialExtended').length
+  const expiringSoonTrials = data.tenants.filter((item) => item.trialStatus === 'TrialExpiringSoon').length
+  const expiredTrials = data.tenants.filter((item) => item.trialStatus === 'TrialExpired').length
 
   return (
     <PageScaffold
@@ -73,6 +76,9 @@ export function PlatformOverviewPage() {
             <StatCard title="Active Tenants" value={String(activeTenants)} detail="Tenants currently active." icon={Building2} accent="emerald" />
             <StatCard title="Suspended Tenants" value={String(suspendedTenants)} detail="Temporarily blocked tenants." icon={FileText} accent="amber" />
             <StatCard title="Deactivated Tenants" value={String(deactivatedTenants)} detail="Inactive tenants." icon={BarChart3} />
+            <StatCard title="Active Trials" value={String(activeTrials)} detail="Trial tenants with time remaining." icon={Building2} />
+            <StatCard title="Trials Expiring Soon" value={String(expiringSoonTrials)} detail="Three days remaining or fewer." icon={FileText} accent="amber" />
+            <StatCard title="Expired Trials" value={String(expiredTrials)} detail="Trials requiring follow-up." icon={BarChart3} />
           </section>
 
           <section className="grid gap-4 md:grid-cols-3">
@@ -91,6 +97,7 @@ export function PlatformOverviewPage() {
                   { key: 'name', header: 'Tenant', cell: (row) => <span className="font-semibold text-app">{row.name}</span> },
                   { key: 'plan', header: 'Plan', cell: (row) => row.plan },
                   { key: 'licenseStatus', header: 'License', cell: (row) => licenseStatusBadge(row.licenseStatus) },
+                  { key: 'trialStatus', header: 'Trial', cell: (row) => row.trialStatus || 'Not set' },
                   { key: 'status', header: 'Status', cell: (row) => tenantStatusBadge(row.status) },
                   { key: 'createdAt', header: 'Created At', cell: (row) => formatDateOnly(row.createdAt) },
                 ]}

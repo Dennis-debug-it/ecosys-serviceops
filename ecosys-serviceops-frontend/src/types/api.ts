@@ -55,6 +55,7 @@ export interface ApiUserContext {
   department?: string | null
   hasAllBranchAccess?: boolean
   defaultBranchId?: string | null
+  mustChangePassword?: boolean
   permissions: ApiPermissions
 }
 
@@ -62,6 +63,12 @@ export interface LoginResponse {
   token: string
   user?: ApiUserContext
   tenant?: ApiTenantContext
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
 }
 
 export interface SignupResponse {
@@ -566,6 +573,12 @@ export interface PlatformTenant {
   userCount: number
   branchCount: number
   status: PlatformTenantStatus
+  trialStartsAt?: string | null
+  trialEndsAt?: string | null
+  trialExtensionUsed: boolean
+  trialExtendedAt?: string | null
+  trialDaysRemaining?: number | null
+  trialStatus: string
   createdAt: string
 }
 
@@ -581,6 +594,7 @@ export interface PlatformTenantDetail {
   contactEmail?: string | null
   contactPhone?: string | null
   country?: string | null
+  industry?: string | null
   county?: string | null
   city?: string | null
   address?: string | null
@@ -590,7 +604,13 @@ export interface PlatformTenantDetail {
   licenseStatus: PlatformLicenseStatus
   maxUsers?: number | null
   maxBranches?: number | null
+  trialStartsAt?: string | null
   trialEndsAt?: string | null
+  trialExtensionUsed: boolean
+  trialExtendedAt?: string | null
+  trialDaysRemaining?: number | null
+  trialStatus: string
+  subscriptionStartsAt?: string | null
   subscriptionEndsAt?: string | null
   createdAt: string
   updatedAt?: string | null
@@ -601,6 +621,8 @@ export interface PlatformTenantDetail {
   workOrderCount: number
   activeUsersNow: number
   lastActivityAt?: string | null
+  initialAdminInvitationSent?: boolean | null
+  initialAdminInvitationMessage?: string | null
 }
 
 export interface PlatformTenantSummary {
@@ -643,9 +665,15 @@ export interface PlatformTenantAuditLog {
 export interface UpsertPlatformTenantInput {
   name: string
   slug: string
+  companyEmail?: string | null
+  companyPhone?: string | null
+  industry?: string | null
   contactName?: string | null
   contactEmail?: string | null
   contactPhone?: string | null
+  primaryContactName?: string | null
+  primaryContactEmail?: string | null
+  primaryContactPhone?: string | null
   country?: string | null
   county?: string | null
   city?: string | null
@@ -659,8 +687,10 @@ export interface UpsertPlatformTenantInput {
   status: PlatformTenantStatus
   licenseStatus: PlatformLicenseStatus
   createDefaultAdmin?: boolean
+  usePrimaryContactAsWorkspaceAdmin?: boolean
   adminFullName?: string | null
   adminEmail?: string | null
+  adminPhone?: string | null
 }
 
 export interface UpdatePlatformTenantStatusInput {

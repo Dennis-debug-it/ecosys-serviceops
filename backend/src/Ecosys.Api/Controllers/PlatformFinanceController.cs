@@ -52,6 +52,14 @@ public sealed class PlatformFinanceController(
             overdueAccounts.Select(MapInvoice).ToList()));
     }
 
+    [HttpGet("summary")]
+    public Task<ActionResult<PlatformFinanceDashboardResponse>> GetSummary(CancellationToken cancellationToken) =>
+        GetDashboard(cancellationToken);
+
+    [HttpGet("reports/overview")]
+    public Task<ActionResult<PlatformFinanceDashboardResponse>> GetOverviewReport(CancellationToken cancellationToken) =>
+        GetDashboard(cancellationToken);
+
     [HttpGet("quotations")]
     public async Task<ActionResult<IReadOnlyCollection<PlatformQuotationResponse>>> GetQuotations(CancellationToken cancellationToken)
     {

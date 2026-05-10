@@ -111,6 +111,12 @@ function mapTenant(item: PlatformTenant): Tenant {
     users: item.userCount,
     branches: item.branchCount,
     status: toTenantStatus(item.status),
+    trialStartDate: item.trialStartsAt,
+    trialEndDate: item.trialEndsAt,
+    trialExtensionUsed: item.trialExtensionUsed,
+    trialExtendedAt: item.trialExtendedAt,
+    trialDaysRemaining: item.trialDaysRemaining ?? null,
+    trialStatus: item.trialStatus,
     createdAt: item.createdAt,
   }
 }
@@ -118,9 +124,19 @@ function mapTenant(item: PlatformTenant): Tenant {
 function mapTenantDetail(item: PlatformTenantDetail): Tenant {
   return {
     ...mapTenant(item),
+    country: item.country ?? '',
+    industry: item.industry ?? '',
+    contactPhone: item.contactPhone ?? '',
     maxUsers: item.maxUsers,
     maxBranches: item.maxBranches,
+    trialStartDate: item.trialStartsAt,
     trialEndDate: item.trialEndsAt,
+    trialExtensionUsed: item.trialExtensionUsed,
+    trialExtendedAt: item.trialExtendedAt,
+    trialDaysRemaining: item.trialDaysRemaining ?? null,
+    trialStatus: item.trialStatus,
+    initialAdminInvitationSent: item.initialAdminInvitationSent ?? null,
+    initialAdminInvitationMessage: item.initialAdminInvitationMessage ?? null,
   }
 }
 
@@ -219,10 +235,16 @@ function buildTenantPayload(input: Partial<Tenant> & { name: string; slug: strin
   return {
     name: input.name,
     slug: input.slug,
+    companyEmail: input.companyEmail || '',
+    companyPhone: input.companyPhone || '',
+    industry: input.industry || '',
     contactName: input.contactPerson || '',
     contactEmail: input.contactEmail || '',
-    contactPhone: '',
-    country: 'Kenya',
+    contactPhone: input.contactPhone || '',
+    primaryContactName: input.contactPerson || '',
+    primaryContactEmail: input.contactEmail || '',
+    primaryContactPhone: input.contactPhone || '',
+    country: input.country || 'Kenya',
     county: '',
     city: '',
     address: '',
@@ -234,9 +256,11 @@ function buildTenantPayload(input: Partial<Tenant> & { name: string; slug: strin
     subscriptionEndsAt: null,
     status: toPlatformTenantStatus(input.status || 'Active'),
     licenseStatus: input.licenseStatus || 'Active',
-    createDefaultAdmin: Boolean(input.createDefaultAdmin),
-    adminFullName: input.createDefaultAdmin ? (input.adminFullName || input.contactPerson || '') : null,
-    adminEmail: input.createDefaultAdmin ? (input.adminEmail || input.contactEmail || '') : null,
+    createDefaultAdmin: true,
+    usePrimaryContactAsWorkspaceAdmin: Boolean(input.usePrimaryContactAsWorkspaceAdmin),
+    adminFullName: input.usePrimaryContactAsWorkspaceAdmin ? null : (input.adminFullName || ''),
+    adminEmail: input.usePrimaryContactAsWorkspaceAdmin ? null : (input.adminEmail || ''),
+    adminPhone: input.usePrimaryContactAsWorkspaceAdmin ? null : (input.adminPhone || ''),
   }
 }
 
@@ -444,6 +468,7 @@ function mapInvoice(item: PlatformInvoiceResponse): Invoice {
     taxAmount: item.taxAmount,
     total: item.total,
     paidAmount: item.amountPaid,
+    balance: item.balance,
     notes: item.notes ?? undefined,
   }
 }
@@ -707,6 +732,10 @@ export const tenantsApi = {
     const tenant = await api.post<PlatformTenantDetail>(`/api/platform/tenants/${tenantId}/deactivate`, { reason: reason || null })
     return { data: mapTenantDetail(tenant), backendAvailable: true }
   },
+  async extendTrial(tenantId: string): Promise<ServiceResult<Tenant>> {
+    const tenant = await api.post<PlatformTenantDetail>(`/api/platform/tenants/${tenantId}/extend-trial`)
+    return { data: mapTenantDetail(tenant), backendAvailable: true }
+  },
   async getCommunicationSettings(tenantId: string): Promise<ServiceResult<TenantCommunicationSettings>> {
     const response = await api.get<TenantCommunicationSettingsResponse>(`/api/platform/tenants/${tenantId}/communication-settings`)
     return {
@@ -830,8 +859,13 @@ export const financeApi = {
     return { data: await fetchFinanceData(), backendAvailable: true }
   },
   async getSummary(): Promise<ServiceResult<FinanceSummary>> {
-    const dashboard = await api.get<PlatformFinanceDashboardResponse>('/api/platform/finance/dashboard')
+    const dashboard = await api.get<PlatformFinanceDashboardResponse>('/api/platform/finance/summary')
     const data = await fetchFinanceData()
+    const now = new Date()
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const paidThisMonth = data.payments
+      .filter((item) => item.status === 'Paid' && new Date(item.paymentDate) >= monthStart)
+      .reduce((sum, item) => sum + item.amount, 0)
 
     return {
       data: {
@@ -841,6 +875,8 @@ export const financeApi = {
         expensesThisMonth: dashboard.expensesThisMonth,
         profitEstimate: dashboard.profitEstimate,
         quotationConversionRate: dashboard.quotationConversionRate,
+        paidThisMonth,
+        netPosition: dashboard.totalRevenue - dashboard.expensesThisMonth,
         recentPayments: dashboard.recentPayments.map((item) => mapPayment(item, data.invoices)),
         recentInvoices: dashboard.recentInvoices.map(mapInvoice),
         overdueAccounts: dashboard.overdueAccounts.map(mapInvoice),

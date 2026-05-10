@@ -17,6 +17,7 @@ public interface IUserSessionService
     Task LogoutAsync(Guid sessionId, CancellationToken cancellationToken = default);
     Task<UserSession?> GetAsync(Guid sessionId, CancellationToken cancellationToken = default);
     Task<int> RevokeAllForUserAsync(Guid userId, string? reason = null, CancellationToken cancellationToken = default);
+    Task<int> RevokeOthersForUserAsync(Guid userId, Guid currentSessionId, string? reason = null, CancellationToken cancellationToken = default);
 }
 
 internal sealed class UserSessionService(AppDbContext dbContext, IHttpContextAccessor httpContextAccessor) : IUserSessionService
@@ -83,6 +84,33 @@ internal sealed class UserSessionService(AppDbContext dbContext, IHttpContextAcc
         var now = DateTime.UtcNow;
         var sessions = await dbContext.UserSessions
             .Where(x => x.UserId == userId && !x.IsRevoked)
+            .ToListAsync(cancellationToken);
+
+        foreach (var session in sessions)
+        {
+            session.IsRevoked = true;
+            session.RevokedAt = now;
+            session.LastSeenAt = now;
+            session.LogoutAt ??= now;
+            if (!string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(session.UserAgent))
+            {
+                session.UserAgent = reason;
+            }
+        }
+
+        if (sessions.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return sessions.Count;
+    }
+
+    public async Task<int> RevokeOthersForUserAsync(Guid userId, Guid currentSessionId, string? reason = null, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var sessions = await dbContext.UserSessions
+            .Where(x => x.UserId == userId && x.Id != currentSessionId && !x.IsRevoked)
             .ToListAsync(cancellationToken);
 
         foreach (var session in sessions)

@@ -20,6 +20,7 @@ import { TenantCommunicationSettingsPanel } from './TenantCommunicationSettingsP
 
 const tenantStatuses: TenantStatus[] = ['Active', 'Trial', 'Suspended', 'Inactive']
 const licenseStatuses: LicenseStatus[] = ['Active', 'Trial', 'Expired', 'Suspended']
+const trialFilters = ['All', 'TrialActive', 'TrialExpiringSoon', 'TrialExpired', 'TrialExtended', 'PaidActive'] as const
 const detailSections = [
   { id: 'overview', label: 'Overview' },
   { id: 'branding', label: 'Branding' },
@@ -39,8 +40,13 @@ const defaultTenantForm: Tenant = {
   tenantId: '',
   name: '',
   slug: '',
+  companyEmail: '',
+  companyPhone: '',
+  country: 'Kenya',
+  industry: '',
   contactPerson: '',
   contactEmail: '',
+  contactPhone: '',
   plan: 'Starter',
   licenseStatus: 'Active',
   users: 0,
@@ -51,8 +57,33 @@ const defaultTenantForm: Tenant = {
   maxBranches: 2,
   trialEndDate: null,
   createDefaultAdmin: true,
+  usePrimaryContactAsWorkspaceAdmin: true,
   adminFullName: '',
   adminEmail: '',
+  adminPhone: '',
+}
+
+function formatTrialLabel(tenant: Tenant) {
+  switch (tenant.trialStatus) {
+    case 'TrialExpiringSoon':
+      return tenant.trialDaysRemaining != null ? `Trial expiring soon · ${tenant.trialDaysRemaining} days remaining` : 'Trial expiring soon'
+    case 'TrialExpired':
+      return 'Trial expired'
+    case 'TrialExtended':
+      return tenant.trialDaysRemaining != null ? `Trial extended once · ${tenant.trialDaysRemaining} days remaining` : 'Trial extended once'
+    case 'PaidActive':
+      return 'Paid active'
+    case 'Suspended':
+      return 'Suspended'
+    case 'Inactive':
+      return 'Inactive'
+    default:
+      return tenant.trialDaysRemaining != null ? `Trial active · ${tenant.trialDaysRemaining} days remaining` : 'Trial active'
+  }
+}
+
+function formatExtensionLabel(tenant: Tenant) {
+  return tenant.trialExtensionUsed ? 'Trial extended once' : 'Extension not used'
 }
 
 export function PlatformTenantsPage() {
@@ -68,6 +99,7 @@ export function PlatformTenantsPage() {
   const [statusFilter, setStatusFilter] = useState<'All' | TenantStatus>('All')
   const [planFilter, setPlanFilter] = useState('All')
   const [licenseFilter, setLicenseFilter] = useState<'All' | LicenseStatus>('All')
+  const [trialFilter, setTrialFilter] = useState<(typeof trialFilters)[number]>('All')
   const [modalOpen, setModalOpen] = useState(false)
   const [mode, setMode] = useState<'create' | 'edit'>('create')
   const [form, setForm] = useState<Tenant>(defaultTenantForm)
@@ -75,6 +107,7 @@ export function PlatformTenantsPage() {
   const [activeDetailSection, setActiveDetailSection] = useState<DetailSectionId>('overview')
   const [statusReason, setStatusReason] = useState('')
   const [pendingStatus, setPendingStatus] = useState<{ tenant: Tenant; nextStatus: TenantStatus } | null>(null)
+  const [pendingTrialExtension, setPendingTrialExtension] = useState<Tenant | null>(null)
   const [saving, setSaving] = useState(false)
   const [prefillLeadId, setPrefillLeadId] = useState<string | null>(null)
   const [slugTouched, setSlugTouched] = useState(false)
@@ -92,9 +125,10 @@ export function PlatformTenantsPage() {
       const matchesStatus = statusFilter === 'All' || item.status === statusFilter
       const matchesPlan = planFilter === 'All' || item.plan === planFilter
       const matchesLicense = licenseFilter === 'All' || item.licenseStatus === licenseFilter
-      return matchesQuery && matchesStatus && matchesPlan && matchesLicense
+      const matchesTrial = trialFilter === 'All' || item.trialStatus === trialFilter
+      return matchesQuery && matchesStatus && matchesPlan && matchesLicense && matchesTrial
     })
-  }, [data.data, search, statusFilter, planFilter, licenseFilter])
+  }, [data.data, search, statusFilter, planFilter, licenseFilter, trialFilter])
 
   function openCreate() {
     setMode('create')
@@ -117,13 +151,22 @@ export function PlatformTenantsPage() {
       return
     }
 
-    if (mode === 'create' && form.createDefaultAdmin) {
-      const adminName = (form.adminFullName || form.contactPerson || '').trim()
-      const adminEmail = (form.adminEmail || form.contactEmail || '').trim()
+    if (mode === 'create') {
+      if (!form.companyEmail?.trim() || !form.companyPhone?.trim() || !form.country?.trim() || !form.contactPerson.trim() || !form.contactEmail.trim()) {
+        pushToast({
+          title: 'Missing fields',
+          description: 'Company email, company phone, country, primary contact name, and primary contact email are required.',
+          tone: 'warning',
+        })
+        return
+      }
+
+      const adminName = (form.usePrimaryContactAsWorkspaceAdmin ? form.contactPerson : form.adminFullName || '').trim()
+      const adminEmail = (form.usePrimaryContactAsWorkspaceAdmin ? form.contactEmail : form.adminEmail || '').trim()
       if (!adminName || !adminEmail) {
         pushToast({
           title: 'Admin details required',
-          description: 'Contact person and contact email are required to create the first tenant admin and mail login credentials.',
+          description: 'Enter the initial workspace admin details or use the primary contact as workspace admin.',
           tone: 'warning',
         })
         return
@@ -141,17 +184,22 @@ export function PlatformTenantsPage() {
     try {
       const payload = { ...form, slug: normalizedSlug }
       if (mode === 'create') {
-        await platformService.tenantsApi.create(payload)
+        const created = await platformService.tenantsApi.create(payload)
+        pushToast({
+          title: 'Tenant created',
+          description: created.data.initialAdminInvitationSent
+            ? 'Tenant created and workspace admin invited.'
+            : 'Tenant created, but admin invitation could not be sent.',
+          tone: created.data.initialAdminInvitationSent ? 'success' : 'warning',
+        })
       } else {
         await platformService.tenantsApi.update(form.tenantId, payload)
+        pushToast({
+          title: 'Tenant updated',
+          description: `${form.name} saved successfully.`,
+          tone: 'success',
+        })
       }
-      pushToast({
-        title: mode === 'create' ? 'Tenant created' : 'Tenant updated',
-        description: mode === 'create' && form.createDefaultAdmin
-          ? `${form.name} was created and initial admin credentials were queued for email delivery.`
-          : `${form.name} saved successfully.`,
-        tone: 'success',
-      })
       setModalOpen(false)
       setPrefillLeadId(null)
       setSlugTouched(false)
@@ -185,6 +233,7 @@ export function PlatformTenantsPage() {
           ...defaultTenantForm,
           name: lead.companyName,
           slug: generatedSlug || defaultTenantForm.slug,
+          companyEmail: lead.email,
           contactPerson: lead.contactPersonName,
           contactEmail: lead.email,
           adminFullName: lead.contactPersonName,
@@ -246,6 +295,22 @@ export function PlatformTenantsPage() {
     }
   }
 
+  async function extendTrial() {
+    if (!pendingTrialExtension) return
+
+    try {
+      const updated = await platformService.tenantsApi.extendTrial(pendingTrialExtension.tenantId)
+      pushToast({ title: 'Trial extended', description: 'Trial extended by 14 days.', tone: 'success' })
+      setPendingTrialExtension(null)
+      if (selectedTenant?.tenantId === updated.data.tenantId) {
+        setSelectedTenant(updated.data)
+      }
+      await reload()
+    } catch (extendError) {
+      pushToast({ title: 'Extension failed', description: toServiceError(extendError, 'Unable to extend trial.'), tone: 'danger' })
+    }
+  }
+
   return (
     <PageScaffold
       eyebrow="Platform Command Centre"
@@ -283,6 +348,9 @@ export function PlatformTenantsPage() {
                   <option value="All">All license states</option>
                   {licenseStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
+                <select value={trialFilter} onChange={(event) => setTrialFilter(event.target.value as typeof trialFilter)} className="field-input">
+                  {trialFilters.map((item) => <option key={item} value={item}>{item === 'All' ? 'All trial states' : item}</option>)}
+                </select>
               </>
             }
             actions={<button type="button" className="button-primary" onClick={openCreate}><Plus className="h-4 w-4" />Add Tenant</button>}
@@ -302,6 +370,9 @@ export function PlatformTenantsPage() {
                 { key: 'email', header: 'Contact Email', cell: (row) => row.contactEmail || 'Not set' },
                 { key: 'plan', header: 'Plan', cell: (row) => row.plan },
                 { key: 'license', header: 'License Status', cell: (row) => licenseStatusBadge(row.licenseStatus) },
+                { key: 'trial', header: 'Trial Status', cell: (row) => <span className="text-sm text-app">{formatTrialLabel(row)}</span> },
+                { key: 'trialEnd', header: 'Trial Ends', cell: (row) => row.trialEndDate ? formatDateOnly(row.trialEndDate) : 'Not set' },
+                { key: 'daysRemaining', header: 'Days Remaining', cell: (row) => row.trialDaysRemaining != null ? String(row.trialDaysRemaining) : '-' },
                 { key: 'users', header: 'Users', cell: (row) => String(row.users) },
                 { key: 'branches', header: 'Branches', cell: (row) => String(row.branches) },
                 { key: 'status', header: 'Status', cell: (row) => tenantStatusBadge(row.status) },
@@ -314,6 +385,7 @@ export function PlatformTenantsPage() {
                     <div className="flex flex-wrap gap-2">
                       <button type="button" className="button-secondary px-3 py-2" onClick={() => { setSelectedTenant(row); setActiveDetailSection('overview') }}><Eye className="h-4 w-4" />View</button>
                       <button type="button" className="button-secondary px-3 py-2" onClick={() => openEdit(row)}><PencilLine className="h-4 w-4" />Edit</button>
+                      {!row.trialExtensionUsed && row.licenseStatus !== 'Active' ? <button type="button" className="button-secondary px-3 py-2" onClick={() => setPendingTrialExtension(row)}>Extend Trial</button> : null}
                       {row.status !== 'Active' ? <button type="button" className="button-secondary px-3 py-2" onClick={() => setPendingStatus({ tenant: row, nextStatus: 'Active' })}><Power className="h-4 w-4" />Activate</button> : null}
                       {row.status !== 'Suspended' ? <button type="button" className="button-secondary px-3 py-2" onClick={() => setPendingStatus({ tenant: row, nextStatus: 'Suspended' })}><Ban className="h-4 w-4" />Suspend</button> : null}
                       {row.status !== 'Inactive' ? <button type="button" className="button-secondary px-3 py-2" onClick={() => setPendingStatus({ tenant: row, nextStatus: 'Inactive' })}>Deactivate</button> : null}
@@ -351,8 +423,13 @@ export function PlatformTenantsPage() {
               <p className="text-xs text-muted">Auto-generated from the company name. You can edit it if needed.</p>
             </div>
           </Field>
-          <Field label="Contact Person"><input value={form.contactPerson} onChange={(event) => setForm((current) => ({ ...current, contactPerson: event.target.value }))} className="field-input" /></Field>
-          <Field label="Contact Email"><input type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} className="field-input" /></Field>
+          <Field label="Company Email"><input type="email" value={form.companyEmail || ''} onChange={(event) => setForm((current) => ({ ...current, companyEmail: event.target.value }))} className="field-input" /></Field>
+          <Field label="Company Phone"><input value={form.companyPhone || ''} onChange={(event) => setForm((current) => ({ ...current, companyPhone: event.target.value }))} className="field-input" /></Field>
+          <Field label="Country"><input value={form.country || ''} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} className="field-input" /></Field>
+          <Field label="Industry"><input value={form.industry || ''} onChange={(event) => setForm((current) => ({ ...current, industry: event.target.value }))} className="field-input" /></Field>
+          <Field label="Primary Contact Name"><input value={form.contactPerson} onChange={(event) => setForm((current) => ({ ...current, contactPerson: event.target.value }))} className="field-input" /></Field>
+          <Field label="Primary Contact Email"><input type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} className="field-input" /></Field>
+          <Field label="Primary Contact Phone"><input value={form.contactPhone || ''} onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))} className="field-input" /></Field>
           <Field label="Plan"><input value={String(form.plan)} onChange={(event) => setForm((current) => ({ ...current, plan: event.target.value }))} className="field-input" /></Field>
           <Field label="License State">
             <select value={form.licenseStatus} onChange={(event) => setForm((current) => ({ ...current, licenseStatus: event.target.value as LicenseStatus }))} className="field-input">
@@ -366,20 +443,20 @@ export function PlatformTenantsPage() {
           </Field>
           <Field label="Max Users"><input type="number" min={1} value={form.maxUsers ?? ''} onChange={(event) => setForm((current) => ({ ...current, maxUsers: event.target.value ? Number(event.target.value) : null }))} className="field-input" /></Field>
           <Field label="Max Branches"><input type="number" min={1} value={form.maxBranches ?? ''} onChange={(event) => setForm((current) => ({ ...current, maxBranches: event.target.value ? Number(event.target.value) : null }))} className="field-input" /></Field>
-          <Field label="Trial End Date"><input type="date" value={form.trialEndDate ? form.trialEndDate.slice(0, 10) : ''} onChange={(event) => setForm((current) => ({ ...current, trialEndDate: event.target.value || null }))} className="field-input" /></Field>
         </div>
+        {mode === 'create' ? <InfoAlert title="Automatic 14-day trial" description="New tenants start with a 14-day trial automatically from the creation date." tone="info" /> : null}
         {mode === 'create' ? (
           <div className="mt-4 space-y-4">
             <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3">
-              <span className="text-sm text-app">Create default tenant admin and email login credentials</span>
+              <span className="text-sm text-app">Use primary contact as workspace admin</span>
               <input
                 type="checkbox"
-                checked={form.createDefaultAdmin ?? true}
-                onChange={(event) => setForm((current) => ({ ...current, createDefaultAdmin: event.target.checked }))}
+                checked={form.usePrimaryContactAsWorkspaceAdmin ?? true}
+                onChange={(event) => setForm((current) => ({ ...current, usePrimaryContactAsWorkspaceAdmin: event.target.checked }))}
               />
             </label>
 
-            {form.createDefaultAdmin ? (
+            {form.usePrimaryContactAsWorkspaceAdmin ? null : (
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Initial Admin Full Name">
                   <input
@@ -398,12 +475,20 @@ export function PlatformTenantsPage() {
                     placeholder={form.contactEmail || 'admin@company.com'}
                   />
                 </Field>
+                <Field label="Initial Admin Phone Optional">
+                  <input
+                    value={form.adminPhone ?? ''}
+                    onChange={(event) => setForm((current) => ({ ...current, adminPhone: event.target.value }))}
+                    className="field-input"
+                    placeholder={form.contactPhone || 'Optional'}
+                  />
+                </Field>
               </div>
-            ) : null}
+            )}
 
             <InfoAlert
-              title="Tenant onboarding credentials"
-              description="When enabled, Ecosys will create the first tenant admin account and send login credentials to the admin email after workspace creation."
+              title="Tenant workspace admin"
+              description="Creating a tenant automatically creates the first tenant workspace admin. Platform users are created separately in the Platform Users area."
               tone="info"
             />
           </div>
@@ -425,6 +510,18 @@ export function PlatformTenantsPage() {
           <div className="flex justify-end gap-3">
             <button type="button" className="button-secondary" onClick={() => setPendingStatus(null)}>Cancel</button>
             <button type="button" className="button-primary" onClick={() => void changeStatus()}>Apply</button>
+          </div>
+        </ConfirmationModal>
+      </Modal>
+
+      <Modal open={Boolean(pendingTrialExtension)} title="Extend Trial" description="Extend this tenant’s trial by another 14 days? This can only be done once." onClose={() => setPendingTrialExtension(null)}>
+        <ConfirmationModal title="Extend Trial" description="Extend this tenant’s trial by another 14 days? This can only be done once.">
+          <p className="text-sm text-muted">
+            Tenant: <span className="font-semibold text-app">{pendingTrialExtension?.name}</span>
+          </p>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="button-secondary" onClick={() => setPendingTrialExtension(null)}>Cancel</button>
+            <button type="button" className="button-primary" onClick={() => void extendTrial()}>Extend trial by 14 days</button>
           </div>
         </ConfirmationModal>
       </Modal>
@@ -455,10 +552,30 @@ export function PlatformTenantsPage() {
                   <Detail label="Contact Email" value={selectedTenant.contactEmail || 'Not set'} />
                   <Detail label="Plan" value={String(selectedTenant.plan)} />
                   <Detail label="License Status" value={selectedTenant.licenseStatus} />
+                  <Detail label="Trial Status" value={formatTrialLabel(selectedTenant)} />
+                  <Detail label="Trial Started" value={selectedTenant.trialStartDate ? formatDateTime(selectedTenant.trialStartDate) : 'Not set'} />
+                  <Detail label="Trial Ends" value={selectedTenant.trialEndDate ? formatDateTime(selectedTenant.trialEndDate) : 'Not set'} />
+                  <Detail label="Extension Status" value={formatExtensionLabel(selectedTenant)} />
                   <Detail label="Status" value={selectedTenant.status} />
                   <Detail label="Users" value={String(selectedTenant.users)} />
                   <Detail label="Branches" value={String(selectedTenant.branches)} />
                   <Detail label="Created At" value={formatDateTime(selectedTenant.createdAt)} />
+                </div>
+              ) : null}
+
+              {activeDetailSection === 'subscription' ? (
+                <div className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Detail label="Trial Started" value={selectedTenant.trialStartDate ? formatDateTime(selectedTenant.trialStartDate) : 'Not set'} />
+                    <Detail label="Trial Ends" value={selectedTenant.trialEndDate ? formatDateTime(selectedTenant.trialEndDate) : 'Not set'} />
+                    <Detail label="Days Remaining" value={selectedTenant.trialDaysRemaining != null ? String(selectedTenant.trialDaysRemaining) : 'Expired'} />
+                    <Detail label="Extension" value={formatExtensionLabel(selectedTenant)} />
+                  </div>
+                  {!selectedTenant.trialExtensionUsed && selectedTenant.licenseStatus !== 'Active' ? (
+                    <div className="flex justify-end">
+                      <button type="button" className="button-primary" onClick={() => setPendingTrialExtension(selectedTenant)}>Extend trial by 14 days</button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -469,7 +586,7 @@ export function PlatformTenantsPage() {
                 />
               ) : null}
 
-              {activeDetailSection !== 'overview' && activeDetailSection !== 'email-notifications' ? (
+              {activeDetailSection !== 'overview' && activeDetailSection !== 'subscription' && activeDetailSection !== 'email-notifications' ? (
                 <div className="surface-card">
                   <p className="text-lg font-semibold text-app">{detailSections.find((item) => item.id === activeDetailSection)?.label}</p>
                   <p className="mt-2 text-sm text-muted">This section will be enabled in a follow-up sprint. Existing tenant workflows are unchanged.</p>

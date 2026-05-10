@@ -16,6 +16,10 @@ export function RequireAuth({ allow }: { allow?: Role[] }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
+  if (session.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace state={{ from: location.pathname }} />
+  }
+
   if (allow && !allow.some((role) => normalizeRole(String(role)) === normalizeRole(String(session.role)))) {
     return <Navigate to={roleHomePath(session.role)} replace />
   }

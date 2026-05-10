@@ -1,6 +1,8 @@
 using Ecosys.Infrastructure.Services;
 using Ecosys.Shared.Auth;
+using Ecosys.Shared.Errors;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Ecosys.Infrastructure.Data;
@@ -15,7 +17,9 @@ public sealed class AuthController(
     IUserSessionService userSessionService,
     AppDbContext dbContext,
     IAuditLogService auditLogService,
-    IPasswordResetService passwordResetService) : ControllerBase
+    IPasswordResetService passwordResetService,
+    IPasswordHasher<Domain.Entities.User> passwordHasher,
+    ITenantSecurityPolicyService tenantSecurityPolicyService) : ControllerBase
 {
     [HttpPost("signup")]
     public async Task<ActionResult<SignupResponse>> Signup([FromBody] SignupRequest request, CancellationToken cancellationToken)
@@ -46,7 +50,7 @@ public sealed class AuthController(
 
         return Ok(new LoginResponse(
             result.Token,
-            new LoginUserDto(result.UserId, result.FullName, result.Email, result.Role, result.JobTitle, result.Department, MapPermissions(result.Permissions, IsPlatformRole(result.Role))),
+            new LoginUserDto(result.UserId, result.FullName, result.Email, result.Role, result.JobTitle, result.Department, result.MustChangePassword, MapPermissions(result.Permissions, IsPlatformRole(result.Role))),
             new LoginTenantDto(result.TenantId, result.CompanyName, result.Country, result.Industry, result.LogoUrl, result.ShowPoweredByEcosys)));
     }
 
@@ -62,6 +66,66 @@ public sealed class AuthController(
     {
         var message = await passwordResetService.ResetAsync(request.Token, request.NewPassword, request.ConfirmPassword, cancellationToken);
         return Ok(new MessageResponse(message));
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<ActionResult<MessageResponse>> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+        {
+            throw new BusinessRuleException("Current password is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            throw new BusinessRuleException("New password is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ConfirmPassword))
+        {
+            throw new BusinessRuleException("Confirm password is required.");
+        }
+
+        if (!string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+        {
+            throw new BusinessRuleException("New password and confirmation password must match.");
+        }
+
+        var userId = tenantContext.GetRequiredUserId();
+        var sessionId = tenantContext.GetRequiredSessionId();
+        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Id == userId, cancellationToken)
+            ?? throw new UnauthorizedException("User context was not found.");
+
+        var passwordResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
+        if (passwordResult == PasswordVerificationResult.Failed)
+        {
+            throw new BusinessRuleException("The current password is incorrect.");
+        }
+
+        await tenantSecurityPolicyService.ValidatePasswordAsync(user.TenantId, request.NewPassword, cancellationToken);
+
+        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
+        user.MustChangePassword = false;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await userSessionService.RevokeOthersForUserAsync(
+            user.Id,
+            sessionId,
+            "Password changed.",
+            cancellationToken);
+
+        await auditLogService.LogAsync(
+            user.TenantId,
+            user.Id,
+            "auth.password.changed",
+            nameof(Domain.Entities.User),
+            user.Id.ToString(),
+            $"Password changed for '{user.Email}'.",
+            severity: "Warning",
+            cancellationToken: cancellationToken);
+
+        return Ok(new MessageResponse("Your password has been changed successfully."));
     }
 
     [Authorize]
@@ -112,6 +176,7 @@ public sealed class AuthController(
                     user.Department,
                     user.HasAllBranchAccess,
                     user.DefaultBranchId,
+                    user.MustChangePassword,
                     MapPermissions(user.Permission, true)),
                 new AuthenticatedTenantDto(
                     user.TenantId,
@@ -146,6 +211,7 @@ public sealed class AuthController(
                 user.Department,
                 user.HasAllBranchAccess,
                 user.DefaultBranchId,
+                user.MustChangePassword,
                 MapPermissions(user.Permission, isPlatformUser)),
             new AuthenticatedTenantDto(
                 user.TenantId,
@@ -218,6 +284,7 @@ public sealed record SignupResponse(
 public sealed record LoginRequest(string Email, string Password);
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record SelfServiceResetPasswordRequest(string Token, string NewPassword, string ConfirmPassword);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword);
 public sealed record MessageResponse(string Message);
 
 public sealed record LoginResponse(
@@ -225,7 +292,7 @@ public sealed record LoginResponse(
     LoginUserDto User,
     LoginTenantDto Tenant);
 
-public sealed record LoginUserDto(Guid UserId, string FullName, string Email, string Role, string? JobTitle, string? Department, PermissionResponse Permissions);
+public sealed record LoginUserDto(Guid UserId, string FullName, string Email, string Role, string? JobTitle, string? Department, bool MustChangePassword, PermissionResponse Permissions);
 
 public sealed record LoginTenantDto(
     Guid TenantId,
@@ -265,6 +332,7 @@ public sealed record AuthenticatedUserDto(
     string? Department,
     bool HasAllBranchAccess,
     Guid? DefaultBranchId,
+    bool MustChangePassword,
     PermissionResponse Permissions);
 
 public sealed record AuthenticatedTenantDto(

@@ -12,7 +12,7 @@ test('app root loads and routes to login', async ({ page, baseURL }) => {
   try {
     await page.goto('/')
     await expect(page).toHaveURL(/\/login/)
-    await expect(page.getByRole('heading', { name: /enterprise service operations, ready when your team is\./i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /service operations, simplified\./i })).toBeVisible()
   } finally {
     guards.assertNoViolations()
     guards.dispose()
@@ -23,9 +23,45 @@ test('login page renders', async ({ page, baseURL }) => {
   const guards = installPageGuards(page, { appBaseUrl: baseURL, apiBaseUrl: E2E_API_BASE_URL })
   try {
     await page.goto('/login')
-    await expect(page.getByRole('heading', { name: /enterprise service operations, ready when your team is\./i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /service operations, simplified\./i })).toBeVisible()
+    await expect(page.getByText('Ecosys ServiceOps').first()).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.getByRole('button', { name: /login/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /get started/i })).toBeVisible()
+  } finally {
+    guards.assertNoViolations()
+    guards.dispose()
+  }
+})
+
+test('login logo uses dark high-contrast colors in light mode', async ({ page, baseURL }) => {
+  const guards = installPageGuards(page, { appBaseUrl: baseURL, apiBaseUrl: E2E_API_BASE_URL })
+  try {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.addInitScript(() => {
+      window.localStorage.setItem('ecosys-serviceops-theme', 'light')
+    })
+    await page.goto('/login')
+    const markup = await page.locator('[data-testid="login-card-logo"] svg[data-ecosys-variant="dark"]').evaluate((node) => node.outerHTML)
+    expect(markup).toContain('fill="#0C2F33"')
+    expect(markup).toContain('fill="#214A4D"')
+  } finally {
+    guards.assertNoViolations()
+    guards.dispose()
+  }
+})
+
+test('login logo uses bright high-contrast colors in dark mode', async ({ page, baseURL }) => {
+  const guards = installPageGuards(page, { appBaseUrl: baseURL, apiBaseUrl: E2E_API_BASE_URL })
+  try {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('ecosys-serviceops-theme', 'dark')
+    })
+    await page.goto('/login')
+    const markup = await page.locator('[data-testid="login-brand-logo"] svg[data-ecosys-variant="light"]').evaluate((node) => node.outerHTML)
+    expect(markup).toContain('fill="#F7F8F6"')
+    expect(markup).toContain('fill="#F2F7F4"')
   } finally {
     guards.assertNoViolations()
     guards.dispose()

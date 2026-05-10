@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { appName, brand } from '../../config/brand'
+import { appName } from '../../config/brand'
 import { EcosysLogo } from './EcosysLogo'
 
 type BrandTone = 'auto' | 'light' | 'dark'
@@ -31,17 +31,7 @@ export const EcosysIcon = memo(function EcosysIcon({
   size?: number
   title?: string
 }) {
-  return (
-    <img
-      src={brand.logoIcon}
-      alt={title}
-      aria-label={title}
-      title={title}
-      className={className}
-      height={size}
-      width={size}
-    />
-  )
+  return <EcosysLogo variant="icon" size={size <= 24 ? 'sm' : size <= 32 ? 'md' : 'lg'} className={className} title={title} />
 })
 
 export const PoweredByEcosys = memo(function PoweredByEcosys({
@@ -55,7 +45,7 @@ export const PoweredByEcosys = memo(function PoweredByEcosys({
     return (
       <div
         className={`inline-flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.2em] ${className}`.trim()}
-        style={{ color: nextTone === 'light' ? brand.colors.darkTeal : brand.colors.lightBackground }}
+        style={{ color: nextTone === 'light' ? '#214A4D' : '#F2F7F4' }}
       >
         <EcosysLogo variant="icon" size="sm" className="shrink-0" />
         <span>Powered by {appName}</span>
@@ -67,9 +57,9 @@ export const PoweredByEcosys = memo(function PoweredByEcosys({
     <div
       className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${className}`.trim()}
       style={{
-        background: nextTone === 'light' ? brand.colors.lightBackground : 'rgba(247, 248, 246, 0.08)',
-        color: nextTone === 'light' ? brand.colors.darkTeal : brand.colors.lightBackground,
-        border: `1px solid ${nextTone === 'light' ? 'rgba(12, 47, 51, 0.12)' : 'rgba(247, 248, 246, 0.14)'}`,
+        background: nextTone === 'light' ? '#F7F8F6' : 'rgba(247, 248, 246, 0.08)',
+        color: nextTone === 'light' ? '#214A4D' : '#F2F7F4',
+        border: `1px solid ${nextTone === 'light' ? 'rgba(12, 47, 51, 0.14)' : 'rgba(247, 248, 246, 0.18)'}`,
       }}
     >
       <EcosysLogo variant="icon" size="sm" className="shrink-0" />
