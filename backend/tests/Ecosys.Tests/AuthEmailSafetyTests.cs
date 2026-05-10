@@ -6,6 +6,7 @@ using Ecosys.Shared.Auth;
 using Ecosys.Shared.Contracts.Integration;
 using Ecosys.Shared.Errors;
 using Ecosys.Shared.Options;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -479,6 +480,50 @@ public sealed class AuthEmailSafetyTests
     }
 
     [Fact]
+    public void PlatformFinanceSummary_UsesPublishedRoute_AndAuthorizationPolicy()
+    {
+        var controllerRoute = typeof(PlatformFinanceController).GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+            .OfType<RouteAttribute>()
+            .Single();
+        Assert.Equal("api/platform/finance", controllerRoute.Template);
+
+        var authorize = typeof(PlatformFinanceController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
+            .OfType<AuthorizeAttribute>()
+            .Single();
+        Assert.Equal("PlatformFinanceAccess", authorize.Policy);
+
+        var summaryAction = typeof(PlatformFinanceController).GetMethod(nameof(PlatformFinanceController.GetSummary));
+        Assert.NotNull(summaryAction);
+
+        var summaryRoute = summaryAction!
+            .GetCustomAttributes(typeof(HttpGetAttribute), inherit: false)
+            .OfType<HttpGetAttribute>()
+            .Single();
+        Assert.Equal("summary", summaryRoute.Template);
+    }
+
+    [Fact]
+    public async Task PlatformFinanceSummary_EmptyDatabase_ReturnsZeroState()
+    {
+        await using var dbContext = CreateDbContext();
+        var controller = CreatePlatformFinanceController(dbContext);
+
+        var actionResult = await controller.GetSummary(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(actionResult.Result);
+        var response = Assert.IsType<PlatformFinanceDashboardResponse>(ok.Value);
+        Assert.Equal(0m, response.TotalRevenue);
+        Assert.Equal(0m, response.OutstandingInvoices);
+        Assert.Equal(0m, response.OverdueInvoices);
+        Assert.Equal(0m, response.ExpensesThisMonth);
+        Assert.Equal(0m, response.ProfitEstimate);
+        Assert.Equal(0m, response.QuotationConversionRate);
+        Assert.Empty(response.RecentPayments);
+        Assert.Empty(response.RecentInvoices);
+        Assert.Empty(response.OverdueAccounts);
+    }
+
+    [Fact]
     public async Task Login_InvalidCredentials_ReturnsUnauthorizedException()
     {
         await using var dbContext = CreateDbContext();
@@ -681,6 +726,14 @@ public sealed class AuthEmailSafetyTests
         controller.ControllerContext.HttpContext.Request.Headers.Origin = "https://app.ecosys.test";
 
         return controller;
+    }
+
+    private static PlatformFinanceController CreatePlatformFinanceController(AppDbContext dbContext)
+    {
+        return new PlatformFinanceController(
+            dbContext,
+            new FakeTenantContext(PlatformConstants.RootTenantId, Guid.NewGuid(), isAdmin: true, isSuperAdmin: true),
+            new NoOpAuditLogService());
     }
 
     private static MvpAuthService CreateAuthService(AppDbContext dbContext)

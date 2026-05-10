@@ -47,11 +47,11 @@ const defaultTenantForm: Tenant = {
   contactPerson: '',
   contactEmail: '',
   contactPhone: '',
-  plan: 'Starter',
-  licenseStatus: 'Active',
+  plan: '',
+  licenseStatus: 'Trial',
   users: 0,
   branches: 0,
-  status: 'Active',
+  status: 'Trial',
   createdAt: '',
   maxUsers: 10,
   maxBranches: 2,
@@ -213,6 +213,24 @@ export function PlatformTenantsPage() {
       setSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (mode !== 'create') return
+    if (!(form.usePrimaryContactAsWorkspaceAdmin ?? true)) return
+
+    setForm((current) => ({
+      ...current,
+      adminFullName: current.contactPerson,
+      adminEmail: current.contactEmail,
+      adminPhone: current.contactPhone || '',
+    }))
+  }, [
+    form.contactEmail,
+    form.contactPerson,
+    form.contactPhone,
+    form.usePrimaryContactAsWorkspaceAdmin,
+    mode,
+  ])
 
   useEffect(() => {
     const leadId = searchParams.get('leadId')

@@ -232,35 +232,44 @@ function toPlatformTenantStatus(status: TenantStatus): PlatformTenantStatus {
 }
 
 function buildTenantPayload(input: Partial<Tenant> & { name: string; slug: string }): UpsertPlatformTenantInput {
+  const usePrimaryContactAsWorkspaceAdmin = Boolean(input.usePrimaryContactAsWorkspaceAdmin)
+  const primaryContactName = input.contactPerson || ''
+  const primaryContactEmail = input.contactEmail || ''
+  const primaryContactPhone = input.contactPhone || ''
+  const adminFullName = usePrimaryContactAsWorkspaceAdmin ? primaryContactName : (input.adminFullName || '')
+  const adminEmail = usePrimaryContactAsWorkspaceAdmin ? primaryContactEmail : (input.adminEmail || '')
+  const adminPhone = usePrimaryContactAsWorkspaceAdmin ? primaryContactPhone : (input.adminPhone || '')
+  const planName = typeof input.plan === 'string' && input.plan.trim() ? input.plan.trim() : null
+
   return {
     name: input.name,
     slug: input.slug,
     companyEmail: input.companyEmail || '',
     companyPhone: input.companyPhone || '',
     industry: input.industry || '',
-    contactName: input.contactPerson || '',
-    contactEmail: input.contactEmail || '',
-    contactPhone: input.contactPhone || '',
-    primaryContactName: input.contactPerson || '',
-    primaryContactEmail: input.contactEmail || '',
-    primaryContactPhone: input.contactPhone || '',
+    contactName: primaryContactName,
+    contactEmail: primaryContactEmail,
+    contactPhone: primaryContactPhone,
+    primaryContactName,
+    primaryContactEmail,
+    primaryContactPhone,
     country: input.country || 'Kenya',
     county: '',
     city: '',
     address: '',
     taxPin: '',
-    planName: input.plan || 'Starter',
+    planName,
     maxUsers: input.maxUsers ?? null,
     maxBranches: input.maxBranches ?? null,
     trialEndsAt: input.trialEndDate || null,
     subscriptionEndsAt: null,
-    status: toPlatformTenantStatus(input.status || 'Active'),
-    licenseStatus: input.licenseStatus || 'Active',
+    status: toPlatformTenantStatus(input.status || 'Trial'),
+    licenseStatus: input.licenseStatus || 'Trial',
     createDefaultAdmin: true,
-    usePrimaryContactAsWorkspaceAdmin: Boolean(input.usePrimaryContactAsWorkspaceAdmin),
-    adminFullName: input.usePrimaryContactAsWorkspaceAdmin ? null : (input.adminFullName || ''),
-    adminEmail: input.usePrimaryContactAsWorkspaceAdmin ? null : (input.adminEmail || ''),
-    adminPhone: input.usePrimaryContactAsWorkspaceAdmin ? null : (input.adminPhone || ''),
+    usePrimaryContactAsWorkspaceAdmin,
+    adminFullName,
+    adminEmail,
+    adminPhone,
   }
 }
 
