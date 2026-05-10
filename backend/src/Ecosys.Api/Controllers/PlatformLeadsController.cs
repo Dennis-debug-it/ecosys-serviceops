@@ -16,9 +16,9 @@ namespace Ecosys.Api.Controllers;
 public sealed class PlatformLeadsController(
     AppDbContext dbContext,
     IAuditLogService auditLogService,
-    IEmailSender emailSender,
-    ISecretEncryptionService secretEncryptionService,
     IEmailTemplateService emailTemplateService,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    IEmailOutboxService emailOutboxService,
     ITenantContext tenantContext,
     ILogger<PlatformLeadsController> logger) : ControllerBase
 {
@@ -176,42 +176,47 @@ public sealed class PlatformLeadsController(
                 return;
             }
 
-            var delivery = new EmailDeliverySettings(
-                Enum.TryParse<EmailDeliveryMode>(platformEmail.Provider, true, out var deliveryMode) ? deliveryMode : EmailDeliveryMode.Smtp,
-                platformEmail.Host,
-                platformEmail.Port,
-                platformEmail.Username,
-                secretEncryptionService.Decrypt(platformEmail.EncryptedSecret) ?? platformEmail.Password,
-                platformEmail.SenderName,
-                platformEmail.SenderAddress,
-                lead.Email,
-                platformEmail.UseSsl,
-                EmailDeliveryModeResolver.ResolveSecureMode(platformEmail.Port, platformEmail.UseSsl));
-
             var template = await emailTemplateService.RenderPlatformTemplateAsync(
                 "workspace-request-received",
-                new Dictionary<string, string?>
-                {
-                    ["CompanyName"] = lead.CompanyName,
-                    ["FullName"] = lead.ContactPersonName,
-                    ["Email"] = lead.Email,
-                    ["Phone"] = lead.Phone,
-                    ["Country"] = lead.Country ?? "Not provided",
-                    ["Industry"] = lead.Industry ?? "Not provided",
-                    ["Message"] = lead.Message ?? "Not provided",
-                },
+                EmailTemplateVariables.WithRecipientAndActorAliases(
+                    lead.ContactPersonName,
+                    lead.ContactPersonName,
+                    new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["companyName"] = lead.CompanyName,
+                        ["leadCompanyName"] = lead.CompanyName,
+                        ["email"] = lead.Email,
+                        ["contactEmail"] = lead.Email,
+                        ["phone"] = lead.Phone,
+                        ["contactPhone"] = lead.Phone,
+                        ["country"] = lead.Country ?? "Not provided",
+                        ["industry"] = lead.Industry ?? "Not provided",
+                        ["message"] = lead.Message ?? "Not provided",
+                        ["contactName"] = lead.ContactPersonName,
+                        ["submittedAt"] = lead.CreatedAt.ToString("u"),
+                        ["platformName"] = "Ecosys",
+                    }),
                 cancellationToken);
+            var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+                PlatformConstants.RootTenantId,
+                "platform.lead.received",
+                template.Subject,
+                cancellationToken: cancellationToken);
 
-            await emailSender.SendAsync(
-                new EmailMessage(
+            await emailOutboxService.QueueEmailAsync(
+                new QueueEmailRequest(
+                    PlatformConstants.RootTenantId,
+                    "platform.lead.received",
+                    "workspace-request-received",
                     ownerEmail,
-                    template.Subject,
-                    template.HtmlBody,
+                    null,
                     template.SenderNameOverride ?? platformEmail.SenderName,
                     platformEmail.SenderAddress,
                     template.ReplyToOverride ?? lead.Email,
-                    IsHtml: true),
-                delivery,
+                    finalSubject,
+                    template.HtmlBody,
+                    template.TextBody,
+                    tenantContext.UserId),
                 cancellationToken);
         }
         catch (Exception exception)

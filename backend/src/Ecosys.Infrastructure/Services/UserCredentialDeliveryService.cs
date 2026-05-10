@@ -49,6 +49,7 @@ internal sealed class UserCredentialDeliveryService(
     IEmailSender emailSender,
     IEmailTemplateService emailTemplateService,
     IEmailDeliveryLogService emailDeliveryLogService,
+    IEmailSubjectRuleService emailSubjectRuleService,
     ISecretEncryptionService secretEncryptionService,
     IOptions<PublicAppOptions> publicAppOptions,
     ILogger<UserCredentialDeliveryService> logger) : IUserCredentialDeliveryService
@@ -137,28 +138,29 @@ internal sealed class UserCredentialDeliveryService(
             var template = await emailTemplateService.RenderTenantTemplateAsync(
                 tenantId,
                 request.TemplateEventKey,
-                new Dictionary<string, string?>
-                {
-                    ["FullName"] = user.FullName,
-                    ["fullName"] = user.FullName,
-                    ["Email"] = user.Email,
-                    ["email"] = user.Email,
-                    ["TemporaryPassword"] = request.TemporaryPassword,
-                    ["temporaryPassword"] = request.TemporaryPassword,
-                    ["InviteLink"] = request.InviteLink,
-                    ["ResetPasswordLink"] = request.InviteLink,
-                    ["resetLink"] = request.InviteLink,
-                    ["LoginUrl"] = request.LoginUrl,
-                    ["loginUrl"] = request.LoginUrl,
-                    ["CompanyName"] = tenant?.CompanyName ?? tenant?.Name ?? "Ecosys",
-                    ["companyName"] = tenant?.CompanyName ?? tenant?.Name ?? "Ecosys",
-                    ["WorkspaceName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
-                    ["TenantName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
-                    ["tenantName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
-                    ["platformName"] = "Ecosys",
-                    ["SupportEmail"] = supportEmail,
-                    ["supportEmail"] = supportEmail,
-                },
+                EmailTemplateVariables.WithRecipientAndActorAliases(
+                    user.FullName,
+                    null,
+                    new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["email"] = user.Email,
+                        ["temporaryPassword"] = request.TemporaryPassword,
+                        ["inviteLink"] = request.InviteLink,
+                        ["resetPasswordLink"] = request.InviteLink,
+                        ["resetLink"] = request.InviteLink,
+                        ["loginUrl"] = request.LoginUrl,
+                        ["companyName"] = tenant?.CompanyName ?? tenant?.Name ?? "Ecosys",
+                        ["workspaceName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
+                        ["tenantName"] = tenant?.Name ?? tenant?.CompanyName ?? "Ecosys Workspace",
+                        ["platformName"] = "Ecosys",
+                        ["supportEmail"] = supportEmail,
+                    }),
+                cancellationToken);
+            var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+                tenantId,
+                ResolveEventKey(tenantId, request.TemplateEventKey),
+                template.Subject,
+                tenant?.Name ?? tenant?.CompanyName,
                 cancellationToken);
 
             if (!template.Enabled)
@@ -171,14 +173,14 @@ internal sealed class UserCredentialDeliveryService(
                     "Disabled",
                     "Credential email is disabled for this template.",
                     cancellationToken,
-                    template.Subject);
+                    finalSubject);
                 return new UserCredentialDeliveryResult(false, "Disabled", "Credential email is disabled for this template.");
             }
 
             await emailSender.SendAsync(
                 new EmailMessage(
                     user.Email,
-                    template.Subject,
+                    finalSubject,
                     template.HtmlBody,
                     template.SenderNameOverride ?? effectiveSettings.SenderName,
                     effectiveSettings.SenderAddress,
@@ -195,7 +197,7 @@ internal sealed class UserCredentialDeliveryService(
                 null,
                 null,
                 cancellationToken,
-                template.Subject,
+                finalSubject,
                 DateTime.UtcNow);
             return new UserCredentialDeliveryResult(true, "Sent", "User credentials sent.");
         }
@@ -304,14 +306,22 @@ internal sealed class UserCredentialDeliveryService(
             var template = await emailTemplateService.RenderTenantTemplateAsync(
                 tenantId,
                 "password-reset-link",
-                new Dictionary<string, string?>
-                {
-                    ["fullName"] = user.FullName,
-                    ["platformName"] = "Ecosys",
-                    ["resetLink"] = request.ResetLink,
-                    ["supportEmail"] = supportEmail,
-                    ["expiresAt"] = request.ExpiresAt.ToString("u"),
-                },
+                EmailTemplateVariables.WithRecipientAndActorAliases(
+                    user.FullName,
+                    null,
+                    new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["platformName"] = "Ecosys",
+                        ["resetLink"] = request.ResetLink,
+                        ["supportEmail"] = supportEmail,
+                        ["expiresAt"] = request.ExpiresAt.ToString("u"),
+                    }),
+                cancellationToken);
+            var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+                tenantId,
+                "auth.password-reset.requested",
+                template.Subject,
+                tenant?.Name ?? tenant?.CompanyName,
                 cancellationToken);
 
             if (!template.Enabled)
@@ -324,14 +334,14 @@ internal sealed class UserCredentialDeliveryService(
                     "Disabled",
                     "Password reset email is disabled for this template.",
                     cancellationToken,
-                    template.Subject);
+                    finalSubject);
                 return new UserCredentialDeliveryResult(false, "Disabled", "Password reset email is disabled for this template.");
             }
 
             await emailSender.SendAsync(
                 new EmailMessage(
                     user.Email,
-                    template.Subject,
+                    finalSubject,
                     template.HtmlBody,
                     template.SenderNameOverride ?? effectiveSettings.SenderName,
                     effectiveSettings.SenderAddress,
@@ -348,7 +358,7 @@ internal sealed class UserCredentialDeliveryService(
                 null,
                 null,
                 cancellationToken,
-                template.Subject,
+                finalSubject,
                 DateTime.UtcNow);
             return new UserCredentialDeliveryResult(true, "Sent", "Password reset email sent.");
         }

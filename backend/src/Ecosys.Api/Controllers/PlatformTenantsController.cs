@@ -23,8 +23,8 @@ public sealed class PlatformTenantsController(
     ILicenseGuardService licenseGuardService,
     IAuditLogService auditLogService,
     IEmailTemplateService emailTemplateService,
-    IEmailSender emailSender,
-    ISecretEncryptionService secretEncryptionService,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    IEmailOutboxService emailOutboxService,
     IPasswordHasher<User> passwordHasher,
     IUserPermissionTemplateService permissionTemplateService,
     IUserCredentialDeliveryService credentialDeliveryService) : ControllerBase
@@ -441,14 +441,19 @@ public sealed class PlatformTenantsController(
 
         var template = await emailTemplateService.RenderPlatformTemplateAsync(
             "tenant-onboarding",
-            new Dictionary<string, string?>
-            {
-                ["FullName"] = tenant.ContactName ?? tenant.Name,
-                ["WorkspaceName"] = tenant.Name,
-                ["Email"] = recipient,
-                ["LoginUrl"] = BuildLoginUrl(),
-                ["SupportEmail"] = platformEmail.ReplyToEmail ?? platformEmail.SenderAddress,
-            },
+            EmailTemplateVariables.WithRecipientAndActorAliases(
+                tenant.ContactName ?? tenant.Name,
+                tenantContext.Email,
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["workspaceName"] = tenant.Name,
+                    ["tenantName"] = tenant.Name,
+                    ["companyName"] = tenant.CompanyName,
+                    ["email"] = recipient,
+                    ["loginUrl"] = BuildLoginUrl(),
+                    ["supportEmail"] = platformEmail.ReplyToEmail ?? platformEmail.SenderAddress,
+                    ["platformName"] = "Ecosys",
+                }),
             cancellationToken);
 
         if (!template.Enabled)
@@ -456,26 +461,27 @@ public sealed class PlatformTenantsController(
             return;
         }
 
-        await emailSender.SendAsync(
-            new EmailMessage(
+        var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+            tenant.Id,
+            "tenant.onboarding",
+            template.Subject,
+            tenant.Name,
+            cancellationToken);
+
+        await emailOutboxService.QueueEmailAsync(
+            new QueueEmailRequest(
+                PlatformConstants.RootTenantId,
+                "tenant.onboarding",
+                "tenant-onboarding",
                 recipient,
-                template.Subject,
-                template.HtmlBody,
+                tenant.ContactName ?? tenant.Name,
                 template.SenderNameOverride ?? platformEmail.SenderName,
                 platformEmail.SenderAddress,
                 template.ReplyToOverride ?? platformEmail.ReplyToEmail,
-                IsHtml: true),
-            new EmailDeliverySettings(
-                Enum.TryParse<EmailDeliveryMode>(platformEmail.Provider, true, out var deliveryMode) ? deliveryMode : EmailDeliveryMode.Smtp,
-                platformEmail.Host,
-                platformEmail.Port,
-                platformEmail.Username,
-                secretEncryptionService.Decrypt(platformEmail.EncryptedSecret) ?? platformEmail.Password,
-                platformEmail.SenderName,
-                platformEmail.SenderAddress,
-                platformEmail.ReplyToEmail,
-                platformEmail.UseSsl,
-                EmailDeliveryModeResolver.ResolveSecureMode(platformEmail.Port, platformEmail.UseSsl)),
+                finalSubject,
+                template.HtmlBody,
+                template.TextBody,
+                tenantContext.UserId),
             cancellationToken);
     }
 

@@ -20,6 +20,9 @@ public sealed class PlatformTenantCommunicationSettingsController(
     ITenantContext tenantContext,
     ISecretEncryptionService secretEncryptionService,
     IEmailSender emailSender,
+    IEmailTemplateService emailTemplateService,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    IEmailOutboxService emailOutboxService,
     IAuditLogService auditLogService,
     ILogger<PlatformTenantCommunicationSettingsController> logger) : ControllerBase
 {
@@ -108,46 +111,58 @@ public sealed class PlatformTenantCommunicationSettingsController(
             throw new BusinessRuleException("A test recipient email is required.");
         }
 
-        try
-        {
-            var delivery = CreateDeliveryOptions(deliverySettings);
-            logger.LogInformation(
-                "Tenant email test requested for tenant {TenantId}. Mode {DeliveryMode}, host {Host}, port {Port}, secure mode {SecureMode}, sender {SenderEmail}, using platform defaults {UsePlatformDefaults}.",
+        var template = await emailTemplateService.RenderPlatformTemplateAsync(
+            "test-email",
+            EmailTemplateVariables.WithRecipientAndActorAliases(
+                recipient,
+                tenantContext.Email,
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["platformName"] = "Ecosys",
+                    ["senderName"] = deliverySettings.SenderName ?? tenant.Name,
+                    ["sentAt"] = DateTime.UtcNow.ToString("u"),
+                    ["tenantName"] = tenant.Name,
+                }),
+            cancellationToken);
+
+        var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+            tenantId,
+            "email.test",
+            template.Subject,
+            tenant.Name,
+            cancellationToken);
+
+        logger.LogInformation(
+            "Tenant email test queued for tenant {TenantId}. Mode {DeliveryMode}, host {Host}, port {Port}, secure mode {SecureMode}, sender {SenderEmail}, using platform defaults {UsePlatformDefaults}.",
+            tenantId,
+            ParseDeliveryMode(deliverySettings.Provider),
+            deliverySettings.Host,
+            deliverySettings.Port,
+            EmailDeliveryModeResolver.ResolveSecureMode(deliverySettings.Port, deliverySettings.UseSsl),
+            deliverySettings.SenderAddress,
+            tenantEmail.UsePlatformDefaults && !tenantEmail.OverrideSmtpSettings);
+
+        await emailOutboxService.QueueEmailAsync(
+            new QueueEmailRequest(
                 tenantId,
-                delivery.DeliveryMode,
-                delivery.SmtpHost,
-                delivery.SmtpPort,
-                delivery.SecureMode,
-                delivery.SenderEmail,
-                tenantEmail.UsePlatformDefaults && !tenantEmail.OverrideSmtpSettings);
+                "email.test",
+                "test-email",
+                recipient,
+                recipient,
+                template.SenderNameOverride ?? deliverySettings.SenderName,
+                deliverySettings.SenderAddress,
+                template.ReplyToOverride ?? deliverySettings.ReplyToEmail,
+                finalSubject,
+                template.HtmlBody,
+                template.TextBody,
+                tenantContext.GetRequiredUserId()),
+            cancellationToken);
 
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    recipient,
-                    $"Ecosys Tenant Email Test - {tenant.Name}",
-                    "Generic test email from tenant communication settings.",
-                    deliverySettings.SenderName,
-                    deliverySettings.SenderAddress,
-                    deliverySettings.ReplyToEmail),
-                delivery,
-                cancellationToken);
-
-            tenantEmail.LastError = null;
-            tenantEmail.LastTestedAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await WriteAuditAsync(tenantId, "platform.tenant.communication.email.test", "Tenant email test was sent.", cancellationToken);
-            return Ok(new TenantCommunicationActionResponse(true, tenantEmail.LastTestedAt, null));
-        }
-        catch (Exception ex)
-        {
-            tenantEmail.LastError = ex is EmailDeliveryException deliveryException
-                ? deliveryException.ErrorCategory
-                : EmailErrorCategories.UnknownSmtpError;
-            tenantEmail.LastTestedAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            logger.LogWarning(ex, "Tenant email test failed for tenant {TenantId}.", tenantId);
-            return Ok(new TenantCommunicationActionResponse(false, tenantEmail.LastTestedAt, tenantEmail.LastError));
-        }
+        tenantEmail.LastError = null;
+        tenantEmail.LastTestedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await WriteAuditAsync(tenantId, "platform.tenant.communication.email.test", "Tenant email test was queued.", cancellationToken);
+        return Ok(new TenantCommunicationActionResponse(true, tenantEmail.LastTestedAt, null));
     }
 
     [HttpPost("email-settings/verify")]

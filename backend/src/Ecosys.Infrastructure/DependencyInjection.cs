@@ -44,6 +44,9 @@ public static class DependencyInjection
         services.AddScoped<IEmailTemplateService, EmailTemplateService>();
         services.AddScoped<IEmailNotificationRegistry, EmailNotificationRegistry>();
         services.AddScoped<IEmailDeliveryLogService, EmailDeliveryLogService>();
+        services.AddScoped<IEmailSubjectRuleService, EmailSubjectRuleService>();
+        services.AddScoped<IEmailOutboxService, EmailOutboxService>();
+        services.AddScoped<IEmailOutboxProcessor, EmailOutboxProcessor>();
         services.AddScoped<IUserCredentialDeliveryService, UserCredentialDeliveryService>();
         services.AddScoped<ITemporaryPasswordService, TemporaryPasswordService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
@@ -51,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkOrderLifecycleService, WorkOrderLifecycleService>();
         services.AddScoped<IWorkOrderAssignmentWorkflowService, WorkOrderAssignmentWorkflowService>();
         services.AddScoped<IPmWorkOrderChecklistService, PmWorkOrderChecklistService>();
+        services.AddHostedService<EmailOutboxWorker>();
 
         return services;
     }

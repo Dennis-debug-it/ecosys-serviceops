@@ -20,8 +20,10 @@ public sealed class PlatformSettingsController(
     ITenantContext tenantContext,
     IAuditLogService auditLogService,
     ISecretEncryptionService secretEncryptionService,
+    IEmailTemplateService emailTemplateService,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    IEmailOutboxService emailOutboxService,
     IEmailSender emailSender,
-    IEmailDeliveryLogService emailDeliveryLogService,
     ILogger<PlatformSettingsController> logger) : ControllerBase
 {
     private const string PlatformFinanceCategory = "platform-finance";
@@ -33,6 +35,7 @@ public sealed class PlatformSettingsController(
     private const string PlatformSystemPreferencesCategory = "platform-system-preferences";
     private const string PlatformEmailFlagsCategory = "platform-email-flags";
     private const string PlatformNotificationPreferencesCategory = "platform-notification-preferences";
+    private const string PlatformEmailSubjectRulesCategory = "platform-email-subject-rules";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private static readonly IReadOnlyDictionary<string, string> NumberingDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -187,7 +190,8 @@ public sealed class PlatformSettingsController(
         var setting = await GetOrCreatePlatformEmailSettingAsync(cancellationToken);
         var flags = await LoadEmailFlagsAsync(cancellationToken);
         var preferences = await LoadNotificationPreferencesAsync(cancellationToken);
-        return Ok(MapEmail(setting, flags, preferences));
+        var subjectRules = await LoadEmailSubjectRulesAsync(cancellationToken);
+        return Ok(MapEmail(setting, flags, preferences, subjectRules));
     }
 
     [HttpPut("email")]
@@ -249,6 +253,13 @@ public sealed class PlatformSettingsController(
         }
 
         await UpsertCategoryAsync(PlatformNotificationPreferencesCategory, normalizedPrefs, cancellationToken);
+        await UpsertCategoryAsync(PlatformEmailSubjectRulesCategory, new PlatformEmailSubjectRulesRecord(
+            NormalizeSubjectPrefix(request.SubjectPrefix),
+            NormalizeOptional(request.SubjectSuffix),
+            request.IncludeEnvironmentInSubject,
+            NormalizeOptional(request.EnvironmentLabel) ?? "Production",
+            request.IncludeTenantNameInSubject,
+            request.EnableEventSubjectTags), cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await AuditAsync("platform.settings.email.updated", nameof(EmailSetting), setting.Id.ToString(), "Platform email settings were updated.", cancellationToken);
         return Ok((await GetEmail(cancellationToken)).Value!);
@@ -264,68 +275,53 @@ public sealed class PlatformSettingsController(
             throw new BusinessRuleException("A test recipient email is required.");
         }
 
-        try
-        {
-            var delivery = CreateDeliveryOptions(setting);
-            logger.LogInformation(
-                "Platform email test requested with mode {DeliveryMode}, host {Host}, port {Port}, secure mode {SecureMode}, sender {SenderEmail}.",
-                delivery.DeliveryMode,
-                delivery.SmtpHost,
-                delivery.SmtpPort,
-                delivery.SecureMode,
-                delivery.SenderEmail);
+        var template = await emailTemplateService.RenderPlatformTemplateAsync(
+            "test-email",
+            EmailTemplateVariables.WithRecipientAndActorAliases(
+                recipient,
+                tenantContext.Email,
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["platformName"] = "Ecosys",
+                    ["senderName"] = setting.SenderName,
+                    ["sentAt"] = DateTime.UtcNow.ToString("u"),
+                }),
+            cancellationToken);
 
-            await emailSender.SendAsync(
-                new EmailMessage(
-                    recipient,
-                    "Ecosys Platform Email Test",
-                    "Generic test email from Ecosys Platform settings.",
-                    setting.SenderName,
-                    setting.SenderAddress,
-                    setting.ReplyToEmail),
-                delivery,
-                cancellationToken);
+        var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+            PlatformConstants.RootTenantId,
+            "email.test",
+            template.Subject,
+            cancellationToken: cancellationToken);
 
-            setting.LastError = null;
-            setting.LastTestedAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await emailDeliveryLogService.LogAsync(
-                new EmailDeliveryLogWriteRequest(
-                    PlatformConstants.RootTenantId,
-                    "email.test",
-                    "test-email",
-                    recipient,
-                    "Ecosys Platform Email Test",
-                    "Sent",
-                    null,
-                    null,
-                    tenantContext.GetRequiredUserId(),
-                    setting.LastTestedAt),
-                cancellationToken);
-            return Ok(new PlatformEmailActionResponse(true, setting.LastTestedAt, null));
-        }
-        catch (Exception ex)
-        {
-            setting.LastError = ex is EmailDeliveryException deliveryException
-                ? deliveryException.ErrorCategory
-                : EmailErrorCategories.UnknownSmtpError;
-            setting.LastTestedAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await emailDeliveryLogService.LogAsync(
-                new EmailDeliveryLogWriteRequest(
-                    PlatformConstants.RootTenantId,
-                    "email.test",
-                    "test-email",
-                    recipient,
-                    "Ecosys Platform Email Test",
-                    "Failed",
-                    setting.LastError,
-                    ex.Message,
-                    tenantContext.GetRequiredUserId()),
-                cancellationToken);
-            logger.LogWarning(ex, "Platform email test failed.");
-            return Ok(new PlatformEmailActionResponse(false, setting.LastTestedAt, setting.LastError));
-        }
+        logger.LogInformation(
+            "Platform email test queued with mode {DeliveryMode}, host {Host}, port {Port}, secure mode {SecureMode}, sender {SenderEmail}.",
+            ParseDeliveryMode(setting.Provider),
+            setting.Host,
+            setting.Port,
+            EmailDeliveryModeResolver.ResolveSecureMode(setting.Port, setting.UseSsl),
+            setting.SenderAddress);
+
+        await emailOutboxService.QueueEmailAsync(
+            new QueueEmailRequest(
+                PlatformConstants.RootTenantId,
+                "email.test",
+                "test-email",
+                recipient,
+                recipient,
+                template.SenderNameOverride ?? setting.SenderName,
+                setting.SenderAddress,
+                template.ReplyToOverride ?? setting.ReplyToEmail,
+                finalSubject,
+                template.HtmlBody,
+                template.TextBody,
+                tenantContext.GetRequiredUserId()),
+            cancellationToken);
+
+        setting.LastError = null;
+        setting.LastTestedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(new PlatformEmailActionResponse(true, setting.LastTestedAt, null, "Test email queued. Check Delivery Logs for status."));
     }
 
     [HttpPost("email/verify")]
@@ -353,12 +349,12 @@ public sealed class PlatformSettingsController(
             await dbContext.SaveChangesAsync(cancellationToken);
             if (verification.Success)
             {
-                return Ok(new PlatformEmailActionResponse(true, setting.LastTestedAt, null));
+                return Ok(new PlatformEmailActionResponse(true, setting.LastTestedAt, null, null));
             }
 
             setting.LastError = verification.ErrorCategory ?? EmailErrorCategories.UnknownSmtpError;
             await dbContext.SaveChangesAsync(cancellationToken);
-            return Ok(new PlatformEmailActionResponse(false, setting.LastTestedAt, setting.LastError));
+            return Ok(new PlatformEmailActionResponse(false, setting.LastTestedAt, setting.LastError, null));
         }
         catch (Exception ex)
         {
@@ -368,7 +364,7 @@ public sealed class PlatformSettingsController(
             setting.LastTestedAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
             logger.LogWarning(ex, "Platform email verification failed.");
-            return Ok(new PlatformEmailActionResponse(false, setting.LastTestedAt, setting.LastError));
+            return Ok(new PlatformEmailActionResponse(false, setting.LastTestedAt, setting.LastError, null));
         }
     }
 
@@ -750,6 +746,18 @@ public sealed class PlatformSettingsController(
             .Select(key => new PlatformNotificationPreferenceRecord(key, true, key is "failed-login-attempts" or "system-errors", false, true))
             .ToList();
 
+    private async Task<PlatformEmailSubjectRulesRecord> LoadEmailSubjectRulesAsync(CancellationToken cancellationToken)
+    {
+        var setting = await dbContext.PlatformSettings.SingleOrDefaultAsync(x => x.Category == PlatformEmailSubjectRulesCategory, cancellationToken);
+        if (setting is null)
+        {
+            return new PlatformEmailSubjectRulesRecord("[Ecosys]", null, false, "Production", false, true);
+        }
+
+        return JsonSerializer.Deserialize<PlatformEmailSubjectRulesRecord>(setting.JsonValue, JsonOptions)
+            ?? new PlatformEmailSubjectRulesRecord("[Ecosys]", null, false, "Production", false, true);
+    }
+
     private async Task<EmailSetting> GetOrCreatePlatformEmailSettingAsync(CancellationToken cancellationToken)
     {
         var setting = await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == PlatformConstants.RootTenantId, cancellationToken);
@@ -781,7 +789,8 @@ public sealed class PlatformSettingsController(
     private PlatformEmailSettingsResponse MapEmail(
         EmailSetting setting,
         PlatformEmailFlagsRecord flags,
-        IReadOnlyCollection<PlatformNotificationPreferenceRecord> preferences) =>
+        IReadOnlyCollection<PlatformNotificationPreferenceRecord> preferences,
+        PlatformEmailSubjectRulesRecord subjectRules) =>
         new(
             ParseDeliveryMode(setting.Provider),
             setting.Host,
@@ -806,6 +815,12 @@ public sealed class PlatformSettingsController(
             flags.EnableWorkOrderNotificationEmails,
             flags.EnableSlaEscalationEmails,
             flags.EnableTenantOnboardingEmails,
+            subjectRules.SubjectPrefix,
+            subjectRules.SubjectSuffix,
+            subjectRules.IncludeEnvironmentInSubject,
+            subjectRules.EnvironmentLabel,
+            subjectRules.IncludeTenantNameInSubject,
+            subjectRules.EnableEventSubjectTags,
             preferences.Select(x => new PlatformNotificationPreferenceResponse(
                 x.NotificationKey,
                 x.EmailEnabled,
@@ -988,6 +1003,12 @@ public sealed class PlatformSettingsController(
         return string.IsNullOrWhiteSpace(normalized) ? fallback : normalized.ToUpperInvariant();
     }
 
+    private static string NormalizeSubjectPrefix(string? value)
+    {
+        var normalized = NormalizeOptional(value);
+        return string.IsNullOrWhiteSpace(normalized) ? "[Ecosys]" : normalized;
+    }
+
     private static string NormalizeDocumentType(string value)
     {
         var normalized = value.Trim();
@@ -1082,6 +1103,13 @@ public sealed class PlatformSettingsController(
         bool EnableWorkOrderNotificationEmails,
         bool EnableSlaEscalationEmails,
         bool EnableTenantOnboardingEmails);
+    private sealed record PlatformEmailSubjectRulesRecord(
+        string SubjectPrefix,
+        string? SubjectSuffix,
+        bool IncludeEnvironmentInSubject,
+        string EnvironmentLabel,
+        bool IncludeTenantNameInSubject,
+        bool EnableEventSubjectTags);
     private sealed record PlatformNotificationPreferenceRecord(
         string NotificationKey,
         bool EmailEnabled,
@@ -1212,6 +1240,12 @@ public sealed record PlatformEmailSettingsResponse(
     bool EnableWorkOrderNotificationEmails,
     bool EnableSlaEscalationEmails,
     bool EnableTenantOnboardingEmails,
+    string SubjectPrefix,
+    string? SubjectSuffix,
+    bool IncludeEnvironmentInSubject,
+    string EnvironmentLabel,
+    bool IncludeTenantNameInSubject,
+    bool EnableEventSubjectTags,
     IReadOnlyCollection<PlatformNotificationPreferenceResponse> NotificationPreferences,
     DateTime? LastTestedAt,
     string? LastError);
@@ -1240,6 +1274,12 @@ public sealed record PlatformEmailSettingsRequest(
     bool EnableWorkOrderNotificationEmails,
     bool EnableSlaEscalationEmails,
     bool EnableTenantOnboardingEmails,
+    string SubjectPrefix,
+    string? SubjectSuffix,
+    bool IncludeEnvironmentInSubject,
+    string EnvironmentLabel,
+    bool IncludeTenantNameInSubject,
+    bool EnableEventSubjectTags,
     IReadOnlyCollection<PlatformNotificationPreferenceRequest>? NotificationPreferences);
 
 public sealed record PlatformNotificationPreferenceResponse(
@@ -1261,7 +1301,8 @@ public sealed record PlatformEmailTestRequest(string? TestRecipientEmail);
 public sealed record PlatformEmailActionResponse(
     bool Success,
     DateTime? LastTestedAt,
-    string? LastError);
+    string? LastError,
+    string? Message);
 
 public sealed record PlatformTaxFinanceSettingsResponse(
     decimal DefaultVatRate,

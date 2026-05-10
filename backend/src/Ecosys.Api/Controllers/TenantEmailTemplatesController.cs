@@ -18,8 +18,8 @@ public sealed class TenantEmailTemplatesController(
     ITenantContext tenantContext,
     IUserAccessService userAccessService,
     IEmailTemplateService emailTemplateService,
-    ISecretEncryptionService secretEncryptionService,
-    IEmailSender emailSender,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    IEmailOutboxService emailOutboxService,
     IAuditLogService auditLogService) : TenantAwareControllerBase(tenantContext)
 {
     [HttpGet]
@@ -72,7 +72,12 @@ public sealed class TenantEmailTemplatesController(
     {
         userAccessService.EnsureAdmin();
         var rendered = await emailTemplateService.RenderTenantTemplateAsync(TenantId, eventKey, BuildSampleValues(request?.SampleData), cancellationToken);
-        return Ok(new EmailTemplatePreviewResponse(rendered.EventKey, rendered.TemplateName, rendered.Subject, rendered.HtmlBody, rendered.TextBody));
+        var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+            TenantId,
+            eventKey,
+            rendered.Subject,
+            cancellationToken: cancellationToken);
+        return Ok(new EmailTemplatePreviewResponse(rendered.EventKey, rendered.TemplateName, rendered.Subject, finalSubject, rendered.HtmlBody, rendered.TextBody));
     }
 
     [HttpPost("{eventKey}/test")]
@@ -94,19 +99,29 @@ public sealed class TenantEmailTemplatesController(
             throw new BusinessRuleException("A test recipient email is required.");
         }
 
-        await emailSender.SendAsync(
-            new EmailMessage(
+        var finalSubject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+            TenantId,
+            eventKey,
+            rendered.Subject,
+            cancellationToken: cancellationToken);
+
+        await emailOutboxService.QueueEmailAsync(
+            new QueueEmailRequest(
+                TenantId,
+                eventKey,
+                eventKey,
                 recipient,
-                rendered.Subject,
-                rendered.HtmlBody,
+                null,
                 rendered.SenderNameOverride ?? settings.SenderName,
                 settings.SenderAddress,
                 rendered.ReplyToOverride ?? settings.ReplyToEmail,
-                IsHtml: true),
-            CreateDeliveryOptions(settings),
+                finalSubject,
+                rendered.HtmlBody,
+                rendered.TextBody,
+                UserId),
             cancellationToken);
 
-        return Ok(new EmailTemplateTestResponse(true, null));
+        return Ok(new EmailTemplateTestResponse(true, "Template test email queued. Check Delivery Logs for status."));
     }
 
     [HttpPost("{eventKey}/reset")]
@@ -127,75 +142,41 @@ public sealed class TenantEmailTemplatesController(
         return await dbContext.EmailSettings.SingleOrDefaultAsync(x => x.TenantId == PlatformConstants.RootTenantId, cancellationToken);
     }
 
-    private EmailDeliverySettings CreateDeliveryOptions(EmailSetting settings)
-    {
-        var secret = secretEncryptionService.Decrypt(settings.EncryptedSecret) ?? settings.Password;
-        return new EmailDeliverySettings(
-            Enum.TryParse<EmailDeliveryMode>(settings.Provider, true, out var mode) ? mode : EmailDeliveryMode.Smtp,
-            settings.Host,
-            settings.Port,
-            settings.Username,
-            secret,
-            settings.SenderName,
-            settings.SenderAddress,
-            settings.ReplyToEmail,
-            settings.UseSsl,
-            EmailDeliveryModeResolver.ResolveSecureMode(settings.Port, settings.UseSsl),
-            null,
-            null,
-            null,
-            30,
-            0);
-    }
-
     private static Dictionary<string, string?> BuildSampleValues(IReadOnlyDictionary<string, string?>? sampleData)
     {
-        var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["FullName"] = "Jane Doe",
-            ["fullName"] = "Jane Doe",
-            ["Email"] = "jane.doe@example.com",
-            ["email"] = "jane.doe@example.com",
-            ["TemporaryPassword"] = "Eco!TempPass9",
-            ["temporaryPassword"] = "Eco!TempPass9",
-            ["InviteLink"] = "https://app.example.com/accept-invite?token=sample",
-            ["ResetPasswordLink"] = "https://app.example.com/reset-password?token=sample",
-            ["resetLink"] = "https://app.example.com/reset-password?token=sample",
-            ["LoginUrl"] = "https://app.example.com/login",
-            ["loginUrl"] = "https://app.example.com/login",
-            ["CompanyName"] = "Acme Facilities Ltd",
-            ["companyName"] = "Acme Facilities Ltd",
-            ["WorkspaceName"] = "Acme Facilities Ltd",
-            ["TenantName"] = "Acme Facilities Ltd",
-            ["tenantName"] = "Acme Facilities Ltd",
-            ["platformName"] = "Ecosys ServiceOps",
-            ["WorkOrderNumber"] = "WO-000123",
-            ["workOrderNumber"] = "WO-000123",
-            ["AssetName"] = "Generator 250kVA",
-            ["assetName"] = "Generator 250kVA",
-            ["AssignedTo"] = "Alex Kimani",
-            ["assignedTo"] = "Alex Kimani",
-            ["Priority"] = "High",
-            ["priority"] = "High",
-            ["DueDate"] = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"),
-            ["dueDate"] = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"),
-            ["SupportEmail"] = "support@ecosysdigital.co.ke",
-            ["supportEmail"] = "support@ecosysdigital.co.ke",
-            ["senderName"] = "Ecosys ServiceOps",
-            ["sentAt"] = DateTime.UtcNow.ToString("u"),
-            ["Phone"] = "+254700000001",
-            ["contactPhone"] = "+254700000001",
-            ["Country"] = "Kenya",
-            ["Industry"] = "Facilities",
-            ["industry"] = "Facilities",
-            ["Message"] = "We need help onboarding our team.",
-            ["message"] = "We need help onboarding our team.",
-            ["leadCompanyName"] = "Acme Facilities Ltd",
-            ["contactName"] = "Jane Doe",
-            ["contactEmail"] = "jane.doe@example.com",
-            ["submittedAt"] = DateTime.UtcNow.ToString("u"),
-            ["expiresAt"] = DateTime.UtcNow.AddHours(1).ToString("u")
-        };
+        var values = EmailTemplateVariables.WithRecipientAndActorAliases(
+            "Jane Doe",
+            "Alex Kimani",
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["email"] = "jane.doe@example.com",
+                ["temporaryPassword"] = "Eco!TempPass9",
+                ["inviteLink"] = "https://app.example.com/accept-invite?token=sample",
+                ["resetPasswordLink"] = "https://app.example.com/reset-password?token=sample",
+                ["resetLink"] = "https://app.example.com/reset-password?token=sample",
+                ["loginUrl"] = "https://app.example.com/login",
+                ["companyName"] = "Acme Facilities Ltd",
+                ["workspaceName"] = "Acme Facilities Ltd",
+                ["tenantName"] = "Acme Facilities Ltd",
+                ["platformName"] = "Ecosys ServiceOps",
+                ["workOrderNumber"] = "WO-000123",
+                ["assetName"] = "Generator 250kVA",
+                ["assignedTo"] = "Alex Kimani",
+                ["priority"] = "High",
+                ["dueDate"] = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"),
+                ["supportEmail"] = "support@ecosysdigital.co.ke",
+                ["senderName"] = "Ecosys ServiceOps",
+                ["sentAt"] = DateTime.UtcNow.ToString("u"),
+                ["contactPhone"] = "+254700000001",
+                ["country"] = "Kenya",
+                ["industry"] = "Facilities",
+                ["message"] = "We need help onboarding our team.",
+                ["leadCompanyName"] = "Acme Facilities Ltd",
+                ["contactName"] = "Jane Doe",
+                ["contactEmail"] = "jane.doe@example.com",
+                ["submittedAt"] = DateTime.UtcNow.ToString("u"),
+                ["expiresAt"] = DateTime.UtcNow.AddHours(1).ToString("u")
+            });
 
         if (sampleData is not null)
         {
