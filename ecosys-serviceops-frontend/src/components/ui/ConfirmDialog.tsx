@@ -1,4 +1,5 @@
 import { Modal } from './Modal'
+import { ConfirmationModal } from './Workspace'
 
 export function ConfirmDialog({
   open,
@@ -21,14 +22,20 @@ export function ConfirmDialog({
 }) {
   return (
     <Modal open={open} title={title} description={description} onClose={onCancel}>
-      <div className="flex flex-wrap justify-end gap-3">
-        <button type="button" className="button-secondary" onClick={onCancel}>
-          {cancelLabel}
-        </button>
-        <button type="button" className={tone === 'danger' ? 'button-primary bg-rose-500 text-white' : 'button-primary'} onClick={onConfirm}>
-          {confirmLabel}
-        </button>
-      </div>
+      <ConfirmationModal title={title} description={description}>
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" className="button-secondary" onClick={onCancel}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={tone === 'danger' ? 'button-primary !bg-[var(--app-badge-danger-text)] !text-white' : 'button-primary'}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </ConfirmationModal>
     </Modal>
   )
 }

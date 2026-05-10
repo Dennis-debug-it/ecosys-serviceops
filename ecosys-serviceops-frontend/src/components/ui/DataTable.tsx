@@ -47,14 +47,14 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="table-shell w-full overflow-hidden rounded-[28px] border border-app">
+    <div className="table-shell w-full overflow-hidden rounded-[var(--radius-app)] border border-app">
       <div className="divide-app md:hidden">
         {visibleRows.map((row, index) => (
           <article key={rowKey ? rowKey(row, index) : index} className="space-y-4 px-4 py-4">
             {mobileCard ? mobileCard(row, index) : (
               <div className="space-y-3">
                 {columns.map((column) => (
-                  <div key={column.key} className="rounded-2xl border border-app bg-subtle px-4 py-3">
+                  <div key={column.key} className="rounded-[14px] border border-app bg-subtle px-4 py-3">
                     <p className="text-secondary text-[11px] font-semibold uppercase tracking-[0.18em]">{column.header}</p>
                     <div className="mt-2 break-words text-sm text-app">{column.cell(row)}</div>
                   </div>
@@ -64,14 +64,14 @@ export function DataTable<T>({
           </article>
         ))}
       </div>
-      <div className="hidden w-full overflow-x-auto overscroll-x-contain rounded-[28px] md:block">
+      <div className="hidden w-full overflow-x-auto overscroll-x-contain rounded-[var(--radius-app)] md:block">
         <table className={`divide-app w-full ${minTableWidth}`}>
           <thead className="table-head">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`text-secondary px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.18em] ${column.className ?? ''}`}
+                  className={`text-secondary px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.18em] ${column.className ?? ''}`}
                 >
                   {column.header}
                 </th>
@@ -82,7 +82,7 @@ export function DataTable<T>({
             {visibleRows.map((row, index) => (
               <tr key={rowKey ? rowKey(row, index) : index} className="table-row transition">
                 {columns.map((column) => (
-                  <td key={column.key} className={`px-4 py-3 align-top text-sm text-app ${column.className ?? ''}`}>
+                  <td key={column.key} className={`px-4 py-3.5 align-top text-sm text-app ${column.className ?? ''}`}>
                     {column.cell(row)}
                   </td>
                 ))}

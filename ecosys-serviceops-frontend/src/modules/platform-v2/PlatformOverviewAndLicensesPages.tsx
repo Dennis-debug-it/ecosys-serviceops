@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { BarChart3, Building2, FileText, RefreshCw, Wallet } from 'lucide-react'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { StatCard } from '../../components/ui/StatCard'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { platformService, toServiceError } from '../../services/platformService'
@@ -9,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { InfoAlert } from '../../components/ui/InfoAlert'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { useToast } from '../../components/ui/ToastProvider'
+import { PageScaffold, SectionCard } from '../../components/ui/Workspace'
 import { licenseStatusBadge, tenantStatusBadge } from './PlatformCommon'
 import { formatDateOnly } from '../../utils/date'
 import type { Tenant } from '../../types/platform'
@@ -52,15 +52,18 @@ export function PlatformOverviewPage() {
   const deactivatedTenants = asNumber(data.dashboard.deactivatedTenants)
 
   return (
-    <div data-testid="command-centre-dashboard" className="space-y-4">
-      <PageHeader eyebrow="Platform Command Centre" title="Overview" description="Platform-wide operational, licensing, and finance posture." />
+    <PageScaffold
+      eyebrow="Platform Command Centre"
+      title="System Overview"
+      description="Platform-wide operational, licensing, and finance posture."
+    >
 
       {loading ? <LoadingState label="Loading platform overview" /> : null}
       {!loading && error ? (
-        <section className="surface-card space-y-3">
+        <SectionCard title="Unable to load overview" description={error}>
           <InfoAlert title="Unable to load overview" description={error} tone="danger" />
           <button type="button" className="button-secondary" onClick={() => void reload()}><RefreshCw className="h-4 w-4" />Retry</button>
-        </section>
+        </SectionCard>
       ) : null}
 
       {!loading && !error ? (
@@ -78,8 +81,7 @@ export function PlatformOverviewPage() {
             <StatCard title="Net Position" value={`KES ${(asNumber(data.summary.totalRevenue) - asNumber(data.summary.totalExpenses)).toLocaleString()}`} detail="Revenue minus expenses." icon={Wallet} accent="emerald" />
           </section>
 
-          <section className="surface-card space-y-4">
-            <p className="text-lg font-semibold text-app">Recent tenants</p>
+          <SectionCard title="Recent tenants" description="Latest tenant workspaces created across the platform.">
             {data.tenants.length === 0 ? <EmptyState title="No tenants yet" description="Create a tenant to populate this overview." /> : (
               <DataTable
                 rows={[...data.tenants].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8)}
@@ -94,10 +96,10 @@ export function PlatformOverviewPage() {
                 ]}
               />
             )}
-          </section>
+          </SectionCard>
         </>
       ) : null}
-    </div>
+    </PageScaffold>
   )
 }
 
@@ -157,21 +159,23 @@ export function PlatformLicensesPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <PageHeader eyebrow="Platform Command Centre" title="Licenses & Subscriptions" description="Plan allocation, status, limits, and renewal timing." />
+    <PageScaffold
+      eyebrow="Platform Command Centre"
+      title="Licenses & Subscriptions"
+      description="Plan allocation, status, limits, and renewal timing."
+    >
 
       {loading ? <LoadingState label="Loading licensing data" /> : null}
       {!loading && error ? (
-        <section className="surface-card space-y-3">
+        <SectionCard title="Unable to load licensing data" description={error}>
           <InfoAlert title="Unable to load licensing data" description={error} tone="danger" />
           <button type="button" className="button-secondary" onClick={() => void reload()}><RefreshCw className="h-4 w-4" />Retry</button>
-        </section>
+        </SectionCard>
       ) : null}
 
       {!loading && !error ? (
         <>
-          <section className="surface-card space-y-4">
-            <p className="text-lg font-semibold text-app">Active Subscriptions</p>
+          <SectionCard title="Active Subscriptions" description="Lifecycle control for live or pending platform subscriptions.">
             {data.subscriptions.length === 0 ? <EmptyState title="No subscriptions found" description="Create subscriptions from the backend API to populate this section." /> : (
               <DataTable
                 rows={data.subscriptions}
@@ -200,10 +204,9 @@ export function PlatformLicensesPage() {
                 ]}
               />
             )}
-          </section>
+          </SectionCard>
 
-          <section className="surface-card space-y-4">
-            <p className="text-lg font-semibold text-app">License Plans</p>
+          <SectionCard title="License Plans" description="Available product plans and usage ceilings.">
             {data.plans.length === 0 ? <EmptyState title="No plans found" description="Create plans with /api/platform/licensing/plans." /> : (
               <DataTable
                 rows={data.plans}
@@ -221,10 +224,9 @@ export function PlatformLicensesPage() {
                 ]}
               />
             )}
-          </section>
+          </SectionCard>
 
-          <section className="surface-card">
-            <p className="text-lg font-semibold text-app">Tenant License Snapshots</p>
+          <SectionCard title="Tenant License Snapshots" description="Current entitlements and status by tenant.">
             {snapshotRows.length === 0 ? <EmptyState title="No snapshot records" description="Snapshots appear once tenant licenses are initialized." /> : (
               <DataTable
                 rows={snapshotRows}
@@ -241,9 +243,9 @@ export function PlatformLicensesPage() {
                 ]}
               />
             )}
-          </section>
+          </SectionCard>
         </>
       ) : null}
-    </div>
+    </PageScaffold>
   )
 }

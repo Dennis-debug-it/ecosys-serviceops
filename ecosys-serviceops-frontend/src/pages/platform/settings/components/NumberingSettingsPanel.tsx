@@ -3,6 +3,7 @@ import { DataTable } from '../../../../components/ui/DataTable'
 import { InfoAlert } from '../../../../components/ui/InfoAlert'
 import { LoadingState } from '../../../../components/ui/LoadingState'
 import { useToast } from '../../../../components/ui/ToastProvider'
+import { SectionCard, StickyActionFooter } from '../../../../components/ui/Workspace'
 import { useAsyncData } from '../../../../hooks/useAsyncData'
 import { platformSettingsService, type PlatformNumberingRule } from '../../../../services/platformSettingsService'
 import { toServiceError } from '../../../../services/platformService'
@@ -55,7 +56,7 @@ export function NumberingSettingsPanel() {
   if (error) return <InfoAlert title="Unable to load numbering settings" description={error} tone="danger" />
 
   return (
-    <section className="surface-card space-y-4">
+    <SectionCard title="Numbering Settings" description="Configure prefixes, sequence, padding, and reset frequency for all platform documents.">
       <SectionTitle title="Numbering Settings" description="Configure prefixes, sequence, padding, and reset frequency for all platform documents." />
       <DataTable
         rows={rules}
@@ -91,9 +92,9 @@ export function NumberingSettingsPanel() {
           },
         ]}
       />
-      <div className="flex justify-end">
+      <StickyActionFooter>
         <button type="button" className="button-primary" onClick={() => void save()} disabled={saving}>{saving ? 'Saving...' : 'Save Numbering Settings'}</button>
-      </div>
-    </section>
+      </StickyActionFooter>
+    </SectionCard>
   )
 }

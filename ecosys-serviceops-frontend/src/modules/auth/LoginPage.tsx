@@ -57,70 +57,83 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-app">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(18,122,120,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(183,226,109,0.12),transparent_32%)]" />
       {isSubmitting ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#062b31]/58 px-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(7,42,48,0.96),rgba(8,58,63,0.94))] px-8 py-10 text-center shadow-[0_24px_80px_rgba(1,16,20,0.35)]">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[#7ee787]/18 bg-[radial-gradient(circle_at_30%_30%,rgba(163,230,53,0.28),rgba(18,122,120,0.08)_55%,transparent_72%)]">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#1e5b61] border-t-[#a3e635] border-r-[#2dd4bf]" />
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-overlay/90 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[24px] border border-app bg-[var(--app-surface)] px-8 py-10 text-center shadow-[var(--shadow-elevated)]">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-app bg-[var(--app-primary-soft)]">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-[var(--app-border-strong)] border-t-[var(--app-lime)] border-r-[var(--app-primary-strong)]" />
             </div>
-            <p className="mt-6 text-lg font-semibold tracking-tight text-white">
+            <p className="mt-6 font-heading text-lg font-semibold tracking-tight text-app">
               {submitPhase === 'loading-workspace' ? 'Loading your workspace...' : 'Signing you in...'}
             </p>
-            <p className="mt-2 text-sm leading-6 text-[#b9d4d1]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               We&apos;re securing your session and preparing the right Ecosys workspace for you.
             </p>
           </div>
         </div>
       ) : null}
-      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-8 sm:px-6 lg:px-8">
-        <div className="glass-panel grid w-full gap-6 rounded-[36px] p-4 sm:p-6 lg:grid-cols-[1.02fr_0.98fr] lg:gap-8 lg:p-8">
-          <section className="rounded-[30px] border border-[#cfe2db] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,247,244,0.98))] p-6 shadow-[0_24px_60px_rgba(12,47,51,0.08)] sm:p-8">
+      <div className="relative mx-auto flex min-h-screen max-w-container items-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,0.88fr)_minmax(320px,460px)] lg:items-stretch">
+          <section className="auth-showcase hidden min-h-[720px] flex-col justify-between rounded-[28px] p-8 shadow-[var(--shadow-elevated)] lg:flex">
             <EcosysLogo
-              variant="dark"
+              variant="light"
               size="lg"
               subtitle="ServiceOps Workspace"
-              subtitleClassName="text-[0.72rem] font-semibold normal-case tracking-[0.08em] text-[#3d5b58]"
-              imageClassName="drop-shadow-[0_6px_18px_rgba(12,47,51,0.08)]"
+              subtitleClassName="text-[0.72rem] font-semibold normal-case tracking-[0.08em] auth-showcase-muted"
             />
-            <div className="mt-8 max-w-xl">
-              <h1 className="text-3xl font-semibold tracking-[-0.03em] text-[#0C2F33] sm:text-[2.6rem]">
-                Enterprise service operations, ready when your team is.
-              </h1>
-              <p className="mt-4 text-sm leading-7 text-[#46615f] sm:text-[0.95rem]">
-                Sign in to manage workflows, teams, and customer service delivery from one Ecosys workspace.
-              </p>
-            </div>
-            <div className="mt-8 rounded-[24px] border border-[#d5e4de] bg-white/72 p-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#e7f3ef]">
-                  <ShieldCheck className="h-4 w-4 text-[#127A78]" />
+            <div className="space-y-6">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#dded49]">Enterprise Control Layer</p>
+                <h1 className="mt-4 font-heading text-[3rem] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
+                  Enterprise service operations, ready when your team is.
+                </h1>
+                <p className="auth-showcase-muted mt-5 max-w-lg text-base leading-7">
+                  Sign in to manage workflows, teams, and customer service delivery from one Ecosys workspace.
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-[20px] border border-white/10 bg-white/5 p-5">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-white/10">
+                    <ShieldCheck className="h-5 w-5 text-[#dded49]" />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-white">Secure access</p>
+                  <p className="auth-showcase-muted mt-2 text-sm leading-6">Role-aware routing and protected tenant or platform workspaces after sign-in.</p>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#0C2F33]">Secure access</p>
-                  <p className="text-sm text-[#56706d]">Use your Ecosys email and password to continue.</p>
+                <div className="rounded-[20px] border border-white/10 bg-white/5 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#dded49]">Operational Focus</p>
+                  <p className="mt-4 text-2xl font-semibold text-white">Command centres, settings shells, and tenant controls in one system.</p>
                 </div>
               </div>
             </div>
-            <div className="mt-10 flex items-center gap-3 border-t border-[#d7e5df] pt-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#edf7f2] ring-1 ring-[#d7e8df]">
+            <div className="flex items-center gap-3 border-t border-white/10 pt-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/10 ring-1 ring-white/10">
                 <EcosysIcon size={28} title="Ecosys" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#4e6a67]">Powered by Ecosys</p>
-                <p className="text-sm text-[#66807d]">Connected tools for modern service operations.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/80">Powered by Ecosys</p>
+                <p className="auth-showcase-muted text-sm">Connected tools for modern service operations.</p>
               </div>
             </div>
           </section>
 
-          <section className="flex items-center p-2 lg:p-4">
-            <div className="mx-auto w-full max-w-md">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">Login</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-app">Welcome back</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">Sign in to continue to your Ecosys workspace.</p>
+          <section className="flex items-center">
+            <div className="surface-card mx-auto w-full max-w-[460px] overflow-hidden !p-0">
+              <div className="border-b border-app px-6 py-6 sm:px-8">
+                <div className="lg:hidden">
+                  <EcosysLogo
+                    variant="dark"
+                    size="md"
+                    subtitle="ServiceOps Workspace"
+                    subtitleClassName="text-[0.72rem] font-semibold normal-case tracking-[0.08em] text-muted"
+                  />
+                </div>
+                <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--app-primary-strong)]">Login</p>
+                <h2 className="mt-3 font-heading text-[2.15rem] font-semibold tracking-[-0.04em] text-app">Welcome back</h2>
+                <p className="mt-3 text-sm leading-6 text-muted">Access your Ecosys workspace and continue with platform or tenant operations.</p>
+              </div>
 
               <form
-                className="mt-8 space-y-4"
+                className="space-y-5 px-6 py-6 sm:px-8"
                 onSubmit={(event) => {
                   event.preventDefault()
                   void submit()
@@ -151,7 +164,7 @@ export function LoginPage() {
                   />
                 </label>
                 {error ? (
-                  <div role="alert" className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200">
+                  <div role="alert" className="rounded-[12px] border border-[var(--app-badge-danger-border)] bg-[var(--app-badge-danger-bg)] px-4 py-3 text-sm text-[var(--app-badge-danger-text)]">
                     {error}
                   </div>
                 ) : null}
@@ -162,7 +175,7 @@ export function LoginPage() {
                 </div>
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#127A78] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(18,122,120,0.28)] transition hover:bg-[#0C2F33] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="button-primary inline-flex w-full items-center justify-center gap-2"
                   disabled={isSubmitting}
                 >
                   {submitPhase === 'loading-workspace' ? 'Loading your workspace...' : isSubmitting ? 'Signing you in...' : 'Login'}
@@ -170,12 +183,14 @@ export function LoginPage() {
                 </button>
               </form>
 
-              <p className="mt-6 text-sm text-muted">
-                New to Ecosys?{' '}
-                <Link to="/get-started" className="font-semibold text-accent-strong hover:opacity-80">
-                  Get Started
-                </Link>
-              </p>
+              <div className="border-t border-app bg-[var(--app-surface-strong)] px-6 py-5 text-center sm:px-8">
+                <p className="text-sm text-muted">
+                  New to Ecosys?{' '}
+                  <Link to="/get-started" className="font-semibold text-accent-strong hover:opacity-80">
+                    Get Started
+                  </Link>
+                </p>
+              </div>
             </div>
           </section>
         </div>

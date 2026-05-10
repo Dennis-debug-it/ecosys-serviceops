@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { PageHeader } from '../../../components/ui/PageHeader'
+import { PageScaffold } from '../../../components/ui/Workspace'
 import type { PlatformSettingsSection } from '../../../services/platformSettingsService'
 import { BrandingSettingsPanel } from './components/BrandingSettingsPanel'
 import { EmailNotificationSettingsPanel } from './components/EmailNotificationSettingsPanel'
@@ -25,8 +25,11 @@ export function PlatformSettingsPage() {
   const active = useMemo(() => settingsSections.find((item) => item.id === activeSection) ?? settingsSections[0], [activeSection])
 
   return (
-    <div data-testid="platform-settings-page" className="space-y-4">
-      <PageHeader eyebrow="Platform Command Centre" title="Settings" description="Manage core platform setup for branding, communications, security, and system preferences." />
+    <PageScaffold
+      eyebrow="Platform Command Centre"
+      title="Platform Settings"
+      description="Manage core platform setup for branding, communications, security, and system preferences."
+    >
 
       <div className="surface-card flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -66,6 +69,6 @@ export function PlatformSettingsPage() {
           {renderPanel(activeSection)}
         </main>
       </div>
-    </div>
+    </PageScaffold>
   )
 }

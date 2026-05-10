@@ -4,6 +4,7 @@ import { brand } from '../../../../config/brand'
 import { InfoAlert } from '../../../../components/ui/InfoAlert'
 import { LoadingState } from '../../../../components/ui/LoadingState'
 import { useToast } from '../../../../components/ui/ToastProvider'
+import { FormSection, SettingsCard, StickyActionFooter } from '../../../../components/ui/Workspace'
 import { useAsyncData } from '../../../../hooks/useAsyncData'
 import { Field, SectionTitle } from '../../../../modules/platform-v2/PlatformCommon'
 import { platformSettingsService, type PlatformBrandingSettings } from '../../../../services/platformSettingsService'
@@ -49,15 +50,15 @@ export function BrandingSettingsPanel() {
   if (error) return <InfoAlert title="Unable to load branding settings" description={error} tone="danger" />
 
   return (
-    <section className="surface-card space-y-4">
+    <SettingsCard title="Branding Settings" description="Platform brand assets, palette, and visual previews.">
       <SectionTitle title="Branding Settings" description="Platform brand assets, palette, and visual previews." />
-      <div className="grid gap-3 md:grid-cols-2">
+      <FormSection title="Brand Assets" description="Core URLs and colors used across platform touchpoints.">
         <Field label="Platform Logo URL"><input value={form.platformLogoUrl} onChange={(event) => setForm((current) => ({ ...current, platformLogoUrl: event.target.value }))} className="field-input" /></Field>
         <Field label="Favicon URL"><input value={form.faviconUrl} onChange={(event) => setForm((current) => ({ ...current, faviconUrl: event.target.value }))} className="field-input" /></Field>
         <Field label="Primary Color"><input value={form.primaryColor} onChange={(event) => setForm((current) => ({ ...current, primaryColor: event.target.value }))} className="field-input" /></Field>
         <Field label="Secondary Color"><input value={form.secondaryColor} onChange={(event) => setForm((current) => ({ ...current, secondaryColor: event.target.value }))} className="field-input" /></Field>
         <Field label="Accent Color"><input value={form.accentColor} onChange={(event) => setForm((current) => ({ ...current, accentColor: event.target.value }))} className="field-input" /></Field>
-      </div>
+      </FormSection>
       <div className="grid gap-3 md:grid-cols-3">
         <label className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3">
           <span className="text-sm text-app">Show &ldquo;Powered by Ecosys&rdquo;</span>
@@ -93,9 +94,9 @@ export function BrandingSettingsPanel() {
           </div>
         </article>
       </div>
-      <div className="flex justify-end">
+      <StickyActionFooter>
         <button type="button" className="button-primary" onClick={() => void save()} disabled={saving}>{saving ? 'Saving...' : 'Save Branding Settings'}</button>
-      </div>
-    </section>
+      </StickyActionFooter>
+    </SettingsCard>
   )
 }

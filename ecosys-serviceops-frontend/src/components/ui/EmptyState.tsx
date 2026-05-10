@@ -13,11 +13,11 @@ export function EmptyState({
 }) {
   return (
     <div className="surface-card flex min-h-[220px] flex-col items-center justify-center text-center">
-      <div className="icon-accent rounded-2xl p-4">
+      <div className="icon-accent rounded-[16px] p-4">
         <Sparkles className="h-6 w-6" />
       </div>
-      <h3 className="mt-5 text-lg font-semibold text-app">{title}</h3>
-      <p className="mt-2 max-w-md text-sm text-muted">{description}</p>
+      <h3 className="mt-5 font-heading text-xl font-semibold text-app">{title}</h3>
+      <p className="mt-2 max-w-md text-sm leading-6 text-muted">{description}</p>
       {actionLabel && onAction ? (
         <button type="button" className="button-secondary mt-5" onClick={onAction}>
           {actionLabel}

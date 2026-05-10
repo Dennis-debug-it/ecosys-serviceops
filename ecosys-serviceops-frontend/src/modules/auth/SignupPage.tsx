@@ -89,7 +89,7 @@ export function SignupPage() {
               </div>
               <EcosysLogo variant={brandVariant} size="lg" subtitle="Business Onboarding" />
             </div>
-            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-[#0C2F33]">{title}</h1>
+            <p className="mt-6 font-heading text-4xl font-semibold tracking-tight text-[#0C2F33]">{title}</p>
             <p className="mt-4 max-w-xl text-sm leading-7 text-[#476360]">{subtitle}</p>
             <div className="mt-8 space-y-3 rounded-[26px] border border-[#d8e8e0] bg-white/80 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#127A78]">What happens next</p>

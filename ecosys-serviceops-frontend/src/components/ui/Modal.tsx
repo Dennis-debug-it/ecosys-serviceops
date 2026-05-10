@@ -53,11 +53,11 @@ export function Modal({
   }
 
   return (
-    <div data-ui-overlay="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className={`glass-panel w-[95vw] ${maxWidth} max-h-[90vh] overflow-hidden rounded-[28px]`} onClick={(event) => event.stopPropagation()}>
+    <div data-ui-overlay="true" className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/90 p-4" onClick={onClose}>
+      <div className={`glass-panel w-[95vw] ${maxWidth} max-h-[90vh] overflow-hidden rounded-[24px]`} onClick={(event) => event.stopPropagation()}>
         <div className="border-app flex items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-app">{title}</h2>
+            <h2 className="font-heading text-xl font-semibold text-app">{title}</h2>
             <p className="mt-1 text-sm text-muted">{description}</p>
           </div>
           <button type="button" className="icon-button h-10 w-10" onClick={onClose} aria-label="Close modal">

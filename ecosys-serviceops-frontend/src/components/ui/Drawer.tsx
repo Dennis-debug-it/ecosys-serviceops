@@ -51,18 +51,18 @@ export function Drawer({
   }
 
   return (
-    <div data-ui-overlay="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="glass-panel max-h-[90vh] w-[95vw] max-w-3xl overflow-hidden rounded-[28px]" onClick={(event) => event.stopPropagation()}>
+    <div data-ui-overlay="true" className="fixed inset-0 z-50 flex items-center justify-end bg-overlay/90 p-0 sm:p-4" onClick={onClose}>
+      <div className="glass-panel h-full max-h-screen w-full max-w-3xl overflow-hidden rounded-none sm:max-h-[94vh] sm:rounded-[24px]" onClick={(event) => event.stopPropagation()}>
         <div className="border-app flex items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-app">{title}</h2>
+            <h2 className="font-heading text-xl font-semibold text-app">{title}</h2>
             <p className="mt-1 text-sm text-muted">{description}</p>
           </div>
           <button type="button" className="icon-button h-10 w-10" onClick={onClose} aria-label="Close dialog">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="max-h-[calc(90vh-88px)] overflow-y-auto px-4 py-5 sm:px-6">
+        <div className="max-h-[calc(100vh-88px)] overflow-y-auto px-4 py-5 sm:max-h-[calc(94vh-88px)] sm:px-6">
           {children}
         </div>
       </div>
