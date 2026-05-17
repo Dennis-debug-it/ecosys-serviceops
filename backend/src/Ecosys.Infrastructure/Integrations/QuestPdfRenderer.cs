@@ -30,4 +30,185 @@ internal sealed class QuestPdfRenderer : IPdfRenderer
             }))
             .GeneratePdf();
     }
+
+    public byte[] RenderWorkOrderReportPdf(WorkOrderReportPdfModel report)
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+
+        return Document.Create(container =>
+            container.Page(page =>
+            {
+                page.Margin(28);
+                page.DefaultTextStyle(x => x.FontSize(10));
+
+                page.Header().Column(column =>
+                {
+                    column.Item().Text(report.CompanyName).FontSize(20).SemiBold().FontColor(report.PrimaryColor);
+                    column.Item().Text($"{report.WorkOrderNumber}  |  {report.Title}").FontSize(14).SemiBold();
+                    column.Item().PaddingTop(4).Text(text =>
+                    {
+                        text.Span("Generated: ").SemiBold();
+                        text.Span(report.GeneratedAtLabel);
+                    });
+                });
+
+                page.Content().Column(column =>
+                {
+                    column.Spacing(12);
+
+                    column.Item().Element(x => RenderSection(x, "Service details", new[]
+                    {
+                        ("Client", report.ClientName),
+                        ("Site / Location", report.SiteLabel),
+                        ("Asset", report.AssetName),
+                        ("Asset details", report.AssetDetails),
+                        ("Technician / Team", report.TechnicianTeam)
+                    }));
+
+                    column.Item().Element(x => RenderParagraphSection(x, "Problem reported", report.ReportedProblem));
+                    column.Item().Element(x => RenderParagraphSection(x, "Findings", report.Findings));
+                    column.Item().Element(x => RenderParagraphSection(x, "Work done", report.WorkDone));
+
+                    column.Item().Element(x => RenderSection(x, "Timestamps", report.Timestamps.Select(timestamp => (timestamp.Label, timestamp.Value)).ToArray()));
+
+                    column.Item().Element(x => RenderMaterialsSection(x, report.Materials));
+
+                    foreach (var group in report.PhotoGroups.Where(x => x.Photos.Count > 0))
+                    {
+                        column.Item().Element(x => RenderPhotoGroup(x, group));
+                    }
+
+                    if (report.Signatures.Count > 0)
+                    {
+                        column.Item().Element(x => RenderSignatureSection(x, report.Signatures));
+                    }
+                });
+
+                page.Footer().AlignCenter().Text(text =>
+                {
+                    text.Span(report.ShowPoweredByEcosys ? "Powered by Ecosys" : report.CompanyName).FontSize(9).FontColor(Colors.Grey.Darken1);
+                });
+            }))
+            .GeneratePdf();
+    }
+
+    private static void RenderSection(IContainer container, string title, IReadOnlyCollection<(string Label, string? Value)> lines)
+    {
+        container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(column =>
+        {
+            column.Spacing(6);
+            column.Item().Text(title).FontSize(12).SemiBold();
+            foreach (var (label, value) in lines.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
+            {
+                column.Item().Text(text =>
+                {
+                    text.Span($"{label}: ").SemiBold();
+                    text.Span(value);
+                });
+            }
+        });
+    }
+
+    private static void RenderParagraphSection(IContainer container, string title, string? body)
+    {
+        container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(column =>
+        {
+            column.Spacing(6);
+            column.Item().Text(title).FontSize(12).SemiBold();
+            column.Item().Text(string.IsNullOrWhiteSpace(body) ? "Not recorded." : body);
+        });
+    }
+
+    private static void RenderMaterialsSection(IContainer container, IReadOnlyCollection<WorkOrderReportPdfMaterial> materials)
+    {
+        container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(column =>
+        {
+            column.Spacing(6);
+            column.Item().Text("Materials / spares used").FontSize(12).SemiBold();
+            if (materials.Count == 0)
+            {
+                column.Item().Text("No materials recorded.");
+                return;
+            }
+
+            foreach (var material in materials)
+            {
+                column.Item().Text(text =>
+                {
+                    text.Span(material.Name).SemiBold();
+                    text.Span($" - {material.QuantityUsed} {material.UnitOfMeasure}");
+                    if (material.UnitCost.HasValue)
+                    {
+                        text.Span($" @ {material.UnitCost.Value:0.00}");
+                    }
+
+                    text.Span(material.Chargeable ? " - Chargeable" : " - Non-chargeable");
+                });
+
+                if (!string.IsNullOrWhiteSpace(material.Notes))
+                {
+                    column.Item().PaddingLeft(8).Text(material.Notes).FontSize(9).FontColor(Colors.Grey.Darken1);
+                }
+            }
+        });
+    }
+
+    private static void RenderPhotoGroup(IContainer container, WorkOrderReportPdfPhotoGroup group)
+    {
+        container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(column =>
+        {
+            column.Spacing(8);
+            column.Item().Text(group.Category).FontSize(12).SemiBold();
+            foreach (var photo in group.Photos)
+            {
+                column.Item().Column(photoColumn =>
+                {
+                    photoColumn.Spacing(4);
+                    if (photo.ImageBytes is { Length: > 0 })
+                    {
+                        photoColumn.Item().Height(160).Image(photo.ImageBytes).FitArea();
+                    }
+                    else if (!string.IsNullOrWhiteSpace(photo.PublicUrl))
+                    {
+                        photoColumn.Item().Text($"Image stored at: {photo.PublicUrl}").FontColor(Colors.Blue.Darken2);
+                    }
+
+                    photoColumn.Item().Text(photo.Caption).FontSize(9);
+                });
+            }
+        });
+    }
+
+    private static void RenderSignatureSection(IContainer container, IReadOnlyCollection<WorkOrderReportPdfSignature> signatures)
+    {
+        container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(column =>
+        {
+            column.Spacing(8);
+            column.Item().Text("Signatures").FontSize(12).SemiBold();
+
+            foreach (var signature in signatures)
+            {
+                column.Item().Column(signatureColumn =>
+                {
+                    signatureColumn.Spacing(4);
+                    signatureColumn.Item().Text($"{signature.SignatureType}: {signature.SignerName}").SemiBold();
+                    if (!string.IsNullOrWhiteSpace(signature.SignerRole))
+                    {
+                        signatureColumn.Item().Text(signature.SignerRole).FontSize(9);
+                    }
+
+                    signatureColumn.Item().Text($"Captured at {signature.CapturedAtLabel}").FontSize(9);
+                    if (signature.ImageBytes is { Length: > 0 })
+                    {
+                        signatureColumn.Item().Height(90).Image(signature.ImageBytes).FitArea();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(signature.Comment))
+                    {
+                        signatureColumn.Item().Text(signature.Comment).FontSize(9).FontColor(Colors.Grey.Darken1);
+                    }
+                });
+            }
+        });
+    }
 }

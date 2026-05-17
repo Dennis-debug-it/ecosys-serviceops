@@ -151,6 +151,12 @@ internal sealed class PlatformBootstrapService(
 {
     public async Task EnsurePlatformAdminAsync(CancellationToken cancellationToken = default)
     {
+        var configuredEmail = platformAdminOptions.Value.Email.Trim().ToLowerInvariant();
+        var configuredFullName = string.IsNullOrWhiteSpace(platformAdminOptions.Value.FullName)
+            ? "Platform SuperAdmin"
+            : platformAdminOptions.Value.FullName.Trim();
+        var configuredPassword = platformAdminOptions.Value.Password;
+
         var tenant = await dbContext.Tenants.SingleOrDefaultAsync(x => x.Id == PlatformConstants.RootTenantId, cancellationToken);
         if (tenant is null)
         {
@@ -160,8 +166,8 @@ internal sealed class PlatformBootstrapService(
                 Name = "Ecosys Platform",
                 Slug = "ecosys-platform",
                 CompanyName = "Ecosys Platform",
-                Email = platformAdminOptions.Value.Email.Trim().ToLowerInvariant(),
-                ContactEmail = platformAdminOptions.Value.Email.Trim().ToLowerInvariant(),
+                Email = configuredEmail,
+                ContactEmail = configuredEmail,
                 Country = "Platform",
                 Industry = "SaaS",
                 Status = "Active",
@@ -175,7 +181,8 @@ internal sealed class PlatformBootstrapService(
         {
             tenant.Name = string.IsNullOrWhiteSpace(tenant.Name) ? tenant.CompanyName : tenant.Name;
             tenant.Slug = string.IsNullOrWhiteSpace(tenant.Slug) ? "ecosys-platform" : tenant.Slug;
-            tenant.ContactEmail = string.IsNullOrWhiteSpace(tenant.ContactEmail) ? tenant.Email : tenant.ContactEmail;
+            tenant.Email = configuredEmail;
+            tenant.ContactEmail = configuredEmail;
             tenant.Status = string.IsNullOrWhiteSpace(tenant.Status) ? "Active" : tenant.Status;
             tenant.LicenseStatus = string.IsNullOrWhiteSpace(tenant.LicenseStatus) ? "Active" : tenant.LicenseStatus;
             tenant.PlanName ??= "Platform";
@@ -189,16 +196,28 @@ internal sealed class PlatformBootstrapService(
             {
                 Id = PlatformConstants.SuperAdminUserId,
                 TenantId = tenant.Id,
-                FullName = platformAdminOptions.Value.FullName,
-                Email = platformAdminOptions.Value.Email.Trim().ToLowerInvariant(),
+                FullName = configuredFullName,
+                Email = configuredEmail,
                 Role = AppRoles.SuperAdmin,
                 JobTitle = "Platform SuperAdmin",
                 IsActive = true,
                 HasAllBranchAccess = true
             };
-            user.PasswordHash = passwordHasher.HashPassword(user, platformAdminOptions.Value.Password);
+            user.PasswordHash = passwordHasher.HashPassword(user, configuredPassword);
             user.Permission = new UserPermission();
             dbContext.Users.Add(user);
+        }
+        else
+        {
+            user.TenantId = tenant.Id;
+            user.FullName = configuredFullName;
+            user.Email = configuredEmail;
+            user.Role = AppRoles.SuperAdmin;
+            user.JobTitle = "Platform SuperAdmin";
+            user.IsActive = true;
+            user.HasAllBranchAccess = true;
+            user.Permission ??= new UserPermission();
+            user.PasswordHash = passwordHasher.HashPassword(user, configuredPassword);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

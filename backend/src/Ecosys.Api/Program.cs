@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Ecosys.Infrastructure;
 using Ecosys.Infrastructure.Data;
+using Ecosys.Infrastructure.Options;
 using Ecosys.Infrastructure.Security;
 using Ecosys.Infrastructure.Services;
 using Ecosys.Shared.Auth;
@@ -11,12 +12,20 @@ using Ecosys.Shared.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 const string EcosysCorsPolicyName = "EcosysCors";
+
+var environmentOverrides = BuildEnvironmentOverrides();
+if (environmentOverrides.Count > 0)
+{
+    builder.Configuration.AddInMemoryCollection(environmentOverrides);
+}
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
@@ -50,6 +59,9 @@ builder.Services.AddCors(options =>
 });
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+var jwtSigningKeyEnv = builder.Configuration["ECOSYS_JWT_SIGNING_KEY"] ?? Environment.GetEnvironmentVariable("ECOSYS_JWT_SIGNING_KEY");
+if (!string.IsNullOrWhiteSpace(jwtSigningKeyEnv))
+    jwtOptions.SigningKey = jwtSigningKeyEnv;
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -216,8 +228,11 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseSwagger();
-app.UseSwaggerUI(options => options.RoutePrefix = "swagger");
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options => options.RoutePrefix = "swagger");
+}
 
 using (var scope = app.Services.CreateScope())
 {
@@ -238,9 +253,11 @@ using (var scope = app.Services.CreateScope())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseCors(EcosysCorsPolicyName);
 app.UseAuthentication();
 app.UseMiddleware<UserSessionHeartbeatMiddleware>();
+app.UseMiddleware<PasswordChangeEnforcementMiddleware>();
 app.UseMiddleware<TenantLicenseEnforcementMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
@@ -256,3 +273,44 @@ static string[] GetValidationErrors(ModelStateDictionary modelState)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
 }
+
+static Dictionary<string, string?> BuildEnvironmentOverrides()
+{
+    var overrides = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+    AddOverride("ECOSYS_DB_CONNECTION", "ConnectionStrings:DefaultConnection");
+    AddOverride("ECOSYS_JWT_SIGNING_KEY", "Jwt:SigningKey");
+    AddOverride("ECOSYS_SMTP_HOST", "Smtp:Host");
+    AddOverride("ECOSYS_SMTP_PORT", "Smtp:Port");
+    AddOverride("ECOSYS_SMTP_USE_SSL", "Smtp:UseSsl");
+    AddOverride("ECOSYS_SMTP_USERNAME", "Smtp:Username");
+    AddOverride("ECOSYS_SMTP_PASSWORD", "Smtp:Password");
+    AddOverride("ECOSYS_PLATFORM_ADMIN_EMAIL", "PlatformAdmin:Email");
+    AddOverride("ECOSYS_PLATFORM_ADMIN_PASSWORD", "PlatformAdmin:Password");
+    AddOverride("ECOSYS_PLATFORM_ADMIN_FULL_NAME", "PlatformAdmin:FullName");
+
+    var corsOrigins = Environment.GetEnvironmentVariable("ECOSYS_CORS_ALLOWED_ORIGINS");
+    if (!string.IsNullOrWhiteSpace(corsOrigins))
+    {
+        var origins = corsOrigins
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        for (var index = 0; index < origins.Length; index++)
+        {
+            overrides[$"Cors:AllowedOrigins:{index}"] = origins[index];
+        }
+    }
+
+    return overrides;
+
+    void AddOverride(string envName, string configKey)
+    {
+        var value = Environment.GetEnvironmentVariable(envName);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            overrides[configKey] = value;
+        }
+    }
+}
+
+public partial class Program;

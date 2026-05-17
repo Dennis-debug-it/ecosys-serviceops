@@ -181,7 +181,7 @@ async function safeGetEmailIntake(signal: AbortSignal): Promise<EmailIntakeSetti
   try {
     return await settingsService.getEmailIntake(signal)
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (error instanceof ApiError && (error.status === 404 || error.status >= 500)) {
       return emptyPayload.settings
     }
     throw error
@@ -192,7 +192,7 @@ async function safeListIntakeProtocols(signal: AbortSignal): Promise<IntakeProto
   try {
     return await settingsService.listIntakeProtocols(signal)
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (error instanceof ApiError && (error.status === 404 || error.status >= 500)) {
       return []
     }
     throw error
@@ -203,7 +203,7 @@ async function safeListAssignmentGroups(signal: AbortSignal): Promise<Assignment
   try {
     return await settingsService.listAssignmentGroups(signal)
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (error instanceof ApiError && (error.status === 404 || error.status >= 500)) {
       return []
     }
     throw error

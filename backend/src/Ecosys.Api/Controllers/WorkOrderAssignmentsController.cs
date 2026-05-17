@@ -141,6 +141,7 @@ public sealed class WorkOrderAssignmentsController(
             .ThenInclude(x => x.AssignmentGroup)
             .Include(x => x.TechnicianAssignments)
             .ThenInclude(x => x.Technician)
+            .Include(x => x.Site)
             .Where(x => x.TenantId == TenantId && x.Id == workOrderId)
             .WhereAccessible(scope, x => x.BranchId)
             .SingleAsync(cancellationToken);
@@ -157,6 +158,8 @@ public sealed class WorkOrderAssignmentsController(
             workOrder.Branch?.Name,
             workOrder.ClientId,
             workOrder.Client?.ClientName,
+            workOrder.SiteId,
+            workOrder.Site?.SiteName,
             workOrder.AssetId,
             workOrder.Asset?.AssetName,
             workOrder.AssignmentGroupId,
@@ -166,6 +169,7 @@ public sealed class WorkOrderAssignmentsController(
             workOrder.Description,
             workOrder.Priority,
             workOrder.Status,
+            workOrder.SlaResolutionBreached ? "Resolution Breached" : workOrder.SlaResponseBreached ? "Response Breached" : workOrder.SlaResolutionDeadline.HasValue ? "On Track" : "Not Configured",
             workOrder.AssignmentType,
             workOrder.AssignedTechnicianId,
             workOrder.AssignedTechnician?.FullName,
@@ -179,6 +183,13 @@ public sealed class WorkOrderAssignmentsController(
             workOrder.DepartureAt,
             workOrder.CompletedAt,
             workOrder.WorkDoneNotes,
+            workOrder.JobCardNotes,
+            workOrder.SlaResponseDeadline,
+            workOrder.SlaResolutionDeadline,
+            workOrder.SlaResponseBreached,
+            workOrder.SlaResolutionBreached,
+            workOrder.SlaResponseBreachedAt,
+            workOrder.SlaResolutionBreachedAt,
             workOrder.AcknowledgedByName,
             workOrder.AcknowledgementComments,
             workOrder.AcknowledgementDate,

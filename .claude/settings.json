@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/tests/**)",
+      "Bash(npx playwright *)",
+      "Bash(dotnet run *)",
+      "Bash(curl -s http://localhost:5000/health)",
+      "Bash(curl -s http://localhost:5178/health)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s http://localhost:5072/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST http://localhost:5072/api/auth/signup -H \"Content-Type: application/json\" -d '{\"companyName\":\"Test\",\"fullName\":\"Test User\",\"email\":\"test999@example.com\",\"password\":\"Test123!\",\"industry\":\"Facilities\",\"country\":\"Kenya\"}')",
+      "Bash(curl -s -i -X OPTIONS http://localhost:5072/api/auth/signup -H 'Origin: http://127.0.0.1:4173' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: Content-Type')",
+      "Read(//tmp/**)",
+      "Bash(curl -v http://localhost:5072/health)",
+      "Bash(pkill -f \"Ecosys.Api\")",
+      "PowerShell(Get-Process dotnet)",
+      "PowerShell(Stop-Process -Id 16120, 16688 -Force -Confirm:$false)",
+      "Bash(echo \"Started dotnet run in background, PID=$!\")",
+      "PowerShell(Stop-Process -Id 14216 -Force -Confirm:$false)",
+      "PowerShell(Stop-Process -Id 12148, 17804 -Force -Confirm:$false -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -i http://localhost:5072/api/workorders/ef34a247-93f7-4e67-b67c-e54d74db2630/execution -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjJmMjFlZjU4LThkODYtNDQzNC05MDI4LTc0MzQ3ZmQ1ZmY0NiIsInVzZXJfaWQiOiIyZjIxZWY1OC04ZDg2LTQ0MzQtOTAyOC03NDM0N2ZkNWZmNDYiLCJ0ZW5hbnRfaWQiOiJiNTFjYmE4YS1jMGYyLTQzNDktYmE4Mi05YmUxNzYzYTIwNjkiLCJzZXNzaW9uX2lkIjoiM2E2OTNiMmUtMzA2Ny00ZmM0LWI3MWQtNTRiMDYxYmM3OWI4IiwianRpIjoiMzFmMTQ0NzM0YjUzNGE0YThjMzJiZTMzYmMyMDFiMWUiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJkZWJ1Zy4xNzc4Nzg5NTA3QHRlc3QuY29tIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6IkRlYnVnIEFkbWluIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJqb2JfdGl0bGUiOiJUZW5hbnQgQWRtaW5pc3RyYXRvciIsImNhbl92aWV3X3dvcmtvcmRlcnMiOiJUcnVlIiwiY2FuX2NyZWF0ZV93b3Jrb3JkZXJzIjoiVHJ1ZSIsImNhbl9hc3NpZ25fd29ya29yZGVycyI6IlRydWUiLCJjYW5fY29tcGxldGVfd29ya29yZGVycyI6IlRydWUiLCJjYW5fYXBwcm92ZV9tYXRlcmlhbHMiOiJUcnVlIiwiY2FuX2lzc3VlX21hdGVyaWFscyI6IlRydWUiLCJjYW5fbWFuYWdlX2Fzc2V0cyI6IlRydWUiLCJjYW5fbWFuYWdlX3NldHRpbmdzIjoiVHJ1ZSIsImNhbl92aWV3X3JlcG9ydHMiOiJUcnVlIiwibmJmIjoxNzc4Nzg5NTA4LCJleHAiOjE3Nzg4MTgzMDgsImlzcyI6IkVjb3N5cyIsImF1ZCI6IkVjb3N5cy5DbGllbnRzIn0.bbV77HkBncIBoydbAgKZkdnRSr67wqFG8JNamII7-PU')",
+      "PowerShell(Get-Process dotnet | Where-Object { $_.StartTime -gt \\(Get-Date\\).AddHours\\(-1\\) } | Stop-Process -Force -Confirm:$false; Write-Host \"Done\")",
+      "Bash(npx eslint *)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

@@ -9,7 +9,7 @@ import { platformSettingsService, type PlatformEmailSettings, type PlatformNotif
 import { toServiceError } from '../../../../services/platformService'
 import { EmailDeliveryLogsPanel } from './EmailDeliveryLogsPanel'
 import { EmailNotificationRulesPanel } from './EmailNotificationRulesPanel'
-import { EmailTemplatesSettingsPanel } from './EmailTemplatesSettingsPanel'
+import { TemplatesSettingsPanel } from './TemplatesSettingsPanel'
 
 type EmailWorkspaceTab = 'smtp' | 'templates' | 'rules' | 'logs'
 
@@ -97,7 +97,6 @@ export function EmailNotificationSettingsPanel() {
   }, [data])
 
   const smtpMode = form.deliveryMode === 'Smtp'
-  const apiMode = form.deliveryMode === 'Api'
   const disabledMode = form.deliveryMode === 'Disabled'
   const portGuidance = useMemo(() => getPortGuidance(form.smtpPort, form.secureMode), [form.smtpPort, form.secureMode])
 
@@ -107,10 +106,6 @@ export function EmailNotificationSettingsPanel() {
       if (!Number.isFinite(form.smtpPort) || form.smtpPort <= 0) return 'SMTP port must be a positive number.'
       if (!form.senderEmail.trim()) return 'Sender email is required when email notifications are enabled.'
       if (!emailRegex.test(form.senderEmail.trim())) return 'Sender email must be a valid email address.'
-    }
-
-    if (form.enableEmailNotifications && form.deliveryMode === 'Api' && !form.apiEndpoint.trim()) {
-      return 'A delivery endpoint is required when alternative email delivery is enabled.'
     }
 
     if (form.replyToEmail && !emailRegex.test(form.replyToEmail.trim())) {
@@ -154,8 +149,8 @@ export function EmailNotificationSettingsPanel() {
     try {
       const response = await platformSettingsService.sendTestEmail(testEmail || undefined)
       pushToast({
-        title: response.success ? 'Test email queued' : 'Test email failed',
-        description: response.success ? response.message || 'Test email queued. Check Delivery Logs for status.' : describeEmailError(response.lastError),
+        title: response.success ? 'Test email sent' : 'Test email failed',
+        description: response.success ? response.message || 'Check Delivery Logs for delivery status.' : describeEmailError(response.lastError),
         tone: response.success ? 'success' : 'danger',
       })
       await reload()
@@ -178,7 +173,7 @@ export function EmailNotificationSettingsPanel() {
       const response = await platformSettingsService.verifySmtpConnection()
       pushToast({
         title: response.success ? 'Connection verified' : 'Connection verification failed',
-        description: response.success ? 'Delivery connection verified successfully.' : describeEmailError(response.lastError),
+        description: response.success ? 'SMTP delivery check completed successfully.' : describeEmailError(response.lastError),
         tone: response.success ? 'success' : 'danger',
       })
       await reload()
@@ -208,13 +203,12 @@ export function EmailNotificationSettingsPanel() {
       {activeTab === 'smtp' ? (
         <SectionCard title="SMTP Settings" description="Use SMTP for outbound credentials, onboarding, and governed notification delivery.">
           <InfoAlert title="SMTP sends mail only" description="Outbound SMTP covers test emails, user credentials, resend credentials, onboarding, lead notifications, and template test sends. Email intake for creating or updating work orders is configured separately." tone="info" />
-          <InfoAlert title="Notification rollout" description="Some notification categories are configurable now, while automated dispatch hooks will be activated as each workflow is completed." tone="warning" />
+          <InfoAlert title="SMTP-only delivery" description="Pilot delivery uses SMTP for outbound mail. Alternative delivery methods are hidden until the backend supports them fully." tone="warning" />
 
           <FormSection title="Delivery Configuration" description="Connection, sender identity, and subject behavior.">
             <Field label="Delivery Method">
               <select value={form.deliveryMode} onChange={(event) => setForm((current) => ({ ...current, deliveryMode: event.target.value as PlatformEmailSettings['deliveryMode'] }))} className="field-input">
                 <option value="Smtp">SMTP</option>
-                <option value="Api">Alternative Delivery</option>
                 <option value="Disabled">Disabled</option>
               </select>
             </Field>
@@ -237,14 +231,6 @@ export function EmailNotificationSettingsPanel() {
                   <input data-testid="smtp-password-input" disabled={disabledMode} type="password" placeholder={form.smtpPasswordMasked || 'Leave blank to keep existing password'} value={form.smtpPasswordSecret || ''} onChange={(event) => setForm((current) => ({ ...current, smtpPasswordSecret: event.target.value }))} className="field-input" />
                   <p className="text-xs text-muted">{form.smtpPasswordMasked || 'Password saved. Leave blank to keep existing password.'}</p>
                 </Field>
-              </>
-            ) : null}
-
-            {apiMode ? (
-              <>
-                <Field label="Delivery Endpoint"><input value={form.apiEndpoint || ''} onChange={(event) => setForm((current) => ({ ...current, apiEndpoint: event.target.value }))} className="field-input" /></Field>
-                <Field label="Access Key / Secret"><input type="password" placeholder={form.apiKeyMasked || 'Leave blank to keep existing secret'} value={form.apiKeySecret || ''} onChange={(event) => setForm((current) => ({ ...current, apiKeySecret: event.target.value }))} className="field-input" /></Field>
-                <Field label="Provider Name"><input value={form.apiProviderName || ''} onChange={(event) => setForm((current) => ({ ...current, apiProviderName: event.target.value }))} className="field-input" /></Field>
               </>
             ) : null}
 
@@ -310,9 +296,9 @@ export function EmailNotificationSettingsPanel() {
         </SectionCard>
       ) : null}
 
-      {activeTab === 'templates' ? <EmailTemplatesSettingsPanel /> : null}
-      {activeTab === 'rules' ? <EmailNotificationRulesPanel /> : null}
-      {activeTab === 'logs' ? <EmailDeliveryLogsPanel /> : null}
+      {activeTab === 'templates' ? <div data-testid="settings-panel-templates"><TemplatesSettingsPanel /></div> : null}
+      {activeTab === 'rules' ? <div data-testid="settings-panel-email-rules"><EmailNotificationRulesPanel /></div> : null}
+      {activeTab === 'logs' ? <div data-testid="settings-panel-email-logs"><EmailDeliveryLogsPanel /></div> : null}
     </section>
   )
 }

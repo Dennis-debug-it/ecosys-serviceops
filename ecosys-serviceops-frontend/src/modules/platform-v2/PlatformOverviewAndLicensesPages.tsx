@@ -55,22 +55,22 @@ export function PlatformOverviewPage() {
   const expiredTrials = data.tenants.filter((item) => item.trialStatus === 'TrialExpired').length
 
   return (
-    <PageScaffold
-      eyebrow="Platform Command Centre"
-      title="System Overview"
-      description="Platform-wide operational, licensing, and finance posture."
-    >
+    <div data-testid="command-centre-dashboard">
+      <PageScaffold
+        eyebrow="Platform Command Centre"
+        title="System Overview"
+        description="Platform-wide operational, licensing, and finance posture."
+      >
+        {loading ? <LoadingState label="Loading platform overview" /> : null}
+        {!loading && error ? (
+          <SectionCard title="Unable to load overview" description={error}>
+            <InfoAlert title="Unable to load overview" description={error} tone="danger" />
+            <button type="button" className="button-secondary" onClick={() => void reload()}><RefreshCw className="h-4 w-4" />Retry</button>
+          </SectionCard>
+        ) : null}
 
-      {loading ? <LoadingState label="Loading platform overview" /> : null}
-      {!loading && error ? (
-        <SectionCard title="Unable to load overview" description={error}>
-          <InfoAlert title="Unable to load overview" description={error} tone="danger" />
-          <button type="button" className="button-secondary" onClick={() => void reload()}><RefreshCw className="h-4 w-4" />Retry</button>
-        </SectionCard>
-      ) : null}
-
-      {!loading && !error ? (
-        <>
+        {!loading && !error ? (
+          <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard title="Total Tenants" value={String(asNumber(data.dashboard.totalTenants || data.tenants.length))} detail="All registered tenants." icon={Building2} />
             <StatCard title="Active Tenants" value={String(activeTenants)} detail="Tenants currently active." icon={Building2} accent="emerald" />
@@ -104,9 +104,10 @@ export function PlatformOverviewPage() {
               />
             )}
           </SectionCard>
-        </>
-      ) : null}
-    </PageScaffold>
+          </>
+        ) : null}
+      </PageScaffold>
+    </div>
   )
 }
 
@@ -139,7 +140,7 @@ export function PlatformLicensesPage() {
   )
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null)
 
-  const tenantMap = new Map(data.tenants.map((item) => [item.tenantId, item.name]))
+  const tenantMap = useMemo(() => new Map(data.tenants.map((item) => [item.tenantId, item.name])), [data.tenants])
 
   async function updateSubscriptionStatus(id: string, action: 'activate' | 'suspend' | 'cancel') {
     setStatusBusyId(id)

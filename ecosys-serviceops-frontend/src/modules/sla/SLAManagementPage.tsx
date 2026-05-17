@@ -1,87 +1,165 @@
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
-import { useTenantData, useWorkOrderViews } from '../../app/useTenant'
+import { Plus, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { DataTable } from '../../components/ui/DataTable'
 import { Drawer } from '../../components/ui/Drawer'
-import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorState } from '../../components/ui/ErrorState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { useToast } from '../../components/ui/ToastProvider'
+import { useAsyncData } from '../../hooks/useAsyncData'
 import { slaService } from '../../services/slaService'
-import { PRIORITIES } from '../../utils/constants'
-import { slaTone } from '../../utils/format'
+import { workOrderService } from '../../services/workOrderService'
+import type { SlaDefinitionRecord, UpsertSlaDefinitionInput, WorkOrder } from '../../types/api'
+
+const priorities: Array<'Critical' | 'High' | 'Medium' | 'Low'> = ['Critical', 'High', 'Medium', 'Low']
+
+const emptyForm = (): UpsertSlaDefinitionInput => ({
+  planName: '',
+  description: '',
+  isActive: true,
+  rules: priorities.map((priority) => ({
+    priority,
+    responseTargetHours: priority === 'Critical' ? 1 : priority === 'High' ? 2 : priority === 'Medium' ? 4 : 8,
+    resolutionTargetHours: priority === 'Critical' ? 4 : priority === 'High' ? 8 : priority === 'Medium' ? 24 : 48,
+    businessHoursOnly: false,
+  })),
+})
 
 export function SLAManagementPage() {
-  const { tenantId, data } = useTenantData()
   const { pushToast } = useToast()
-  const workOrders = useWorkOrderViews()
-  const [open, setOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', priorityLevel: 'High', responseTimeHours: 1, resolutionTimeHours: 8, escalationPath: '', clientIds: [] as string[] })
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editing, setEditing] = useState<SlaDefinitionRecord | null>(null)
+  const [form, setForm] = useState<UpsertSlaDefinitionInput>(emptyForm)
 
-  if (!data) {
-    return <EmptyState title="No SLA rules" description="Tenant data is unavailable." actionLabel="Refresh" />
+  const { data, loading, error, reload } = useAsyncData(
+    async (signal) => {
+      const [definitions, workOrders] = await Promise.all([
+        slaService.list(signal),
+        workOrderService.list(undefined, signal),
+      ])
+      return { definitions, workOrders }
+    },
+    { definitions: [] as SlaDefinitionRecord[], workOrders: [] as WorkOrder[] },
+    [],
+  )
+
+  const breachedWorkOrders = useMemo(
+    () => data.workOrders.filter((item) => item.slaResponseBreached || item.slaResolutionBreached),
+    [data.workOrders],
+  )
+
+  function openEditor(definition?: SlaDefinitionRecord) {
+    setEditing(definition ?? null)
+    setForm(definition ? {
+      planName: definition.planName,
+      description: definition.description ?? '',
+      isActive: definition.isActive,
+      rules: priorities.map((priority) => {
+        const current = definition.rules.find((item) => item.priority === priority)
+        return {
+          priority,
+          responseTargetHours: current?.responseTargetHours ?? 0,
+          resolutionTargetHours: current?.resolutionTargetHours ?? 0,
+          businessHoursOnly: current?.businessHoursOnly ?? false,
+        }
+      }),
+    } : emptyForm())
+    setDrawerOpen(true)
   }
 
-  const openEditor = (ruleId?: string) => {
-    const rule = ruleId ? data.slaRules.find((item) => item.id === ruleId) : undefined
-    setEditingId(rule?.id ?? null)
-    setForm({
-      name: rule?.name ?? '',
-      priorityLevel: rule?.priorityLevel ?? 'High',
-      responseTimeHours: rule?.responseTimeHours ?? 1,
-      resolutionTimeHours: rule?.resolutionTimeHours ?? 8,
-      escalationPath: rule?.escalationPath ?? '',
-      clientIds: rule?.clientIds ?? [],
-    })
-    setOpen(true)
-  }
-
-  const save = () => {
-    const payload = {
-      name: form.name,
-      priorityLevel: form.priorityLevel as (typeof PRIORITIES)[number],
-      responseTimeHours: Number(form.responseTimeHours),
-      resolutionTimeHours: Number(form.resolutionTimeHours),
-      escalationPath: form.escalationPath,
-      clientIds: form.clientIds,
+  async function save() {
+    try {
+      if (editing) {
+        await slaService.update(editing.id, form)
+        pushToast({ title: 'SLA plan updated', description: 'The SLA plan was saved successfully.', tone: 'success' })
+      } else {
+        await slaService.create(form)
+        pushToast({ title: 'SLA plan created', description: 'The SLA plan is ready for client assignment.', tone: 'success' })
+      }
+      setDrawerOpen(false)
+      await reload()
+    } catch (nextError) {
+      pushToast({ title: 'Save failed', description: nextError instanceof Error ? nextError.message : 'Unable to save the SLA plan.', tone: 'danger' })
     }
-    if (editingId) {
-      slaService.update(tenantId, editingId, payload)
-      pushToast({ title: 'SLA rule updated', description: 'SLA configuration saved.', tone: 'success' })
-    } else {
-      slaService.add(tenantId, payload)
-      pushToast({ title: 'SLA rule created', description: 'New SLA rule is available for client mapping.', tone: 'success' })
-    }
-    setOpen(false)
   }
+
+  async function remove(definition: SlaDefinitionRecord) {
+    const confirmed = window.confirm(`Delete SLA plan "${definition.planName}"?`)
+    if (!confirmed) return
+
+    try {
+      await slaService.remove(definition.id)
+      pushToast({ title: 'SLA plan deleted', description: 'The SLA plan was removed.', tone: 'success' })
+      await reload()
+    } catch (nextError) {
+      pushToast({ title: 'Delete failed', description: nextError instanceof Error ? nextError.message : 'Unable to delete the SLA plan.', tone: 'danger' })
+    }
+  }
+
+  if (loading) return <LoadingState label="Loading SLA plans" />
+  if (error) return <ErrorState message={error} onRetry={reload} />
 
   return (
     <div className="space-y-4">
       <PageHeader
-        eyebrow="SLA"
-        title="SLA Management"
-        description="Manage response and resolution targets, escalation paths, client mapping, and live SLA watchlists."
-        actions={
+        eyebrow="Settings"
+        title="SLA Plans"
+        description="Manage SLA targets by priority, assign plans to clients, and monitor live breaches."
+        actions={(
           <button type="button" className="button-primary" onClick={() => openEditor()}>
             <Plus className="h-4 w-4" />
-            Create SLA Rule
+            New SLA plan
           </button>
-        }
+        )}
       />
 
       <section className="surface-card">
         <DataTable
-          rows={data.slaRules}
+          rows={data.definitions}
           rowKey={(row) => row.id}
-          pageSize={6}
+          pageSize={8}
           columns={[
-            { key: 'name', header: 'Rule', cell: (row) => <div><p className="font-semibold text-app">{row.name}</p><p className="mt-1 text-xs text-muted">{row.priorityLevel}</p></div> },
-            { key: 'response', header: 'Response', cell: (row) => <p>{row.responseTimeHours}h</p> },
-            { key: 'resolution', header: 'Resolution', cell: (row) => <p>{row.resolutionTimeHours}h</p> },
-            { key: 'escalation', header: 'Escalation', cell: (row) => <p className="text-sm text-muted">{row.escalationPath}</p> },
-            { key: 'mapping', header: 'Client Mapping', cell: (row) => <p>{row.clientIds.length} clients</p> },
-            { key: 'actions', header: 'Actions', cell: (row) => <button type="button" className="button-secondary px-3 py-2" onClick={() => openEditor(row.id)}>Edit</button> },
+            {
+              key: 'plan',
+              header: 'Plan',
+              cell: (row) => (
+                <div>
+                  <p className="font-semibold text-app">{row.planName}</p>
+                  <p className="mt-1 text-xs text-muted">{row.description || 'No description set.'}</p>
+                </div>
+              ),
+            },
+            {
+              key: 'coverage',
+              header: 'Coverage',
+              cell: (row) => <span>{row.rules.length} priorities</span>,
+            },
+            {
+              key: 'critical',
+              header: 'Critical',
+              cell: (row) => {
+                const rule = row.rules.find((item) => item.priority === 'Critical')
+                return <span>{rule ? `${rule.responseTargetHours}h / ${rule.resolutionTargetHours}h` : 'Not set'}</span>
+              },
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              cell: (row) => <Badge tone={row.isActive ? 'success' : 'neutral'}>{row.isActive ? 'Active' : 'Inactive'}</Badge>,
+            },
+            {
+              key: 'actions',
+              header: 'Actions',
+              cell: (row) => (
+                <div className="flex gap-2">
+                  <button type="button" className="button-secondary px-3 py-2" onClick={() => openEditor(row)}>Edit</button>
+                  <button type="button" className="button-secondary px-3 py-2" onClick={() => void remove(row)}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ),
+            },
           ]}
         />
       </section>
@@ -89,60 +167,102 @@ export function SLAManagementPage() {
       <section className="surface-card">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-lg font-semibold text-app">Live SLA Watchlist</p>
-            <p className="text-sm text-muted">Calculated from current work order due dates.</p>
+            <p className="text-lg font-semibold text-app">Live breach watchlist</p>
+            <p className="text-sm text-muted">Open work orders with response or resolution breaches.</p>
           </div>
-          <Badge tone="warning">{workOrders.filter((item) => item.slaStatus !== 'On Track').length} flagged</Badge>
+          <Badge tone={breachedWorkOrders.length > 0 ? 'danger' : 'success'}>{breachedWorkOrders.length} flagged</Badge>
         </div>
         <div className="space-y-3">
-          {workOrders.filter((item) => item.slaStatus !== 'On Track').slice(0, 8).map((workOrder) => (
+          {breachedWorkOrders.length === 0 ? <p className="text-sm text-muted">No breached work orders right now.</p> : null}
+          {breachedWorkOrders.slice(0, 8).map((workOrder) => (
             <div key={workOrder.id} className="panel-subtle rounded-[24px] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-app">{workOrder.workOrderNumber}</p>
-                  <p className="mt-1 text-xs text-muted">{workOrder.clientName} • {workOrder.siteName}</p>
+                  <p className="mt-1 text-xs text-muted">{workOrder.clientName || 'No client'} | {workOrder.title}</p>
                 </div>
-                <Badge tone={slaTone(workOrder.slaStatus)}>{workOrder.slaStatus}</Badge>
+                <Badge tone="danger">{workOrder.slaStatus}</Badge>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <Drawer open={open} title={editingId ? 'Edit SLA rule' : 'Create SLA rule'} description="SLA rules are later mapped to clients and reflected on work order countdowns." onClose={() => setOpen(false)}>
+      <Drawer open={drawerOpen} title={editing ? 'Edit SLA plan' : 'Create SLA plan'} description="Each priority row sets response and resolution targets for the selected plan." onClose={() => setDrawerOpen(false)}>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Rule name"><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="field-input" /></Field>
-          <Field label="Priority">
-            <select value={form.priorityLevel} onChange={(event) => setForm((current) => ({ ...current, priorityLevel: event.target.value }))} className="field-input">
-              {PRIORITIES.map((item) => <option key={item} value={item}>{item}</option>)}
+          <Field label="Plan name">
+            <input value={form.planName} onChange={(event) => setForm((current) => ({ ...current, planName: event.target.value }))} className="field-input" />
+          </Field>
+          <Field label="Status">
+            <select value={form.isActive ? 'active' : 'inactive'} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.value === 'active' }))} className="field-input">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </Field>
-          <Field label="Response time (hours)"><input type="number" min={0.5} step={0.5} value={form.responseTimeHours} onChange={(event) => setForm((current) => ({ ...current, responseTimeHours: Number(event.target.value) || 1 }))} className="field-input" /></Field>
-          <Field label="Resolution time (hours)"><input type="number" min={1} value={form.resolutionTimeHours} onChange={(event) => setForm((current) => ({ ...current, resolutionTimeHours: Number(event.target.value) || 8 }))} className="field-input" /></Field>
         </div>
-        <Field label="Escalation path"><textarea value={form.escalationPath} onChange={(event) => setForm((current) => ({ ...current, escalationPath: event.target.value }))} className="field-input min-h-[120px]" /></Field>
-        <Field label="Client mapping">
-          <div className="grid gap-3 md:grid-cols-2">
-            {data.clients.map((client) => (
-              <label key={client.id} className="panel-subtle flex items-center justify-between rounded-2xl px-4 py-3">
-                <span className="text-sm text-app">{client.name}</span>
-                <input
-                  type="checkbox"
-                  checked={form.clientIds.includes(client.id)}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      clientIds: event.target.checked ? [...current.clientIds, client.id] : current.clientIds.filter((item) => item !== client.id),
-                    }))
-                  }
-                />
-              </label>
-            ))}
-          </div>
+
+        <Field label="Description">
+          <textarea value={form.description || ''} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className="field-input min-h-[90px]" />
         </Field>
+
+        <div className="mt-4 space-y-3">
+          {form.rules.map((rule, index) => (
+            <div key={rule.priority} className="panel-subtle rounded-[22px] p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="font-semibold text-app">{rule.priority}</p>
+                <label className="inline-flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    checked={rule.businessHoursOnly}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        rules: current.rules.map((item, itemIndex) => itemIndex === index ? { ...item, businessHoursOnly: event.target.checked } : item),
+                      }))
+                    }
+                  />
+                  Business hours only
+                </label>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Response target (hours)">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.25}
+                    value={rule.responseTargetHours}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        rules: current.rules.map((item, itemIndex) => itemIndex === index ? { ...item, responseTargetHours: Number(event.target.value) || 0 } : item),
+                      }))
+                    }
+                    className="field-input"
+                  />
+                </Field>
+                <Field label="Resolution target (hours)">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.25}
+                    value={rule.resolutionTargetHours}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        rules: current.rules.map((item, itemIndex) => itemIndex === index ? { ...item, resolutionTargetHours: Number(event.target.value) || 0 } : item),
+                      }))
+                    }
+                    className="field-input"
+                  />
+                </Field>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="mt-6 flex justify-end gap-3">
-          <button type="button" className="button-secondary" onClick={() => setOpen(false)}>Cancel</button>
-          <button type="button" className="button-primary" onClick={save}>Save Rule</button>
+          <button type="button" className="button-secondary" onClick={() => setDrawerOpen(false)}>Cancel</button>
+          <button type="button" className="button-primary" onClick={() => void save()}>Save plan</button>
         </div>
       </Drawer>
     </div>

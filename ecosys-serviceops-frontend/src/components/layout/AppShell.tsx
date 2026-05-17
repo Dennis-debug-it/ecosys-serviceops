@@ -45,6 +45,13 @@ export function AppShell({
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const closeMobileMenu = useCallback(() => setMobileOpen(false), [])
   const openMobileMenu = useCallback(() => setMobileOpen(true), [])
+  const normalizedSelectedBranchId = useMemo(() => {
+    if (branches.some((branch) => branch.id === selectedBranchId)) {
+      return selectedBranchId
+    }
+
+    return branches[0]?.id ?? 'all'
+  }, [branches, selectedBranchId])
 
   useEffect(() => {
     closeMobileMenu()
@@ -52,12 +59,6 @@ export function AppShell({
     cleanupBodyInteractivity()
     dispatchUiReset()
   }, [closeMobileMenu, location.key])
-
-  useEffect(() => {
-    if (!branches.find((branch) => branch.id === selectedBranchId)) {
-      setSelectedBranchId(branches[0]?.id ?? 'all')
-    }
-  }, [branches, selectedBranchId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -86,7 +87,6 @@ export function AppShell({
 
   useEffect(() => {
     if (mode !== 'tenant' || isPlatformRole(session.role)) {
-      setLicense(null)
       return
     }
 
@@ -127,10 +127,10 @@ export function AppShell({
   }, [closeMobileMenu, logout, navigate])
 
   const shellContext = useMemo<ShellOutletContext>(() => ({
-    selectedBranchId,
+    selectedBranchId: normalizedSelectedBranchId,
     setSelectedBranchId,
     branches,
-  }), [branches, selectedBranchId])
+  }), [branches, normalizedSelectedBranchId])
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-app text-app">
@@ -151,7 +151,7 @@ export function AppShell({
             tenantName={tenantName}
             tenantLogoUrl={mode === 'tenant' ? session.logoUrl ?? null : null}
             branches={branches}
-            selectedBranchId={selectedBranchId}
+            selectedBranchId={normalizedSelectedBranchId}
             setSelectedBranchId={setSelectedBranchId}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}

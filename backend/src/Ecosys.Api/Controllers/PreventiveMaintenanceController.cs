@@ -185,6 +185,7 @@ public sealed class PreventiveMaintenanceController(
             .Include(x => x.LeadTechnician)
             .Include(x => x.AssignmentGroup)
             .Include(x => x.Branch)
+            .Include(x => x.Site)
             .Include(x => x.PmTemplate)
             .Include(x => x.ChecklistItems)
             .SingleAsync(x => x.Id == workOrder.Id, cancellationToken);
@@ -195,6 +196,8 @@ public sealed class PreventiveMaintenanceController(
             persisted.Branch?.Name,
             persisted.ClientId,
             persisted.Client?.ClientName,
+            persisted.SiteId,
+            persisted.Site?.SiteName,
             persisted.AssetId,
             persisted.Asset?.AssetName,
             persisted.AssignmentGroupId,
@@ -204,6 +207,7 @@ public sealed class PreventiveMaintenanceController(
             persisted.Description,
             persisted.Priority,
             persisted.Status,
+            persisted.SlaResolutionBreached ? "Resolution Breached" : persisted.SlaResponseBreached ? "Response Breached" : persisted.SlaResolutionDeadline.HasValue ? "On Track" : "Not Configured",
             persisted.AssignmentType,
             persisted.AssignedTechnicianId,
             persisted.AssignedTechnician?.FullName,
@@ -217,6 +221,13 @@ public sealed class PreventiveMaintenanceController(
             persisted.DepartureAt,
             persisted.CompletedAt,
             persisted.WorkDoneNotes,
+            persisted.JobCardNotes,
+            persisted.SlaResponseDeadline,
+            persisted.SlaResolutionDeadline,
+            persisted.SlaResponseBreached,
+            persisted.SlaResolutionBreached,
+            persisted.SlaResponseBreachedAt,
+            persisted.SlaResolutionBreachedAt,
             persisted.AcknowledgedByName,
             persisted.AcknowledgementComments,
             persisted.AcknowledgementDate,

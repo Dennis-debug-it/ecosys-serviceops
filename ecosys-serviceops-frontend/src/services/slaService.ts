@@ -1,20 +1,26 @@
-import { tenantService } from './tenantService'
-import { createId } from '../utils/id'
-import type { SlaRuleRecord } from '../types/app'
+import { api } from '../lib/api'
+import type { SlaDefinitionRecord, UpsertSlaDefinitionInput } from '../types/api'
+import { asArray } from '../utils/apiDefaults'
 
 export const slaService = {
-  list(tenantId: string) {
-    return tenantService.getTenantData(tenantId).slaRules
+  async list(signal?: AbortSignal): Promise<SlaDefinitionRecord[]> {
+    const response = await api.get<unknown>('/api/sla-definitions', { signal })
+    return asArray<SlaDefinitionRecord>(response)
   },
-  add(tenantId: string, input: Omit<SlaRuleRecord, 'id'>) {
-    const rule: SlaRuleRecord = { ...input, id: createId('sla') }
-    tenantService.updateTenantData(tenantId, (current) => ({ ...current, slaRules: [rule, ...current.slaRules] }))
-    return rule
+
+  get(id: string, signal?: AbortSignal) {
+    return api.get<SlaDefinitionRecord>(`/api/sla-definitions/${id}`, { signal })
   },
-  update(tenantId: string, ruleId: string, patch: Partial<SlaRuleRecord>) {
-    tenantService.updateTenantData(tenantId, (current) => ({
-      ...current,
-      slaRules: current.slaRules.map((rule) => (rule.id === ruleId ? { ...rule, ...patch } : rule)),
-    }))
+
+  create(input: UpsertSlaDefinitionInput) {
+    return api.post<SlaDefinitionRecord>('/api/sla-definitions', input)
+  },
+
+  update(id: string, input: UpsertSlaDefinitionInput) {
+    return api.put<SlaDefinitionRecord>(`/api/sla-definitions/${id}`, input)
+  },
+
+  remove(id: string) {
+    return api.delete<void>(`/api/sla-definitions/${id}`)
   },
 }

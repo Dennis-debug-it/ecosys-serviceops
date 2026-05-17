@@ -60,10 +60,5 @@ function RuleMeta({ label, value, mono = false }: { label: string; value: string
 }
 
 function formatChannels(channels: string[]) {
-  const normalized = new Set(channels)
-  if (!normalized.has('SMS')) {
-    normalized.add('SMS (Future)')
-  }
-
-  return Array.from(normalized).join(' • ')
+  return Array.from(new Set(channels)).join(' | ')
 }

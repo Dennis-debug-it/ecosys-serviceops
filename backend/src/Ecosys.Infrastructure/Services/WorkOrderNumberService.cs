@@ -13,11 +13,44 @@ public static class DocumentTypes
     public const string PreventiveMaintenance = "PreventiveMaintenance";
     public const string MaterialRequest = "MaterialRequest";
     public const string Asset = "Asset";
+    public const string Site = "Site";
     public const string StockTransfer = "StockTransfer";
+    public const string Contract = "Contract";
     public const string Quotation = "Quotation";
+    public const string ProformaInvoice = "ProformaInvoice";
     public const string Invoice = "Invoice";
+    public const string CreditNote = "CreditNote";
+    public const string DebitNote = "DebitNote";
+    public const string Receipt = "Receipt";
     public const string Payment = "Payment";
     public const string Expense = "Expense";
+
+    public static string Normalize(string documentType)
+    {
+        if (string.IsNullOrWhiteSpace(documentType))
+            throw new Ecosys.Shared.Errors.BusinessRuleException("Document type is required.");
+        var v = documentType.Trim();
+        return v.ToLowerInvariant() switch
+        {
+            var x when x == TenantCode.ToLowerInvariant() => TenantCode,
+            var x when x == WorkOrder.ToLowerInvariant() => WorkOrder,
+            var x when x == PreventiveMaintenance.ToLowerInvariant() => PreventiveMaintenance,
+            var x when x == MaterialRequest.ToLowerInvariant() => MaterialRequest,
+            var x when x == Asset.ToLowerInvariant() => Asset,
+            var x when x == Site.ToLowerInvariant() => Site,
+            var x when x == StockTransfer.ToLowerInvariant() => StockTransfer,
+            var x when x == Contract.ToLowerInvariant() => Contract,
+            var x when x == Quotation.ToLowerInvariant() => Quotation,
+            var x when x == ProformaInvoice.ToLowerInvariant() => ProformaInvoice,
+            var x when x == Invoice.ToLowerInvariant() => Invoice,
+            var x when x == CreditNote.ToLowerInvariant() => CreditNote,
+            var x when x == DebitNote.ToLowerInvariant() => DebitNote,
+            var x when x == Receipt.ToLowerInvariant() => Receipt,
+            var x when x == Payment.ToLowerInvariant() => Payment,
+            var x when x == Expense.ToLowerInvariant() => Expense,
+            _ => throw new Ecosys.Shared.Errors.BusinessRuleException("Unsupported document type.")
+        };
+    }
 }
 
 public static class NumberResetFrequencies
@@ -37,7 +70,7 @@ public static class NumberResetFrequencies
 public interface IDocumentNumberingService
 {
     Task<string> GenerateAsync(Guid tenantId, Guid? branchId, string documentType, CancellationToken cancellationToken = default);
-    Task<NumberingSetting> UpsertAsync(Guid tenantId, Guid? branchId, string documentType, string prefix, long nextNumber, int paddingLength, string resetFrequency, bool includeYear, bool includeMonth, bool isActive, CancellationToken cancellationToken = default);
+    Task<NumberingSetting> UpsertAsync(Guid tenantId, Guid? branchId, string documentType, string prefix, long nextNumber, int paddingLength, string resetFrequency, bool includeYear, bool includeMonth, bool isActive, CancellationToken cancellationToken = default, string? suffix = null, string yearFormat = "YYYY", string separator = "-", bool isLocked = false);
 }
 
 internal sealed class DocumentNumberingService(AppDbContext dbContext) : IDocumentNumberingService
@@ -75,7 +108,11 @@ internal sealed class DocumentNumberingService(AppDbContext dbContext) : IDocume
         bool includeYear,
         bool includeMonth,
         bool isActive,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? suffix = null,
+        string yearFormat = "YYYY",
+        string separator = "-",
+        bool isLocked = false)
     {
         Validate(documentType, prefix, nextNumber, paddingLength, resetFrequency);
 
@@ -101,11 +138,15 @@ internal sealed class DocumentNumberingService(AppDbContext dbContext) : IDocume
         }
 
         setting.Prefix = normalizedPrefix;
+        setting.Suffix = string.IsNullOrWhiteSpace(suffix) ? null : suffix.Trim().ToUpperInvariant();
         setting.NextNumber = nextNumber;
         setting.PaddingLength = paddingLength;
         setting.ResetFrequency = normalizedResetFrequency;
         setting.IncludeYear = includeYear;
+        setting.YearFormat = string.IsNullOrWhiteSpace(yearFormat) ? "YYYY" : yearFormat.Trim().ToUpperInvariant();
         setting.IncludeMonth = includeMonth;
+        setting.Separator = string.IsNullOrEmpty(separator) ? "-" : separator;
+        setting.IsLocked = isLocked;
         setting.IsActive = isActive;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -195,30 +236,26 @@ internal sealed class DocumentNumberingService(AppDbContext dbContext) : IDocume
     private static string Format(NumberingSetting setting, Guid? requestedBranchId, long number)
     {
         var now = DateTime.UtcNow;
+        var sep = string.IsNullOrEmpty(setting.Separator) ? "-" : setting.Separator;
         var parts = new List<string>();
 
         if (!string.IsNullOrWhiteSpace(setting.Prefix))
-        {
             parts.Add(setting.Prefix.Trim().ToUpperInvariant());
-        }
-
-        if (requestedBranchId.HasValue && setting.BranchId.HasValue && setting.BranchId == requestedBranchId)
-        {
-            // Prefix already carries the branch code in the expected numbering examples.
-        }
 
         if (setting.IncludeYear)
-        {
-            parts.Add(now.Year.ToString("0000"));
-        }
+            parts.Add(string.Equals(setting.YearFormat, "YY", StringComparison.OrdinalIgnoreCase)
+                ? now.Year.ToString()[2..]
+                : now.Year.ToString("0000"));
 
         if (setting.IncludeMonth)
-        {
             parts.Add(now.Month.ToString("00"));
-        }
 
         parts.Add(number.ToString().PadLeft(setting.PaddingLength, '0'));
-        return string.Join("-", parts);
+
+        if (!string.IsNullOrWhiteSpace(setting.Suffix))
+            parts.Add(setting.Suffix.Trim().ToUpperInvariant());
+
+        return string.Join(sep, parts);
     }
 
     private static void Validate(string documentType, string prefix, long nextNumber, int paddingLength, string resetFrequency)
@@ -246,24 +283,7 @@ internal sealed class DocumentNumberingService(AppDbContext dbContext) : IDocume
         NormalizeResetFrequency(resetFrequency);
     }
 
-    public static string NormalizeDocumentType(string documentType)
-    {
-        var normalized = documentType.Trim();
-        return normalized switch
-        {
-            var value when string.Equals(value, DocumentTypes.TenantCode, StringComparison.OrdinalIgnoreCase) => DocumentTypes.TenantCode,
-            var value when string.Equals(value, DocumentTypes.WorkOrder, StringComparison.OrdinalIgnoreCase) => DocumentTypes.WorkOrder,
-            var value when string.Equals(value, DocumentTypes.PreventiveMaintenance, StringComparison.OrdinalIgnoreCase) => DocumentTypes.PreventiveMaintenance,
-            var value when string.Equals(value, DocumentTypes.MaterialRequest, StringComparison.OrdinalIgnoreCase) => DocumentTypes.MaterialRequest,
-            var value when string.Equals(value, DocumentTypes.Asset, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Asset,
-            var value when string.Equals(value, DocumentTypes.StockTransfer, StringComparison.OrdinalIgnoreCase) => DocumentTypes.StockTransfer,
-            var value when string.Equals(value, DocumentTypes.Quotation, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Quotation,
-            var value when string.Equals(value, DocumentTypes.Invoice, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Invoice,
-            var value when string.Equals(value, DocumentTypes.Payment, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Payment,
-            var value when string.Equals(value, DocumentTypes.Expense, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Expense,
-            _ => throw new BusinessRuleException("Unsupported document type.")
-        };
-    }
+    public static string NormalizeDocumentType(string documentType) => DocumentTypes.Normalize(documentType);
 
     public static string NormalizeResetFrequency(string resetFrequency)
     {
@@ -280,11 +300,17 @@ internal sealed class DocumentNumberingService(AppDbContext dbContext) : IDocume
             DocumentTypes.WorkOrder => "WO",
             DocumentTypes.PreventiveMaintenance => "PM",
             DocumentTypes.MaterialRequest => "MR",
-            DocumentTypes.Asset => "AST",
+            DocumentTypes.Asset => "ASSET",
+            DocumentTypes.Site => "SITE",
             DocumentTypes.StockTransfer => "ST",
-            DocumentTypes.Quotation => "QUO",
+            DocumentTypes.Contract => "CON",
+            DocumentTypes.Quotation => "QT",
+            DocumentTypes.ProformaInvoice => "PI",
             DocumentTypes.Invoice => "INV",
-            DocumentTypes.Payment => "RCT",
+            DocumentTypes.CreditNote => "CN",
+            DocumentTypes.DebitNote => "DN",
+            DocumentTypes.Receipt => "REC",
+            DocumentTypes.Payment => "PAY",
             DocumentTypes.Expense => "EXP",
             _ => "DOC"
         };

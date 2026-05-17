@@ -11,6 +11,7 @@ namespace Ecosys.Api.Controllers;
 
 [ApiController]
 [Authorize]
+[ApiExplorerSettings(IgnoreApi = true)]
 [Route("api/dev")]
 public sealed class DevController(
     AppDbContext dbContext,

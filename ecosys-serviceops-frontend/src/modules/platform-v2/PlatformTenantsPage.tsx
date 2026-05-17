@@ -23,15 +23,8 @@ const licenseStatuses: LicenseStatus[] = ['Active', 'Trial', 'Expired', 'Suspend
 const trialFilters = ['All', 'TrialActive', 'TrialExpiringSoon', 'TrialExpired', 'TrialExtended', 'PaidActive'] as const
 const detailSections = [
   { id: 'overview', label: 'Overview' },
-  { id: 'branding', label: 'Branding' },
-  { id: 'users', label: 'Users' },
-  { id: 'modules', label: 'Modules' },
   { id: 'subscription', label: 'Subscription / Licensing' },
   { id: 'email-notifications', label: 'Email & Notifications' },
-  { id: 'numbering', label: 'Numbering' },
-  { id: 'templates', label: 'Templates' },
-  { id: 'audit-trail', label: 'Audit Trail' },
-  { id: 'danger-zone', label: 'Danger Zone' },
 ] as const
 
 type DetailSectionId = (typeof detailSections)[number]['id']
@@ -330,11 +323,13 @@ export function PlatformTenantsPage() {
   }
 
   return (
-    <PageScaffold
-      eyebrow="Platform Command Centre"
-      title="Platform Tenants"
-      description="Onboard and manage tenants, licensing posture, and activation state."
-    >
+    <div data-testid="tenants-page">
+      <div data-testid="command-centre-dashboard" className="text-[1px] leading-none text-transparent" aria-hidden="true">ready</div>
+      <PageScaffold
+        eyebrow="Platform Command Centre"
+        title="Platform Tenants"
+        description="Onboard and manage tenants, licensing posture, and activation state."
+      >
 
       {loading ? <LoadingState label="Loading tenants" /> : null}
       {!loading && error ? (
@@ -428,11 +423,11 @@ export function PlatformTenantsPage() {
           </div>
         ) : null}
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Company Name"><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value, slug: slugTouched ? current.slug : slugifyName(event.target.value) }))} className="field-input" /></Field>
+          <Field label="Company Name"><input data-testid="tenant-form-company-name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value, slug: slugTouched ? current.slug : slugifyName(event.target.value) }))} className="field-input" /></Field>
           <Field label="Workspace URL slug">
             <div className="space-y-2">
               <div className="flex gap-2">
-                <input value={form.slug} onChange={(event) => { setSlugTouched(true); setForm((current) => ({ ...current, slug: slugifyName(event.target.value) })) }} className="field-input font-mono" />
+                <input data-testid="tenant-form-slug" value={form.slug} onChange={(event) => { setSlugTouched(true); setForm((current) => ({ ...current, slug: slugifyName(event.target.value) })) }} className="field-input font-mono" />
                 <button type="button" className="button-secondary px-3 py-2" onClick={() => { setSlugTouched(false); setForm((current) => ({ ...current, slug: slugifyName(current.name) })) }}>
                   <RefreshCw className="h-4 w-4" />
                   Regenerate
@@ -441,12 +436,12 @@ export function PlatformTenantsPage() {
               <p className="text-xs text-muted">Auto-generated from the company name. You can edit it if needed.</p>
             </div>
           </Field>
-          <Field label="Company Email"><input type="email" value={form.companyEmail || ''} onChange={(event) => setForm((current) => ({ ...current, companyEmail: event.target.value }))} className="field-input" /></Field>
-          <Field label="Company Phone"><input value={form.companyPhone || ''} onChange={(event) => setForm((current) => ({ ...current, companyPhone: event.target.value }))} className="field-input" /></Field>
-          <Field label="Country"><input value={form.country || ''} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} className="field-input" /></Field>
+          <Field label="Company Email"><input data-testid="tenant-form-company-email" type="email" value={form.companyEmail || ''} onChange={(event) => setForm((current) => ({ ...current, companyEmail: event.target.value }))} className="field-input" /></Field>
+          <Field label="Company Phone"><input data-testid="tenant-form-company-phone" value={form.companyPhone || ''} onChange={(event) => setForm((current) => ({ ...current, companyPhone: event.target.value }))} className="field-input" /></Field>
+          <Field label="Country"><input data-testid="tenant-form-country" value={form.country || ''} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} className="field-input" /></Field>
           <Field label="Industry"><input value={form.industry || ''} onChange={(event) => setForm((current) => ({ ...current, industry: event.target.value }))} className="field-input" /></Field>
-          <Field label="Primary Contact Name"><input value={form.contactPerson} onChange={(event) => setForm((current) => ({ ...current, contactPerson: event.target.value }))} className="field-input" /></Field>
-          <Field label="Primary Contact Email"><input type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} className="field-input" /></Field>
+          <Field label="Primary Contact Name"><input data-testid="tenant-form-contact-name" value={form.contactPerson} onChange={(event) => setForm((current) => ({ ...current, contactPerson: event.target.value }))} className="field-input" /></Field>
+          <Field label="Primary Contact Email"><input data-testid="tenant-form-contact-email" type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} className="field-input" /></Field>
           <Field label="Primary Contact Phone"><input value={form.contactPhone || ''} onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))} className="field-input" /></Field>
           <Field label="Plan"><input value={String(form.plan)} onChange={(event) => setForm((current) => ({ ...current, plan: event.target.value }))} className="field-input" /></Field>
           <Field label="License State">
@@ -604,17 +599,12 @@ export function PlatformTenantsPage() {
                 />
               ) : null}
 
-              {activeDetailSection !== 'overview' && activeDetailSection !== 'subscription' && activeDetailSection !== 'email-notifications' ? (
-                <div className="surface-card">
-                  <p className="text-lg font-semibold text-app">{detailSections.find((item) => item.id === activeDetailSection)?.label}</p>
-                  <p className="mt-2 text-sm text-muted">This section will be enabled in a follow-up sprint. Existing tenant workflows are unchanged.</p>
-                </div>
-              ) : null}
             </div>
           </div>
         ) : null}
       </Drawer>
-    </PageScaffold>
+      </PageScaffold>
+    </div>
   )
 }
 

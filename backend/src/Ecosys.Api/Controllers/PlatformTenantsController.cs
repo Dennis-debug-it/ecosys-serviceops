@@ -847,6 +847,9 @@ public sealed class PlatformTenantsController(
             return PlatformTenantLicenseStatuses.Expired;
         }
 
+        if (string.Equals(license.Status, PlatformTenantLicenseStatuses.TrialExpiringSoon, StringComparison.OrdinalIgnoreCase))
+            return PlatformTenantLicenseStatuses.TrialExpiringSoon;
+
         return string.Equals(license.Status, PlatformTenantLicenseStatuses.Trial, StringComparison.OrdinalIgnoreCase)
             ? PlatformTenantLicenseStatuses.Trial
             : PlatformTenantLicenseStatuses.Active;
@@ -1143,6 +1146,8 @@ public sealed class PlatformTenantsController(
     private static class PlatformTenantLicenseStatuses
     {
         public const string Trial = "Trial";
+        public const string TrialExpiringSoon = "TrialExpiringSoon";
+        public const string TrialExpired = "TrialExpired";
         public const string Active = "Active";
         public const string Expired = "Expired";
         public const string Suspended = "Suspended";

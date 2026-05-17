@@ -1,39 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { CORS_HEADERS, json, loginWithMockSession, registerApiCatchAll } from './helpers/auth'
 
-function json(body: unknown, status = 200) {
-  return {
-    status,
-    contentType: 'application/json',
-    body: JSON.stringify(body),
-  }
-}
+const BASE = 'http://localhost:5072'
 
 async function mockPlatformAuthSession(page: Page) {
-  const platformPermissions = {
-    canViewPlatformTenants: true,
-    canCreatePlatformTenants: true,
-    canEditPlatformTenants: true,
-    canUpdatePlatformTenantStatus: true,
-    canDeactivatePlatformTenants: true,
-  }
-
-  const meResponse = {
-    user: {
-      id: 'platform-owner-1',
-      userId: 'platform-owner-1',
-      fullName: 'Lena Atieno',
-      email: 'superadmin@ecosys.local',
-      role: 'SuperAdmin',
-      permissions: platformPermissions,
-    },
-    tenant: {
-      companyName: 'Ecosys Platform',
-    },
-    role: 'SuperAdmin',
-    permissions: platformPermissions,
-    branches: [],
-  }
-
   const tenants = [
     {
       tenantId: 'tenant-1',
@@ -50,45 +20,17 @@ async function mockPlatformAuthSession(page: Page) {
     },
   ]
 
-  await page.route('**/api/auth/login', async (route) => {
-    await route.fulfill(json({
-      token: 'platform-token',
-      user: {
-        role: 'SuperAdmin',
-        permissions: platformPermissions,
-      },
-      tenant: {
-        companyName: 'Ecosys Platform',
-      },
-    }))
-  })
+  await registerApiCatchAll(page)
+  await loginWithMockSession(page, { role: 'platformOwner', email: 'superadmin@ecosys.local', fullName: 'Lena Atieno' })
 
-  await page.route('**/api/auth/me', async (route) => {
-    await route.fulfill(json(meResponse))
-  })
-
-  await page.route('**/api/auth/logout', async (route) => {
-    await route.fulfill(json({ success: true }))
-  })
-
-  await page.route('**/api/platform/tenants', async (route) => {
+  await page.route(`${BASE}/api/platform/tenants`, async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS_HEADERS })
     if (route.request().method() === 'GET') {
       await route.fulfill(json(tenants))
       return
     }
-
     await route.fulfill(json({ success: true }))
   })
-}
-
-async function loginAsPlatformOwner(page: Page) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill('superadmin@ecosys.local')
-  await page.getByLabel('Password').fill('SuperAdmin123!')
-  await page.getByRole('button', { name: /^login$/i }).click()
-  await expect(page).toHaveURL(/\/(platform|command-centre)/)
-  await expect(page.getByTestId('command-centre-dashboard')).toBeVisible()
-  await expect(page.getByTestId('command-centre-sidebar')).toBeVisible()
 }
 
 async function openPlatformTenants(page: Page) {
@@ -152,7 +94,6 @@ test.describe('auth clickability regression', () => {
   })
 
   test('platform UI stays clickable after logout and login again', async ({ page }) => {
-    await loginAsPlatformOwner(page)
     await openPlatformTenants(page)
 
     const addTenantButton = page.getByRole('button', { name: /add tenant/i })
@@ -163,7 +104,7 @@ test.describe('auth clickability regression', () => {
     await assertNoBlockingOverlays(page)
 
     await logoutFromTopbar(page)
-    await loginAsPlatformOwner(page)
+    await loginWithMockSession(page, { role: 'platformOwner', email: 'superadmin@ecosys.local', fullName: 'Lena Atieno' })
     await openPlatformTenants(page)
 
     const addTenantButtonAgain = page.getByRole('button', { name: /add tenant/i })

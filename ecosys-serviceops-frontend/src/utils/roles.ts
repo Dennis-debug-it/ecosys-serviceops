@@ -72,7 +72,7 @@ export function isPlatformRole(role: Role) {
 export function roleHomePath(role: Role) {
   const normalized = normalizeRole(String(role))
   if (normalized === 'unknown') return '/unsupported-role'
-  return PLATFORM_ROLE_KEYS.has(normalized as KnownRole) ? '/platform' : '/dashboard'
+  return PLATFORM_ROLE_KEYS.has(normalized as KnownRole) ? '/platform/tenants' : '/dashboard'
 }
 
 export function normalizePlatformRole(role: string): CanonicalPlatformRole {

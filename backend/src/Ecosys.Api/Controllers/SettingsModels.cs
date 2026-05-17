@@ -198,11 +198,14 @@ public sealed record NumberingSettingsRequest(
     Guid? BranchId,
     string DocumentType,
     string Prefix,
+    string? Suffix,
     long NextNumber,
     int PaddingLength,
     string ResetFrequency,
     bool IncludeYear,
+    string? YearFormat,
     bool IncludeMonth,
+    string? Separator,
     bool IsActive);
 
 public sealed record NumberingSettingsResponse(
@@ -211,20 +214,30 @@ public sealed record NumberingSettingsResponse(
     string? BranchName,
     string DocumentType,
     string Prefix,
+    string? Suffix,
     long NextNumber,
     int PaddingLength,
     string ResetFrequency,
     bool IncludeYear,
+    string YearFormat,
     bool IncludeMonth,
+    string Separator,
+    bool IsLocked,
     bool IsActive);
 
 public sealed record NumberingRuleResponse(
     Guid Id,
     string DocumentType,
     string Prefix,
+    string? Suffix,
     long NextNumber,
     int PaddingLength,
     string ResetPeriod,
+    string YearFormat,
+    bool IncludeYear,
+    bool IncludeMonth,
+    string Separator,
+    bool IsLocked,
     string Preview,
     bool IsActive,
     DateTime CreatedAt,
@@ -232,9 +245,14 @@ public sealed record NumberingRuleResponse(
 
 public sealed record UpdateNumberingRuleRequest(
     string Prefix,
+    string? Suffix,
     long NextNumber,
     int PaddingLength,
     string ResetPeriod,
+    bool IncludeYear,
+    string? YearFormat,
+    bool IncludeMonth,
+    string? Separator,
     bool IsActive);
 
 public sealed record NumberingPreviewRequest(Guid? RuleId, string? DocumentType);

@@ -184,7 +184,7 @@ internal sealed class MvpAuthService(
         }
 
         var permissions = ResolvePermissions(user);
-        var token = await CreateTokenAsync(user, user.Tenant, permissions, cancellationToken);
+        var token = await CreateTokenAsync(user, user.Tenant, permissions, cancellationToken, user.MustChangePassword);
 
         await auditLogService.LogAsync(
             user.TenantId,
@@ -213,16 +213,16 @@ internal sealed class MvpAuthService(
             user.Tenant.ShowPoweredByEcosys);
     }
 
-    private async Task<string> CreateTokenAsync(User user, Tenant tenant, UserPermissionsModel permissions, CancellationToken cancellationToken)
+    private async Task<string> CreateTokenAsync(User user, Tenant tenant, UserPermissionsModel permissions, CancellationToken cancellationToken, bool mustChangePassword = false)
     {
         var jwtId = Guid.NewGuid().ToString("N");
         var session = userSessionService.StartSession(user, jwtId);
-        var token = CreateToken(user, tenant, permissions, session.Id, jwtId);
+        var token = CreateToken(user, tenant, permissions, session.Id, jwtId, mustChangePassword);
         await dbContext.SaveChangesAsync(cancellationToken);
         return token;
     }
 
-    private string CreateToken(User user, Tenant tenant, UserPermissionsModel permissions, Guid sessionId, string jwtId)
+    private string CreateToken(User user, Tenant tenant, UserPermissionsModel permissions, Guid sessionId, string jwtId, bool mustChangePassword = false)
     {
         var options = jwtOptions.Value;
         var expiresUtc = DateTime.UtcNow.AddMinutes(options.ExpiryMinutes);
@@ -246,6 +246,11 @@ internal sealed class MvpAuthService(
         if (!string.IsNullOrWhiteSpace(user.Department))
         {
             claims.Add(new Claim(TenantClaimTypes.Department, user.Department));
+        }
+
+        if (mustChangePassword)
+        {
+            claims.Add(new Claim(TenantClaimTypes.Scope, "password_change_only"));
         }
 
         claims.AddRange(ToClaims(permissions));

@@ -23,12 +23,16 @@ export async function openFirstTenantDetails(page: Page) {
   const tenantEmail = `${tenantSlug}@example.com`
 
   await page.getByRole('button', { name: /add tenant/i }).click()
-  await page.getByLabel('Company Name').fill(tenantName)
-  await page.getByLabel('Slug').fill(tenantSlug)
-  await page.getByLabel('Contact Email').fill(tenantEmail)
+  await page.getByTestId('tenant-form-company-name').fill(tenantName)
+  await page.getByTestId('tenant-form-slug').fill(tenantSlug)
+  await page.getByTestId('tenant-form-company-email').fill(tenantEmail)
+  await page.getByTestId('tenant-form-company-phone').fill('+254700000000')
+  await page.getByTestId('tenant-form-country').fill('Kenya')
+  await page.getByTestId('tenant-form-contact-name').fill('E2E Tenant Contact')
+  await page.getByTestId('tenant-form-contact-email').fill(tenantEmail)
   await page.getByRole('button', { name: /create tenant/i }).click()
 
-  await expect(page.getByText(/tenant created/i)).toBeVisible()
+  await expect(page.getByText(/^tenant created$/i)).toBeVisible()
 
   await page.getByTestId('tenants-search-input').fill(tenantName)
   const targetRow = page.locator('table tbody tr', { hasText: tenantName })

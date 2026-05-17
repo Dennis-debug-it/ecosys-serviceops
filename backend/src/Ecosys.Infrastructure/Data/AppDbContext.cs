@@ -59,6 +59,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PlatformDocumentTemplate> PlatformDocumentTemplates => Set<PlatformDocumentTemplate>();
     public DbSet<PlatformSetting> PlatformSettings => Set<PlatformSetting>();
     public DbSet<PlatformLead> PlatformLeads => Set<PlatformLead>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<WorkOrderPhotoEvidence> WorkOrderPhotoEvidence => Set<WorkOrderPhotoEvidence>();
+    public DbSet<WorkOrderSignature> WorkOrderSignatures => Set<WorkOrderSignature>();
+    public DbSet<WorkOrderMaterialUsage> WorkOrderMaterialUsages => Set<WorkOrderMaterialUsage>();
+    public DbSet<AssetCategory> AssetCategories => Set<AssetCategory>();
+    public DbSet<AssetCategoryField> AssetCategoryFields => Set<AssetCategoryField>();
+    public DbSet<AssetCustomFieldValue> AssetCustomFieldValues => Set<AssetCustomFieldValue>();
+    public DbSet<Site> Sites => Set<Site>();
+    public DbSet<PmTemplateSection> PmTemplateSections => Set<PmTemplateSection>();
+    public DbSet<SlaDefinition> SlaDefinitions => Set<SlaDefinition>();
+    public DbSet<SlaRule> SlaRules => Set<SlaRule>();
+    public DbSet<KnowledgeCategory> KnowledgeCategories => Set<KnowledgeCategory>();
+    public DbSet<KnowledgeArticle> KnowledgeArticles => Set<KnowledgeArticle>();
+    public DbSet<KnowledgeTag> KnowledgeTags => Set<KnowledgeTag>();
+    public DbSet<KnowledgeArticleTag> KnowledgeArticleTags => Set<KnowledgeArticleTag>();
+    public DbSet<KnowledgeArticleVersion> KnowledgeArticleVersions => Set<KnowledgeArticleVersion>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -234,6 +250,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(x => x.Clients)
                 .HasForeignKey(x => x.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.SlaDefinition)
+                .WithMany(x => x.Clients)
+                .HasForeignKey(x => x.SlaDefinitionId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Asset>(entity =>
@@ -243,11 +263,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.AssetName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.AssetCode).HasMaxLength(100).IsRequired();
             entity.Property(x => x.AssetType).HasMaxLength(100);
+            entity.Property(x => x.OwnershipType).HasMaxLength(50).IsRequired();
             entity.Property(x => x.Location).HasMaxLength(250);
+            entity.Property(x => x.BuildingBlock).HasMaxLength(100);
+            entity.Property(x => x.FloorLevel).HasMaxLength(100);
+            entity.Property(x => x.RoomArea).HasMaxLength(100);
+            entity.Property(x => x.LocationDescription).HasMaxLength(500);
             entity.Property(x => x.SerialNumber).HasMaxLength(150);
             entity.Property(x => x.Manufacturer).HasMaxLength(150);
             entity.Property(x => x.Model).HasMaxLength(150);
+            entity.Property(x => x.CapacityRating).HasMaxLength(100);
+            entity.Property(x => x.PhysicalDescription).HasMaxLength(2000);
             entity.Property(x => x.RecommendedPmFrequency).HasMaxLength(100);
+            entity.Property(x => x.MeterLabel).HasMaxLength(100);
+            entity.Property(x => x.CurrentMeterReading).HasPrecision(18, 4);
+            entity.Property(x => x.MeterInterval).HasPrecision(18, 4);
+            entity.Property(x => x.MeterBuffer).HasPrecision(18, 4);
             entity.Property(x => x.Notes).HasMaxLength(4000);
             entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
             entity.HasIndex(x => new { x.TenantId, x.AssetCode }).IsUnique();
@@ -263,6 +294,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(x => x.Assets)
                 .HasForeignKey(x => x.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Site)
+                .WithMany(x => x.Assets)
+                .HasForeignKey(x => x.SiteId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.AssetCategory)
+                .WithMany(x => x.Assets)
+                .HasForeignKey(x => x.AssetCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.DefaultAssignmentGroup)
+                .WithMany()
+                .HasForeignKey(x => x.DefaultAssignmentGroupId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Technician>(entity =>
@@ -307,9 +350,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Description).HasMaxLength(4000);
             entity.Property(x => x.Priority).HasMaxLength(50).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.ServiceType).HasMaxLength(100);
+            entity.Property(x => x.EstimatedDuration).HasPrecision(10, 2);
+            entity.Property(x => x.ActualDuration).HasPrecision(10, 2);
             entity.Property(x => x.WorkDoneNotes).HasMaxLength(4000);
+            entity.Property(x => x.JobCardNotes).HasMaxLength(4000);
             entity.Property(x => x.AcknowledgedByName).HasMaxLength(200);
             entity.Property(x => x.AcknowledgementComments).HasMaxLength(4000);
+            entity.Property(x => x.SlaResponseDeadline);
+            entity.Property(x => x.SlaResolutionDeadline);
+            entity.Property(x => x.SlaResponseBreached);
+            entity.Property(x => x.SlaResolutionBreached);
+            entity.Property(x => x.SlaResponseBreachedAt);
+            entity.Property(x => x.SlaResolutionBreachedAt);
             entity.HasIndex(x => new { x.TenantId, x.WorkOrderNumber }).IsUnique();
             entity.HasOne(x => x.Tenant)
                 .WithMany(x => x.WorkOrders)
@@ -334,6 +387,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasOne(x => x.LeadTechnician)
                 .WithMany()
                 .HasForeignKey(x => x.LeadTechnicianId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Site)
+                .WithMany(x => x.WorkOrders)
+                .HasForeignKey(x => x.SiteId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.ClosedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.ClosedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.AssignmentGroup)
                 .WithMany(x => x.WorkOrders)
@@ -362,6 +423,49 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasMany(x => x.ChecklistItems)
                 .WithOne(x => x.WorkOrder)
                 .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.PhotoEvidence)
+                .WithOne(x => x.WorkOrder)
+                .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.Signatures)
+                .WithOne(x => x.WorkOrder)
+                .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.MaterialUsages)
+                .WithOne(x => x.WorkOrder)
+                .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SlaDefinition>(entity =>
+        {
+            entity.ToTable("sla_definitions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.PlanName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000);
+            entity.HasIndex(x => new { x.TenantId, x.PlanName }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SlaRule>(entity =>
+        {
+            entity.ToTable("sla_rules");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Priority).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.ResponseTargetHours).HasPrecision(10, 2);
+            entity.Property(x => x.ResolutionTargetHours).HasPrecision(10, 2);
+            entity.HasIndex(x => new { x.SlaDefinitionId, x.Priority }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.SlaDefinition)
+                .WithMany(x => x.Rules)
+                .HasForeignKey(x => x.SlaDefinitionId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -535,6 +639,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.ToTable("preventive_maintenance_plans");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Frequency).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.TriggerType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.FrequencyUnit).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.MeterInterval).HasPrecision(18, 4);
+            entity.Property(x => x.MeterBuffer).HasPrecision(18, 4);
             entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
             entity.HasOne(x => x.Tenant)
                 .WithMany(x => x.PreventiveMaintenancePlans)
@@ -548,9 +656,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany(x => x.PreventiveMaintenancePlans)
                 .HasForeignKey(x => x.AssetId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Site)
+                .WithMany()
+                .HasForeignKey(x => x.SiteId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(x => x.PmTemplate)
                 .WithMany(x => x.Plans)
                 .HasForeignKey(x => x.PmTemplateId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.DefaultAssignmentGroup)
+                .WithMany()
+                .HasForeignKey(x => x.DefaultAssignmentGroupId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -943,11 +1059,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(1000);
+            entity.Property(x => x.EstimatedDurationHours).HasPrecision(10, 2);
             entity.HasIndex(x => new { x.TenantId, x.Category, x.Name }).IsUnique();
             entity.HasOne(x => x.Tenant)
                 .WithMany(x => x.PmTemplates)
                 .HasForeignKey(x => x.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.AssetCategory)
+                .WithMany()
+                .HasForeignKey(x => x.AssetCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PmTemplateQuestion>(entity =>
@@ -957,11 +1078,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.SectionName).HasMaxLength(150);
             entity.Property(x => x.Prompt).HasMaxLength(500).IsRequired();
             entity.Property(x => x.ResponseType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.QuestionType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Unit).HasMaxLength(50);
             entity.Property(x => x.OptionsJson).HasMaxLength(4000);
             entity.HasOne(x => x.PmTemplate)
                 .WithMany(x => x.Questions)
                 .HasForeignKey(x => x.PmTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Section)
+                .WithMany(x => x.Questions)
+                .HasForeignKey(x => x.SectionId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<WorkOrderChecklistItem>(entity =>
@@ -971,6 +1098,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.SectionName).HasMaxLength(150);
             entity.Property(x => x.QuestionText).HasMaxLength(500).IsRequired();
             entity.Property(x => x.InputType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.QuestionType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Unit).HasMaxLength(50);
+            entity.Property(x => x.NumberValue).HasPrecision(18, 4);
+            entity.Property(x => x.TextValue).HasMaxLength(4000);
+            entity.Property(x => x.FailureNote).HasMaxLength(2000);
             entity.Property(x => x.ResponseValue).HasMaxLength(4000);
             entity.Property(x => x.Remarks).HasMaxLength(4000);
             entity.Property(x => x.OptionsJson).HasMaxLength(4000);
@@ -990,6 +1122,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasOne(x => x.CompletedByUser)
                 .WithMany()
                 .HasForeignKey(x => x.CompletedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Attachment)
+                .WithMany()
+                .HasForeignKey(x => x.AttachmentId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -1332,6 +1468,295 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasOne(x => x.ConvertedTenant)
                 .WithMany(x => x.ConvertedLeads)
                 .HasForeignKey(x => x.ConvertedTenantId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Attachment>(entity =>
+        {
+            entity.ToTable("attachments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EntityType).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(260).IsRequired();
+            entity.Property(x => x.MimeType).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.StoragePath).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.PublicUrl).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.EntityType, x.EntityId });
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.UploadedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorkOrderPhotoEvidence>(entity =>
+        {
+            entity.ToTable("work_order_photo_evidence");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Caption).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.WorkOrderId, x.UploadedAt });
+            entity.HasOne(x => x.Tenant)
+                .WithMany(x => x.WorkOrderPhotoEvidence)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.WorkOrder)
+                .WithMany(x => x.PhotoEvidence)
+                .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Attachment)
+                .WithMany()
+                .HasForeignKey(x => x.AttachmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.UploadedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorkOrderSignature>(entity =>
+        {
+            entity.ToTable("work_order_signatures");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SignatureType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.SignerName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.SignerRole).HasMaxLength(150);
+            entity.Property(x => x.SignatureDataUrl).HasMaxLength(32000).IsRequired();
+            entity.Property(x => x.Comment).HasMaxLength(1000);
+            entity.HasIndex(x => new { x.TenantId, x.WorkOrderId, x.SignatureType }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany(x => x.WorkOrderSignatures)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.WorkOrder)
+                .WithMany(x => x.Signatures)
+                .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.CapturedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.CapturedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorkOrderMaterialUsage>(entity =>
+        {
+            entity.ToTable("work_order_material_usages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.QuantityUsed).HasPrecision(18, 2);
+            entity.Property(x => x.UnitCost).HasPrecision(18, 2);
+            entity.Property(x => x.Notes).HasMaxLength(1000);
+            entity.HasIndex(x => new { x.TenantId, x.WorkOrderId, x.MaterialItemId, x.UsedAt });
+            entity.HasOne(x => x.Tenant)
+                .WithMany(x => x.WorkOrderMaterialUsages)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.WorkOrder)
+                .WithMany(x => x.MaterialUsages)
+                .HasForeignKey(x => x.WorkOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.MaterialItem)
+                .WithMany()
+                .HasForeignKey(x => x.MaterialItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Asset)
+                .WithMany()
+                .HasForeignKey(x => x.AssetId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.UsedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.UsedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AssetCategory>(entity =>
+        {
+            entity.ToTable("asset_categories");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ParentCategoryName).HasMaxLength(150);
+            entity.Property(x => x.Icon).HasMaxLength(100);
+            entity.HasIndex(x => new { x.TenantId, x.Name });
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.Fields)
+                .WithOne(x => x.AssetCategory)
+                .HasForeignKey(x => x.AssetCategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssetCategoryField>(entity =>
+        {
+            entity.ToTable("asset_category_fields");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.FieldName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.FieldLabel).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.FieldType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Unit).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<AssetCustomFieldValue>(entity =>
+        {
+            entity.ToTable("asset_custom_field_values");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Value).HasMaxLength(4000);
+            entity.HasIndex(x => new { x.AssetId, x.FieldDefinitionId }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Asset)
+                .WithMany(x => x.CustomFieldValues)
+                .HasForeignKey(x => x.AssetId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.FieldDefinition)
+                .WithMany()
+                .HasForeignKey(x => x.FieldDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Site>(entity =>
+        {
+            entity.ToTable("sites");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SiteCode).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.SiteName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.SiteType).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.StreetAddress).HasMaxLength(300);
+            entity.Property(x => x.AreaEstate).HasMaxLength(200);
+            entity.Property(x => x.TownCity).HasMaxLength(100);
+            entity.Property(x => x.County).HasMaxLength(100);
+            entity.Property(x => x.Country).HasMaxLength(100);
+            entity.Property(x => x.Region).HasMaxLength(100);
+            entity.Property(x => x.ContactPerson).HasMaxLength(200);
+            entity.Property(x => x.ContactPhone).HasMaxLength(50);
+            entity.Property(x => x.ContactEmail).HasMaxLength(256);
+            entity.Property(x => x.AlternateContact).HasMaxLength(200);
+            entity.Property(x => x.OperatingHours).HasMaxLength(500);
+            entity.Property(x => x.AccessNotes).HasMaxLength(2000);
+            entity.Property(x => x.SpecialInstructions).HasMaxLength(2000);
+            entity.HasIndex(x => new { x.TenantId, x.SiteCode });
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PmTemplateSection>(entity =>
+        {
+            entity.ToTable("pm_template_sections");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SectionName).HasMaxLength(200).IsRequired();
+            entity.HasOne(x => x.PmTemplate)
+                .WithMany(x => x.Sections)
+                .HasForeignKey(x => x.PmTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeCategory>(entity =>
+        {
+            entity.ToTable("knowledge_categories");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000);
+            entity.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeArticle>(entity =>
+        {
+            entity.ToTable("knowledge_articles");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Title).HasMaxLength(240).IsRequired();
+            entity.Property(x => x.Slug).HasMaxLength(260).IsRequired();
+            entity.Property(x => x.Summary).HasMaxLength(2000);
+            entity.Property(x => x.Body).HasMaxLength(64000).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Visibility).HasMaxLength(40).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Slug }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Category)
+                .WithMany(x => x.Articles)
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.SourceWorkOrder)
+                .WithMany()
+                .HasForeignKey(x => x.SourceWorkOrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<KnowledgeTag>(entity =>
+        {
+            entity.ToTable("knowledge_tags");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Slug).HasMaxLength(140).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Slug }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeArticleTag>(entity =>
+        {
+            entity.ToTable("knowledge_article_tags");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.ArticleId, x.TagId }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Article)
+                .WithMany(x => x.ArticleTags)
+                .HasForeignKey(x => x.ArticleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Tag)
+                .WithMany(x => x.ArticleTags)
+                .HasForeignKey(x => x.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeArticleVersion>(entity =>
+        {
+            entity.ToTable("knowledge_article_versions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Title).HasMaxLength(240).IsRequired();
+            entity.Property(x => x.Body).HasMaxLength(64000).IsRequired();
+            entity.HasIndex(x => new { x.ArticleId, x.VersionNumber }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Article)
+                .WithMany(x => x.Versions)
+                .HasForeignKey(x => x.ArticleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.UpdatedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
     }

@@ -10,10 +10,16 @@ namespace Ecosys.Infrastructure.Services;
 public static class LicenseStatuses
 {
     public const string Trial = "Trial";
+    public const string TrialExpiringSoon = "TrialExpiringSoon";
+    public const string TrialExpired = "TrialExpired";
     public const string Active = "Active";
     public const string Expired = "Expired";
     public const string Suspended = "Suspended";
     public const string Cancelled = "Cancelled";
+
+    public static bool IsTrialStatus(string? status) =>
+        string.Equals(status, Trial, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, TrialExpiringSoon, StringComparison.OrdinalIgnoreCase);
 }
 
 public static class LicenseFeatures
@@ -265,7 +271,8 @@ internal sealed class LicenseGuardService(AppDbContext dbContext) : ILicenseGuar
         var graceEndsAt = effectiveExpiry?.AddDays(tenantLicense.GracePeriodDays);
         var isSuspended = string.Equals(tenantLicense.Status, LicenseStatuses.Suspended, StringComparison.OrdinalIgnoreCase);
         var isCancelled = string.Equals(tenantLicense.Status, LicenseStatuses.Cancelled, StringComparison.OrdinalIgnoreCase);
-        var isExplicitExpired = string.Equals(tenantLicense.Status, LicenseStatuses.Expired, StringComparison.OrdinalIgnoreCase);
+        var isExplicitExpired = string.Equals(tenantLicense.Status, LicenseStatuses.Expired, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(tenantLicense.Status, LicenseStatuses.TrialExpired, StringComparison.OrdinalIgnoreCase);
         var isExpired = isExplicitExpired || (effectiveExpiry.HasValue && now > effectiveExpiry.Value);
         var isGrace = isExpired && graceEndsAt.HasValue && now <= graceEndsAt.Value && !isSuspended && !isCancelled;
         var isReadOnly = (isExpired && !isGrace) || isCancelled;

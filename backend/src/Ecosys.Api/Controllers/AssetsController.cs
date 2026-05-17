@@ -32,6 +32,8 @@ public sealed class AssetsController(
     public async Task<ActionResult<IReadOnlyCollection<AssetResponse>>> GetAll(
         [FromQuery] Guid? branchId,
         [FromQuery] Guid? clientId,
+        [FromQuery] Guid? siteId,
+        [FromQuery] Guid? categoryId,
         [FromQuery] string? search,
         [FromQuery] string? status,
         CancellationToken cancellationToken)
@@ -44,6 +46,10 @@ public sealed class AssetsController(
         var query = dbContext.Assets
             .Include(x => x.Client)
             .Include(x => x.Branch)
+            .Include(x => x.Site)
+            .Include(x => x.AssetCategory)
+            .Include(x => x.CustomFieldValues)
+                .ThenInclude(x => x.FieldDefinition)
             .Where(x => x.TenantId == TenantId)
             .WhereAccessible(scope, x => x.BranchId)
             .AsQueryable();
@@ -51,6 +57,16 @@ public sealed class AssetsController(
         if (clientId.HasValue)
         {
             query = query.Where(x => x.ClientId == clientId.Value);
+        }
+
+        if (siteId.HasValue)
+        {
+            query = query.Where(x => x.SiteId == siteId.Value);
+        }
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(x => x.AssetCategoryId == categoryId.Value);
         }
 
         if (normalizedStatus == "active")
@@ -91,6 +107,10 @@ public sealed class AssetsController(
         var asset = await dbContext.Assets
             .Include(x => x.Client)
             .Include(x => x.Branch)
+            .Include(x => x.Site)
+            .Include(x => x.AssetCategory)
+            .Include(x => x.CustomFieldValues)
+                .ThenInclude(x => x.FieldDefinition)
             .Where(x => x.TenantId == TenantId && x.Status != "Inactive" && x.Id == id)
             .WhereAccessible(scope, x => x.BranchId)
             .SingleOrDefaultAsync(cancellationToken)
@@ -106,6 +126,7 @@ public sealed class AssetsController(
         await licenseGuardService.EnsureCanCreateAssetAsync(TenantId, cancellationToken);
         Validate(request);
         await EnsureClientExistsAsync(request.ClientId, cancellationToken);
+        await EnsureCategoryRequestIsValidAsync(request.AssetCategoryId, request.CustomFieldValues, cancellationToken);
         if (!string.IsNullOrWhiteSpace(request.AssetCode))
         {
             await EnsureUniqueAssetCodeAsync(request.AssetCode, null, cancellationToken);
@@ -118,6 +139,8 @@ public sealed class AssetsController(
             TenantId = TenantId,
             BranchId = branchId,
             ClientId = request.ClientId,
+            SiteId = request.SiteId,
+            AssetCategoryId = request.AssetCategoryId,
             AssetName = request.AssetName.Trim(),
             AssetCode = string.IsNullOrWhiteSpace(request.AssetCode)
                 ? await documentNumberingService.GenerateAsync(TenantId, branchId, DocumentTypes.Asset, cancellationToken)
@@ -139,6 +162,8 @@ public sealed class AssetsController(
 
         dbContext.Assets.Add(asset);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveCustomFieldValuesAsync(asset, request.CustomFieldValues, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         await preventiveMaintenancePlanService.SyncForAssetAsync(asset, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -155,6 +180,15 @@ public sealed class AssetsController(
         {
             await dbContext.Entry(asset).Reference(x => x.Branch).LoadAsync(cancellationToken);
         }
+        if (asset.SiteId.HasValue)
+        {
+            await dbContext.Entry(asset).Reference(x => x.Site).LoadAsync(cancellationToken);
+        }
+        if (asset.AssetCategoryId.HasValue)
+        {
+            await dbContext.Entry(asset).Reference(x => x.AssetCategory).LoadAsync(cancellationToken);
+        }
+        await dbContext.Entry(asset).Collection(x => x.CustomFieldValues).Query().Include(x => x.FieldDefinition).LoadAsync(cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = asset.Id }, Map(asset));
     }
@@ -167,10 +201,14 @@ public sealed class AssetsController(
         var asset = await dbContext.Assets
             .Include(x => x.Client)
             .Include(x => x.Branch)
+            .Include(x => x.Site)
+            .Include(x => x.AssetCategory)
+            .Include(x => x.CustomFieldValues)
             .SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == id, cancellationToken)
             ?? throw new NotFoundException("Asset was not found.");
 
         await EnsureClientExistsAsync(request.ClientId, cancellationToken);
+        await EnsureCategoryRequestIsValidAsync(request.AssetCategoryId, request.CustomFieldValues, cancellationToken);
         if (!string.IsNullOrWhiteSpace(request.AssetCode))
         {
             await EnsureUniqueAssetCodeAsync(request.AssetCode, asset.Id, cancellationToken);
@@ -180,6 +218,8 @@ public sealed class AssetsController(
 
         asset.BranchId = branchId;
         asset.ClientId = request.ClientId;
+        asset.SiteId = request.SiteId;
+        asset.AssetCategoryId = request.AssetCategoryId;
         asset.AssetName = request.AssetName.Trim();
         asset.AssetCode = string.IsNullOrWhiteSpace(request.AssetCode) ? asset.AssetCode : request.AssetCode.Trim();
         asset.AssetType = request.AssetType?.Trim();
@@ -196,6 +236,7 @@ public sealed class AssetsController(
         asset.Notes = request.Notes?.Trim();
         asset.Status = string.IsNullOrWhiteSpace(request.Status) ? asset.Status : request.Status.Trim();
 
+        await SaveCustomFieldValuesAsync(asset, request.CustomFieldValues, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await preventiveMaintenancePlanService.SyncForAssetAsync(asset, cancellationToken);
 
@@ -213,6 +254,15 @@ public sealed class AssetsController(
         {
             await dbContext.Entry(asset).Reference(x => x.Branch).LoadAsync(cancellationToken);
         }
+        if (asset.SiteId.HasValue)
+        {
+            await dbContext.Entry(asset).Reference(x => x.Site).LoadAsync(cancellationToken);
+        }
+        if (asset.AssetCategoryId.HasValue)
+        {
+            await dbContext.Entry(asset).Reference(x => x.AssetCategory).LoadAsync(cancellationToken);
+        }
+        await dbContext.Entry(asset).Collection(x => x.CustomFieldValues).Query().Include(x => x.FieldDefinition).LoadAsync(cancellationToken);
 
         return Ok(Map(asset));
     }
@@ -284,6 +334,82 @@ public sealed class AssetsController(
         }
     }
 
+    private async Task EnsureCategoryRequestIsValidAsync(
+        Guid? assetCategoryId,
+        IReadOnlyCollection<UpsertAssetCustomFieldValueRequest>? customFieldValues,
+        CancellationToken cancellationToken)
+    {
+        if (!assetCategoryId.HasValue)
+        {
+            if (customFieldValues is { Count: > 0 })
+            {
+                throw new BusinessRuleException("Asset category is required when custom field values are provided.");
+            }
+
+            return;
+        }
+
+        var category = await dbContext.AssetCategories
+            .Include(x => x.Fields)
+            .SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == assetCategoryId.Value && x.IsActive, cancellationToken)
+            ?? throw new BusinessRuleException("Asset category does not exist for this tenant.");
+
+        var requestedValues = customFieldValues ?? [];
+        var fieldDefinitions = category.Fields.ToDictionary(x => x.Id, x => x);
+
+        foreach (var item in requestedValues)
+        {
+            if (!fieldDefinitions.TryGetValue(item.FieldDefinitionId, out var definition))
+            {
+                throw new BusinessRuleException("One or more custom fields do not belong to the selected asset category.");
+            }
+
+            var normalizedValue = item.Value?.Trim() ?? string.Empty;
+            if (definition.IsRequired && string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                throw new BusinessRuleException($"Custom field '{definition.FieldLabel}' is required.");
+            }
+        }
+
+        foreach (var requiredDefinition in fieldDefinitions.Values.Where(x => x.IsRequired))
+        {
+            var provided = requestedValues.Any(x => x.FieldDefinitionId == requiredDefinition.Id && !string.IsNullOrWhiteSpace(x.Value));
+            if (!provided)
+            {
+                throw new BusinessRuleException($"Custom field '{requiredDefinition.FieldLabel}' is required.");
+            }
+        }
+    }
+
+    private async Task SaveCustomFieldValuesAsync(
+        Asset asset,
+        IReadOnlyCollection<UpsertAssetCustomFieldValueRequest>? customFieldValues,
+        CancellationToken cancellationToken)
+    {
+        var existingValues = await dbContext.AssetCustomFieldValues
+            .Where(x => x.TenantId == TenantId && x.AssetId == asset.Id)
+            .ToListAsync(cancellationToken);
+
+        dbContext.AssetCustomFieldValues.RemoveRange(existingValues);
+
+        foreach (var item in customFieldValues ?? [])
+        {
+            var normalizedValue = item.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                continue;
+            }
+
+            dbContext.AssetCustomFieldValues.Add(new AssetCustomFieldValue
+            {
+                TenantId = TenantId,
+                AssetId = asset.Id,
+                FieldDefinitionId = item.FieldDefinitionId,
+                Value = normalizedValue
+            });
+        }
+    }
+
     private static AssetResponse Map(Asset asset) =>
         new(
             asset.Id,
@@ -291,6 +417,10 @@ public sealed class AssetsController(
             asset.Branch?.Name,
             asset.ClientId,
             asset.Client?.ClientName,
+            asset.SiteId,
+            asset.Site?.SiteName,
+            asset.AssetCategoryId,
+            asset.AssetCategory?.Name,
             asset.AssetName,
             asset.AssetCode,
             asset.AssetType,
@@ -306,7 +436,18 @@ public sealed class AssetsController(
             asset.NextPmDate,
             asset.Notes,
             asset.Status,
-            asset.CreatedAt);
+            asset.CreatedAt,
+            asset.CustomFieldValues
+                .OrderBy(x => x.FieldDefinition?.DisplayOrder ?? int.MaxValue)
+                .ThenBy(x => x.FieldDefinition?.FieldLabel)
+                .Select(x => new AssetCustomFieldValueResponse(
+                    x.FieldDefinitionId,
+                    x.FieldDefinition?.FieldName ?? string.Empty,
+                    x.FieldDefinition?.FieldLabel ?? string.Empty,
+                    x.FieldDefinition?.FieldType ?? "Text",
+                    x.FieldDefinition?.Unit,
+                    x.Value))
+                .ToList());
 
     private static string NormalizeStatusFilter(string? status)
     {
@@ -331,6 +472,8 @@ public sealed class AssetsController(
 public sealed record UpsertAssetRequest(
     Guid ClientId,
     Guid? BranchId,
+    Guid? SiteId,
+    Guid? AssetCategoryId,
     string AssetName,
     string AssetCode,
     string? AssetType,
@@ -345,7 +488,8 @@ public sealed record UpsertAssetRequest(
     DateTime? LastPmDate,
     DateTime? NextPmDate,
     string? Notes,
-    string? Status);
+    string? Status,
+    IReadOnlyCollection<UpsertAssetCustomFieldValueRequest>? CustomFieldValues);
 
 public sealed record AssetResponse(
     Guid Id,
@@ -353,6 +497,10 @@ public sealed record AssetResponse(
     string? BranchName,
     Guid ClientId,
     string? ClientName,
+    Guid? SiteId,
+    string? SiteName,
+    Guid? AssetCategoryId,
+    string? AssetCategoryName,
     string AssetName,
     string AssetCode,
     string? AssetType,
@@ -368,4 +516,17 @@ public sealed record AssetResponse(
     DateTime? NextPmDate,
     string? Notes,
     string Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    IReadOnlyCollection<AssetCustomFieldValueResponse> CustomFieldValues);
+
+public sealed record UpsertAssetCustomFieldValueRequest(
+    Guid FieldDefinitionId,
+    string? Value);
+
+public sealed record AssetCustomFieldValueResponse(
+    Guid FieldDefinitionId,
+    string FieldName,
+    string FieldLabel,
+    string FieldType,
+    string? Unit,
+    string Value);

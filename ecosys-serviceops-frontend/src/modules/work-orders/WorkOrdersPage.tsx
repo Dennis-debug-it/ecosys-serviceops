@@ -1,5 +1,5 @@
 import { Plus, Search } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useShellContext } from '../../components/layout/AppShell'
 import { Badge } from '../../components/ui/Badge'
@@ -15,10 +15,11 @@ import { assetService } from '../../services/assetService'
 import { clientService } from '../../services/clientService'
 import { pmTemplateService } from '../../services/pmTemplateService'
 import { settingsService } from '../../services/settingsService'
+import { siteService } from '../../services/siteService'
 import { technicianService } from '../../services/technicianService'
 import { userService } from '../../services/userService'
 import { workOrderService } from '../../services/workOrderService'
-import type { AssetRecord, AssignmentGroupRecord, ClientRecord, PmTemplateRecord, TechnicianRecord, UserRecord, WorkOrder } from '../../types/api'
+import type { AssetRecord, AssignmentGroupRecord, ClientRecord, PmTemplateRecord, SiteRecord, TechnicianRecord, UserRecord, WorkOrder } from '../../types/api'
 import { formatDateOnly } from '../../utils/date'
 import { priorityTone, statusTone } from '../../utils/format'
 
@@ -34,6 +35,7 @@ type WorkOrdersPayload = {
 
 type WorkOrderDraft = {
   clientId: string
+  siteId: string
   assetId: string
   assignmentType: 'IndividualTechnician' | 'MultipleTechnicians' | 'AssignmentGroup' | 'Unassigned'
   assignedTechnicianIds: string[]
@@ -60,6 +62,7 @@ const emptyPayload: WorkOrdersPayload = {
 
 const emptyForm = (): WorkOrderDraft => ({
   clientId: '',
+  siteId: '',
   assetId: '',
   assignmentType: 'Unassigned' as const,
   assignedTechnicianIds: [] as string[],
@@ -89,6 +92,8 @@ export function WorkOrdersPage() {
   const [form, setForm] = useState<WorkOrderDraft>(emptyForm)
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
+  const [sites, setSites] = useState<SiteRecord[]>([])
 
   const { data, loading, error, reload } = useAsyncData<WorkOrdersPayload>(
     async (signal) => {
@@ -107,6 +112,22 @@ export function WorkOrdersPage() {
     emptyPayload,
     [selectedBranchId],
   )
+
+  useEffect(() => {
+    setCurrentTime(Date.now())
+  }, [data.workOrders])
+
+  useEffect(() => {
+    if (!form.clientId) {
+      setSites([])
+      return
+    }
+    let cancelled = false
+    siteService.list(form.clientId, { status: 'Active' }).then((result) => {
+      if (!cancelled) setSites(result)
+    }).catch(() => { if (!cancelled) setSites([]) })
+    return () => { cancelled = true }
+  }, [form.clientId])
 
   const filteredRows = useMemo(() => {
     return data.workOrders
@@ -129,7 +150,11 @@ export function WorkOrdersPage() {
     { id: 'Completed', label: 'Completed', meta: data.workOrders.filter((item) => item.status === 'Completed').length },
   ] as const
   const hasWorkOrders = data.workOrders.length > 0
-  const visibleAssets = data.assets.filter((asset) => !form.clientId || asset.clientId === form.clientId)
+  const visibleAssets = data.assets.filter((asset) => {
+    if (form.clientId && asset.clientId !== form.clientId) return false
+    if (form.siteId && asset.siteId !== form.siteId) return false
+    return true
+  })
   const activePmTemplates = data.pmTemplates.filter((template) => template.isActive)
   const availableTechnicians = data.technicians.filter((technician) => technician.isActive)
   const dispatchableUsers = data.users.filter((user): user is UserRecord & { linkedTechnicianId: string } => user.isActive && typeof user.linkedTechnicianId === 'string' && user.linkedTechnicianId.length > 0)
@@ -148,22 +173,17 @@ export function WorkOrdersPage() {
     if (!item.dueDate || stringEquals(item.status, 'Completed') || stringEquals(item.status, 'Closed') || stringEquals(item.status, 'Cancelled')) {
       return false
     }
-    return new Date(item.dueDate).getTime() < Date.now()
+    return new Date(item.dueDate).getTime() < currentTime
   }).length
   const unassignedCount = data.workOrders.filter((item) => item.isUnassigned).length
   const pmCount = data.workOrders.filter((item) => item.isPreventiveMaintenance).length
 
   function openCreateModal() {
-    const defaultClientId = data.clients[0]?.id ?? ''
-    const defaultAssetId = data.assets.find((asset) => asset.clientId === defaultClientId)?.id ?? ''
     setSaveError('')
     setTechnicianQuery('')
     setGroupQuery('')
-    setForm({
-      ...emptyForm(),
-      clientId: defaultClientId,
-      assetId: defaultAssetId,
-    })
+    setSites([])
+    setForm(emptyForm())
     setEditorOpen(true)
   }
 
@@ -212,6 +232,7 @@ export function WorkOrdersPage() {
       await workOrderService.create({
         clientId: form.clientId,
         branchId: selectedBranchId === 'all' ? null : selectedBranchId,
+        siteId: form.siteId || null,
         assetId: form.assetId || null,
         assignmentType: form.assignmentType,
         assignmentGroupId: form.assignmentType === 'AssignmentGroup' ? form.assignmentGroupId || null : null,
@@ -329,6 +350,7 @@ export function WorkOrdersPage() {
                           {row.workOrderNumber}
                         </Link>
                         <Badge tone={statusTone(row.status as never)}>{row.status}</Badge>
+                        {(row.slaResponseBreached || row.slaResolutionBreached) ? <Badge tone="danger">{row.slaStatus}</Badge> : null}
                       </div>
                       <p className="mt-2 text-sm font-medium text-app">{row.title}</p>
                       <p className="mt-1 text-xs text-muted">{row.clientName || 'No client'} | {row.branchName || 'No branch assigned'}</p>
@@ -358,11 +380,11 @@ export function WorkOrdersPage() {
                 },
                 {
                   key: 'client',
-                  header: 'Client',
+                  header: 'Client / Site',
                   cell: (row) => (
                     <div>
                       <p>{row.clientName || 'No client'}</p>
-                      <p className="mt-1 text-xs text-muted">{row.branchName || 'No branch assigned'}</p>
+                      <p className="mt-1 text-xs text-muted">{row.siteName || row.branchName || '—'}</p>
                     </div>
                   ),
                 },
@@ -373,6 +395,7 @@ export function WorkOrdersPage() {
                 },
                 { key: 'priority', header: 'Priority', cell: (row) => <Badge tone={priorityTone(row.priority as 'Critical' | 'High' | 'Medium' | 'Low')}>{row.priority}</Badge> },
                 { key: 'status', header: 'Work Status', cell: (row) => <Badge tone={statusTone(row.status as never)}>{row.status}</Badge> },
+                { key: 'sla', header: 'SLA', cell: (row) => <Badge tone={(row.slaResponseBreached || row.slaResolutionBreached) ? 'danger' : 'success'}>{row.slaStatus}</Badge> },
                 {
                   key: 'assignedGroup',
                   header: 'Assigned Group',
@@ -405,7 +428,8 @@ export function WorkOrdersPage() {
                 setForm((current) => ({
                   ...current,
                   clientId: event.target.value,
-                  assetId: data.assets.find((asset) => asset.clientId === event.target.value)?.id ?? '',
+                  siteId: '',
+                  assetId: '',
                 }))}
               className="field-input"
             >
@@ -415,14 +439,32 @@ export function WorkOrdersPage() {
               ))}
             </select>
           </Field>
+          <Field label="Site (optional)">
+            <select
+              value={form.siteId}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  siteId: event.target.value,
+                  assetId: '',
+                }))}
+              className="field-input"
+              disabled={!form.clientId}
+            >
+              <option value="">{form.clientId ? 'No site selected' : 'Select a client first'}</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>{site.siteName}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="Asset (optional)">
             <select value={form.assetId} onChange={(event) => setForm((current) => ({ ...current, assetId: event.target.value }))} className="field-input">
               <option value="">No linked asset</option>
               {visibleAssets.map((asset) => (
-                <option key={asset.id} value={asset.id}>{asset.assetName}</option>
+                <option key={asset.id} value={asset.id}>{asset.assetName}{asset.siteName ? ` — ${asset.siteName}` : ''}</option>
               ))}
             </select>
-            <p className="text-xs text-muted">Leave blank for general requests, emergency jobs, or cases where the asset is not yet registered.</p>
+            <p className="text-xs text-muted">Assets are filtered by selected client and site. Leave blank for general or emergency requests.</p>
           </Field>
           <Field label="Assignment type">
             <select value={form.assignmentType} onChange={(event) => setForm((current) => ({ ...current, assignmentType: event.target.value as typeof current.assignmentType, assignedTechnicianIds: [], assignmentGroupId: '', leadTechnicianId: '', assignmentNotes: '' }))} className="field-input">

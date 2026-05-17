@@ -27,6 +27,7 @@ public sealed class ClientsController(
         var normalizedSearch = NormalizeSearch(search);
 
         var query = dbContext.Clients
+            .Include(x => x.SlaDefinition)
             .Where(x => x.TenantId == TenantId);
 
         if (normalizedStatus == "active")
@@ -52,22 +53,20 @@ public sealed class ClientsController(
 
         var clients = await query
             .OrderBy(x => x.ClientName)
-            .Select(x => Map(x))
             .ToListAsync(cancellationToken);
 
-        return Ok(clients);
+        return Ok(clients.Select(Map).ToList());
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ClientResponse>> Get(Guid id, CancellationToken cancellationToken)
     {
         var client = await dbContext.Clients
-            .Where(x => x.TenantId == TenantId && x.Id == id)
-            .Select(x => Map(x))
-            .SingleOrDefaultAsync(cancellationToken)
+            .Include(x => x.SlaDefinition)
+            .SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == id, cancellationToken)
             ?? throw new NotFoundException("Client was not found.");
 
-        return Ok(client);
+        return Ok(Map(client));
     }
 
     [HttpPost]
@@ -86,10 +85,12 @@ public sealed class ClientsController(
             Location = request.Location?.Trim(),
             ContactPerson = request.ContactPerson?.Trim(),
             ContactPhone = request.ContactPhone?.Trim(),
-            SlaPlan = request.SlaPlan?.Trim(),
+            SlaDefinitionId = request.SlaDefinitionId,
             Notes = request.Notes?.Trim(),
             IsActive = true
         };
+
+        await EnsureSlaDefinitionExistsAsync(client.SlaDefinitionId, cancellationToken);
 
         dbContext.Clients.Add(client);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -122,8 +123,10 @@ public sealed class ClientsController(
         client.Location = request.Location?.Trim();
         client.ContactPerson = request.ContactPerson?.Trim();
         client.ContactPhone = request.ContactPhone?.Trim();
-        client.SlaPlan = request.SlaPlan?.Trim();
+        client.SlaDefinitionId = request.SlaDefinitionId;
         client.Notes = request.Notes?.Trim();
+
+        await EnsureSlaDefinitionExistsAsync(client.SlaDefinitionId, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -249,6 +252,23 @@ public sealed class ClientsController(
         }
     }
 
+    private async Task EnsureSlaDefinitionExistsAsync(Guid? slaDefinitionId, CancellationToken cancellationToken)
+    {
+        if (!slaDefinitionId.HasValue)
+        {
+            return;
+        }
+
+        var exists = await dbContext.SlaDefinitions.AnyAsync(
+            x => x.TenantId == TenantId && x.IsActive && x.Id == slaDefinitionId.Value,
+            cancellationToken);
+
+        if (!exists)
+        {
+            throw new BusinessRuleException("SLA definition was not found for this tenant.");
+        }
+    }
+
     private static ClientResponse Map(Client client) =>
         new(
             client.Id,
@@ -259,7 +279,8 @@ public sealed class ClientsController(
             client.Location,
             client.ContactPerson,
             client.ContactPhone,
-            client.SlaPlan,
+            client.SlaDefinitionId,
+            client.SlaDefinition?.PlanName,
             client.Notes,
             client.IsActive,
             client.CreatedAt);
@@ -292,7 +313,7 @@ public sealed record UpsertClientRequest(
     string? Location,
     string? ContactPerson,
     string? ContactPhone,
-    string? SlaPlan,
+    Guid? SlaDefinitionId,
     string? Notes);
 
 public sealed record ClientResponse(
@@ -304,7 +325,8 @@ public sealed record ClientResponse(
     string? Location,
     string? ContactPerson,
     string? ContactPhone,
-    string? SlaPlan,
+    Guid? SlaDefinitionId,
+    string? SlaDefinitionName,
     string? Notes,
     bool IsActive,
     DateTime CreatedAt);

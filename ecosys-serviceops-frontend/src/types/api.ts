@@ -147,6 +147,8 @@ export interface WorkOrder {
   branchName?: string | null
   clientId: string
   clientName?: string | null
+  siteId?: string | null
+  siteName?: string | null
   assetId?: string | null
   assetName?: string | null
   assignmentGroupId?: string | null
@@ -156,6 +158,7 @@ export interface WorkOrder {
   description?: string | null
   priority: string
   status: string
+  slaStatus: string
   assignmentType: 'IndividualTechnician' | 'MultipleTechnicians' | 'AssignmentGroup' | 'Unassigned'
   assignedTechnicianId?: string | null
   assignedTechnicianName?: string | null
@@ -174,6 +177,13 @@ export interface WorkOrder {
   departureAt?: string | null
   completedAt?: string | null
   workDoneNotes?: string | null
+  jobCardNotes?: string | null
+  slaResponseDeadline?: string | null
+  slaResolutionDeadline?: string | null
+  slaResponseBreached: boolean
+  slaResolutionBreached: boolean
+  slaResponseBreachedAt?: string | null
+  slaResolutionBreachedAt?: string | null
   acknowledgedByName?: string | null
   acknowledgementComments?: string | null
   acknowledgementDate?: string | null
@@ -184,9 +194,102 @@ export interface WorkOrder {
   checklistItems?: WorkOrderChecklistItemRecord[] | null
 }
 
+export interface WorkOrderExecutionNotes {
+  findings?: string | null
+  workDone?: string | null
+}
+
+export interface WorkOrderPhotoRecord {
+  id: string
+  attachmentId: string
+  fileName: string
+  publicUrl?: string | null
+  caption: string
+  category: string
+  includeInReport: boolean
+  uploadedByUserId: string
+  uploadedByName?: string | null
+  uploadedAt: string
+}
+
+export interface WorkOrderMaterialUsageRecord {
+  id: string
+  materialItemId: string
+  materialName?: string | null
+  unitOfMeasure?: string | null
+  assetId?: string | null
+  assetName?: string | null
+  quantityUsed: number
+  unitCost?: number | null
+  chargeable: boolean
+  notes?: string | null
+  usedByUserId: string
+  usedByName?: string | null
+  usedAt: string
+}
+
+export interface WorkOrderSignatureRecord {
+  id: string
+  signatureType: 'Technician' | 'Client' | string
+  signerName: string
+  signerRole?: string | null
+  signatureDataUrl: string
+  comment?: string | null
+  capturedByUserId: string
+  capturedAt: string
+}
+
+export interface WorkOrderServiceReportPreview {
+  companyName: string
+  workOrderNumber: string
+  title: string
+  clientName?: string | null
+  siteLabel?: string | null
+  assetName?: string | null
+  assetDetails?: string | null
+  technicianTeam?: string | null
+  reportedProblem?: string | null
+  findings?: string | null
+  workDone?: string | null
+  generatedAtLabel: string
+  timestamps: Array<{ label: string; value?: string | null }>
+  materials: Array<{
+    name: string
+    quantityUsed: number
+    unitOfMeasure: string
+    unitCost?: number | null
+    chargeable: boolean
+    notes?: string | null
+  }>
+  photoGroups: Array<{
+    category: string
+    photos: Array<{
+      caption: string
+      publicUrl?: string | null
+    }>
+  }>
+  signatures: Array<{
+    signatureType: string
+    signerName: string
+    signerRole?: string | null
+    comment?: string | null
+    capturedAtLabel: string
+  }>
+  showPoweredByEcosys: boolean
+}
+
+export interface WorkOrderExecutionBundle {
+  notes: WorkOrderExecutionNotes
+  photos: WorkOrderPhotoRecord[]
+  materialUsages: WorkOrderMaterialUsageRecord[]
+  signatures: WorkOrderSignatureRecord[]
+  reportPreview: WorkOrderServiceReportPreview
+}
+
 export interface CreateWorkOrderInput {
   clientId: string
   branchId?: string | null
+  siteId?: string | null
   assetId?: string | null
   assignmentGroupId?: string | null
   assignmentType?: 'IndividualTechnician' | 'MultipleTechnicians' | 'AssignmentGroup' | 'Unassigned'
@@ -215,7 +318,8 @@ export interface ClientRecord {
   location?: string | null
   contactPerson?: string | null
   contactPhone?: string | null
-  slaPlan?: string | null
+  slaDefinitionId?: string | null
+  slaDefinitionName?: string | null
   notes?: string | null
   isActive: boolean
   createdAt: string
@@ -229,8 +333,58 @@ export interface UpsertClientInput {
   location?: string | null
   contactPerson?: string | null
   contactPhone?: string | null
-  slaPlan?: string | null
+  slaDefinitionId?: string | null
   notes?: string | null
+}
+
+export interface SlaDefinitionRecord {
+  id: string
+  planName: string
+  description?: string | null
+  isActive: boolean
+  rules: SlaRuleRecord[]
+  createdAt: string
+  updatedAt?: string | null
+}
+
+export interface SlaRuleRecord {
+  id: string
+  priority: 'Critical' | 'High' | 'Medium' | 'Low' | string
+  responseTargetHours: number
+  resolutionTargetHours: number
+  businessHoursOnly: boolean
+}
+
+export interface UpsertSlaDefinitionInput {
+  planName: string
+  description?: string | null
+  isActive: boolean
+  rules: Array<{
+    priority: 'Critical' | 'High' | 'Medium' | 'Low' | string
+    responseTargetHours: number
+    resolutionTargetHours: number
+    businessHoursOnly: boolean
+  }>
+}
+
+export interface KipContext {
+  screen: string
+  entityType?: string | null
+  entityId?: string | null
+  entitySummary?: Record<string, unknown> | null
+  tenantId: string
+  userId: string
+  userRole: string
+  timestamp: string
+}
+
+export interface KipQueryInput {
+  context: KipContext
+  message: string
+}
+
+export interface KipQueryResponse {
+  response: string
 }
 
 export interface AssetRecord {
@@ -239,6 +393,10 @@ export interface AssetRecord {
   branchName?: string | null
   clientId: string
   clientName?: string | null
+  siteId?: string | null
+  siteName?: string | null
+  assetCategoryId?: string | null
+  assetCategoryName?: string | null
   assetName: string
   assetCode: string
   assetType?: string | null
@@ -255,11 +413,14 @@ export interface AssetRecord {
   notes?: string | null
   status: string
   createdAt: string
+  customFieldValues: AssetCustomFieldValueRecord[]
 }
 
 export interface UpsertAssetInput {
   clientId: string
   branchId?: string | null
+  siteId?: string | null
+  assetCategoryId?: string | null
   assetName: string
   assetCode?: string
   assetType?: string | null
@@ -275,6 +436,21 @@ export interface UpsertAssetInput {
   nextPmDate?: string | null
   notes?: string | null
   status?: string | null
+  customFieldValues?: UpsertAssetCustomFieldValueInput[]
+}
+
+export interface AssetCustomFieldValueRecord {
+  fieldDefinitionId: string
+  fieldName: string
+  fieldLabel: string
+  fieldType: string
+  unit?: string | null
+  value: string
+}
+
+export interface UpsertAssetCustomFieldValueInput {
+  fieldDefinitionId: string
+  value?: string | null
 }
 
 export interface MaterialItem {
@@ -1097,6 +1273,61 @@ export interface UpsertPmTemplateInput {
   }>
 }
 
+export interface SiteRecord {
+  id: string
+  tenantId: string
+  clientId: string
+  siteCode: string
+  siteName: string
+  siteType: string
+  status: string
+  streetAddress?: string | null
+  areaEstate?: string | null
+  townCity?: string | null
+  county?: string | null
+  country?: string | null
+  region?: string | null
+  contactPerson?: string | null
+  contactPhone?: string | null
+  contactEmail?: string | null
+  alternateContact?: string | null
+  operatingHours?: string | null
+  accessNotes?: string | null
+  specialInstructions?: string | null
+  createdAt: string
+  updatedAt?: string | null
+}
+
+export interface UpsertSiteInput {
+  siteName: string
+  siteType?: string | null
+  streetAddress?: string | null
+  areaEstate?: string | null
+  townCity?: string | null
+  county?: string | null
+  country?: string | null
+  region?: string | null
+  contactPerson?: string | null
+  contactPhone?: string | null
+  contactEmail?: string | null
+  alternateContact?: string | null
+  operatingHours?: string | null
+  accessNotes?: string | null
+  specialInstructions?: string | null
+}
+
+export interface AttachmentRecord {
+  id: string
+  entityType: string
+  entityId: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  publicUrl: string
+  uploadedByUserId: string
+  createdAt: string
+}
+
 export interface WorkOrderChecklistItemRecord {
   id: string
   pmTemplateQuestionId?: string | null
@@ -1111,4 +1342,74 @@ export interface WorkOrderChecklistItemRecord {
   completedByUserId?: string | null
   completedAt?: string | null
   options: string[]
+}
+
+export interface KnowledgeCategoryRecord {
+  id: string
+  name: string
+  description?: string | null
+  displayOrder: number
+  isActive: boolean
+}
+
+export interface UpsertKnowledgeCategoryInput {
+  name: string
+  description?: string | null
+  displayOrder: number
+}
+
+export interface KnowledgeArticleListItem {
+  id: string
+  title: string
+  slug: string
+  summary?: string | null
+  categoryId?: string | null
+  categoryName?: string | null
+  status: 'Draft' | 'Published' | 'Archived' | string
+  visibility: 'Internal' | 'TechnicianOnly' | 'AdminOnly' | string
+  publishedAt?: string | null
+  updatedAt: string
+  tags: string[]
+}
+
+export interface KnowledgeArticleVersionRecord {
+  id: string
+  versionNumber: number
+  title: string
+  body: string
+  updatedByUserId?: string | null
+  createdAt: string
+}
+
+export interface KnowledgeArticleDetail {
+  id: string
+  title: string
+  slug: string
+  summary?: string | null
+  body: string
+  categoryId?: string | null
+  categoryName?: string | null
+  status: 'Draft' | 'Published' | 'Archived' | string
+  visibility: 'Internal' | 'TechnicianOnly' | 'AdminOnly' | string
+  createdByUserId: string
+  createdByName?: string | null
+  updatedByUserId?: string | null
+  updatedByName?: string | null
+  createdAt: string
+  updatedAt?: string | null
+  publishedAt?: string | null
+  sourceWorkOrderId?: string | null
+  tags: string[]
+  versions: KnowledgeArticleVersionRecord[]
+  relatedArticles: KnowledgeArticleListItem[]
+}
+
+export interface UpsertKnowledgeArticleInput {
+  title: string
+  summary?: string | null
+  body: string
+  categoryId?: string | null
+  status: 'Draft' | 'Published' | 'Archived' | string
+  visibility: 'Internal' | 'TechnicianOnly' | 'AdminOnly' | string
+  tags: string[]
 }

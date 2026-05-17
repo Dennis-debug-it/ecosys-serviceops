@@ -2,6 +2,7 @@ import { api } from '../lib/api'
 import type {
   CreateWorkOrderInput,
   MaterialRequestRecord,
+  WorkOrderExecutionBundle,
   WorkOrderChecklistItemRecord,
   WorkOrderAssignmentHistoryRecord,
   WorkOrderEventRecord,
@@ -39,6 +40,7 @@ export const workOrderService = {
     return this.update(workOrder.id, {
       clientId: workOrder.clientId,
       branchId: workOrder.branchId,
+      siteId: workOrder.siteId,
       assetId: workOrder.assetId,
       assignmentType: workOrder.assignmentType,
       assignmentGroupId: workOrder.assignmentGroupId,
@@ -139,6 +141,75 @@ export const workOrderService = {
 
   recordDeparture(id: string, input: { technicianId: string; latitude?: number | null; longitude?: number | null; departedAt?: string | null }) {
     return api.post<WorkOrder>(`/api/workorders/${id}/departure`, input)
+  },
+
+  markInTransit(id: string, input: { technicianId: string; latitude?: number | null; longitude?: number | null; inTransitAt?: string | null; notes?: string | null }) {
+    return api.post<WorkOrder>(`/api/workorders/${id}/in-transit`, input)
+  },
+
+  getExecution(id: string, signal?: AbortSignal) {
+    return api.get<WorkOrderExecutionBundle>(`/api/workorders/${id}/execution`, { signal })
+  },
+
+  saveExecutionNotes(id: string, input: { findings?: string | null; workDone?: string | null }) {
+    return api.post<WorkOrderExecutionBundle>(`/api/workorders/${id}/execution-notes`, input)
+  },
+
+  addMaterialUsage(id: string, input: { materialItemId: string; assetId?: string | null; quantityUsed: number; unitCost?: number | null; chargeable: boolean; notes?: string | null; usedAt?: string | null }) {
+    return api.post<WorkOrderExecutionBundle>(`/api/workorders/${id}/materials-used`, input)
+  },
+
+  uploadPhoto(id: string, input: { file: File; caption?: string | null; category?: string | null; includeInReport: boolean }) {
+    const formData = new FormData()
+    formData.append('file', input.file)
+    formData.append('caption', input.caption || '')
+    formData.append('category', input.category || 'Other')
+    formData.append('includeInReport', String(input.includeInReport))
+    return api.postForm<WorkOrderExecutionBundle>(`/api/workorders/${id}/photos`, formData)
+  },
+
+  updatePhoto(id: string, photoId: string, input: { caption?: string | null; category?: string | null; includeInReport: boolean }) {
+    return api.put<WorkOrderExecutionBundle>(`/api/workorders/${id}/photos/${photoId}`, input)
+  },
+
+  captureSignature(id: string, input: { signatureType: 'Technician' | 'Client'; signerName: string; signerRole?: string | null; signatureDataUrl: string; comment?: string | null }) {
+    return api.post<WorkOrderExecutionBundle>(`/api/workorders/${id}/signatures`, input)
+  },
+
+  getServiceReport(id: string, signal?: AbortSignal) {
+    return api.get<WorkOrderExecutionBundle['reportPreview']>(`/api/workorders/${id}/service-report`, { signal })
+  },
+
+  generateServiceReport(id: string) {
+    return api.post<WorkOrderExecutionBundle['reportPreview']>(`/api/workorders/${id}/service-report/generate`)
+  },
+
+  async downloadServiceReportPdf(id: string) {
+    const { blob, fileName } = await api.download(`/api/workorders/${id}/service-report/pdf`, {
+      fallbackFileName: `service-report-${id}.pdf`,
+    })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = fileName
+    anchor.click()
+    URL.revokeObjectURL(url)
+  },
+
+  pause(id: string) {
+    return api.post<WorkOrder>(`/api/workorders/${id}/pause`)
+  },
+
+  resume(id: string) {
+    return api.post<WorkOrder>(`/api/workorders/${id}/resume`)
+  },
+
+  close(id: string) {
+    return api.post<WorkOrder>(`/api/workorders/${id}/close`)
+  },
+
+  cancel(id: string) {
+    return api.post<WorkOrder>(`/api/workorders/${id}/cancel`)
   },
 
   attachPmTemplate(id: string, pmTemplateId: string) {

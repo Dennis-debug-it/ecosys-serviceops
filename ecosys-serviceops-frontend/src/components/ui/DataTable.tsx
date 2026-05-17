@@ -27,7 +27,7 @@ export function DataTable<T>({
   minTableWidth?: string
   mobileCard?: (row: T, index: number) => ReactNode
 }) {
-  const safeRows = Array.isArray(rows) ? rows : []
+  const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows])
   const [page, setPage] = useState(1)
   const effectivePageSize = pageSize > 0 ? pageSize : Math.max(safeRows.length, 1)
   const pageCount = Math.max(1, Math.ceil(safeRows.length / effectivePageSize))

@@ -1,8 +1,9 @@
-import { Download, Plus, Search, X } from 'lucide-react'
+import { Download, Paperclip, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useShellContext } from '../../components/layout/AppShell'
 import { BulkImportModal } from '../../components/ui/BulkImportModal'
 import { Badge } from '../../components/ui/Badge'
+import { AttachmentPanel } from '../../components/ui/AttachmentPanel'
 import { DataTable } from '../../components/ui/DataTable'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
@@ -11,15 +12,27 @@ import { useToast } from '../../components/ui/ToastProvider'
 import { MetricCard, MetricGrid, PageScaffold, SearchToolbar, SectionCard, StickyActionFooter } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { ApiError } from '../../lib/api'
+import { assetCategoryService, type AssetCategoryRecord } from '../../services/assetCategoryService'
 import { assetService } from '../../services/assetService'
+import { attachmentService, ATTACHMENT_ENTITY_TYPES } from '../../services/attachmentService'
 import { clientService } from '../../services/clientService'
 import { importService } from '../../services/importService'
-import type { AssetRecord, ClientRecord, UpsertAssetInput } from '../../types/api'
+import { siteService } from '../../services/siteService'
+import type {
+  AssetCustomFieldValueRecord,
+  AssetRecord,
+  AttachmentRecord,
+  ClientRecord,
+  SiteRecord,
+  UpsertAssetCustomFieldValueInput,
+  UpsertAssetInput,
+} from '../../types/api'
 import { formatDateOnly } from '../../utils/date'
 
 type AssetsPayload = {
   assets: AssetRecord[]
   clients: ClientRecord[]
+  categories: AssetCategoryRecord[]
 }
 
 type AssetFieldKey =
@@ -32,13 +45,17 @@ type AssetFieldKey =
   | 'lastPmDate'
   | 'nextPmDate'
   | 'status'
+  | 'assetCategoryId'
 
 type AssetFieldErrors = Partial<Record<AssetFieldKey, string>>
 
-const emptyPayload: AssetsPayload = { assets: [], clients: [] }
+const emptyPayload: AssetsPayload = { assets: [], clients: [], categories: [] }
+
 const emptyForm = (selectedBranchId: string): UpsertAssetInput => ({
   clientId: '',
   branchId: selectedBranchId === 'all' ? null : selectedBranchId,
+  siteId: null,
+  assetCategoryId: null,
   assetName: '',
   assetCode: '',
   assetType: '',
@@ -54,7 +71,15 @@ const emptyForm = (selectedBranchId: string): UpsertAssetInput => ({
   nextPmDate: '',
   notes: '',
   status: 'Active',
+  customFieldValues: [],
 })
+
+function toCustomFieldInputs(values: AssetCustomFieldValueRecord[] | undefined): UpsertAssetCustomFieldValueInput[] {
+  return (values ?? []).map((item) => ({
+    fieldDefinitionId: item.fieldDefinitionId,
+    value: item.value,
+  }))
+}
 
 export function AssetsPage() {
   const { selectedBranchId } = useShellContext()
@@ -62,6 +87,10 @@ export function AssetsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active')
+  const [clientFilterId, setClientFilterId] = useState('')
+  const [siteFilterId, setSiteFilterId] = useState('')
+  const [categoryFilterId, setCategoryFilterId] = useState('')
+  const [filterSites, setFilterSites] = useState<SiteRecord[]>([])
   const [editorOpen, setEditorOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [editing, setEditing] = useState<AssetRecord | null>(null)
@@ -69,6 +98,9 @@ export function AssetsPage() {
   const [saveError, setSaveError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<AssetFieldErrors>({})
   const [saving, setSaving] = useState(false)
+  const [sites, setSites] = useState<SiteRecord[]>([])
+  const [docsAsset, setDocsAsset] = useState<AssetRecord | null>(null)
+  const [assetAttachments, setAssetAttachments] = useState<AttachmentRecord[]>([])
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -79,27 +111,103 @@ export function AssetsPage() {
 
   const { data, loading, error, reload } = useAsyncData<AssetsPayload>(
     async (signal) => {
-      const [assets, clients] = await Promise.all([
-        assetService.list(selectedBranchId, signal, { search: debouncedSearch || undefined, status: statusFilter }),
+      const [assets, clients, categories] = await Promise.all([
+        assetService.list(selectedBranchId, signal, {
+          search: debouncedSearch || undefined,
+          status: statusFilter,
+          clientId: clientFilterId || undefined,
+          siteId: siteFilterId || undefined,
+          categoryId: categoryFilterId || undefined,
+        }),
         clientService.list({ signal, status: 'active' }),
+        assetCategoryService.list(signal),
       ])
-      return { assets, clients }
+      return { assets, clients, categories }
     },
     emptyPayload,
-    [debouncedSearch, selectedBranchId, statusFilter],
+    [debouncedSearch, selectedBranchId, statusFilter, clientFilterId, siteFilterId, categoryFilterId],
   )
 
-  const hasFilters = useMemo(() => Boolean(debouncedSearch) || statusFilter !== 'active', [debouncedSearch, statusFilter])
+  useEffect(() => {
+    if (!clientFilterId) {
+      setFilterSites([])
+      setSiteFilterId('')
+      return
+    }
+
+    let cancelled = false
+    siteService.list(clientFilterId, { status: 'Active' })
+      .then((result) => {
+        if (!cancelled) setFilterSites(result)
+      })
+      .catch(() => {
+        if (!cancelled) setFilterSites([])
+      })
+    return () => { cancelled = true }
+  }, [clientFilterId])
+
+  const hasFilters = useMemo(
+    () => Boolean(debouncedSearch) || statusFilter !== 'active' || Boolean(clientFilterId) || Boolean(siteFilterId) || Boolean(categoryFilterId),
+    [debouncedSearch, statusFilter, clientFilterId, siteFilterId, categoryFilterId],
+  )
   const activeAssetsCount = data.assets.filter((asset) => asset.status === 'Active').length
   const nextPmCount = data.assets.filter((asset) => Boolean(asset.nextPmDate)).length
+
+  const selectedCategory = useMemo(
+    () => data.categories.find((item) => item.id === form.assetCategoryId) ?? null,
+    [data.categories, form.assetCategoryId],
+  )
+
+  useEffect(() => {
+    if (!docsAsset) {
+      setAssetAttachments([])
+      return
+    }
+    let active = true
+    attachmentService.list(ATTACHMENT_ENTITY_TYPES.Asset, docsAsset.id)
+      .then((result) => { if (active) setAssetAttachments(result) })
+      .catch(() => { if (active) setAssetAttachments([]) })
+    return () => { active = false }
+  }, [docsAsset])
+
+  useEffect(() => {
+    if (!form.clientId) {
+      setSites([])
+      return
+    }
+    let cancelled = false
+    siteService.list(form.clientId, { status: 'Active' }).then((result) => {
+      if (!cancelled) setSites(result)
+    }).catch(() => { if (!cancelled) setSites([]) })
+    return () => { cancelled = true }
+  }, [form.clientId])
+
+  function syncCustomFields(categoryId: string | null | undefined, existingValues?: UpsertAssetCustomFieldValueInput[]) {
+    const category = data.categories.find((item) => item.id === categoryId)
+    if (!category) return []
+
+    return category.fields.map((field) => ({
+      fieldDefinitionId: field.id,
+      value: existingValues?.find((item) => item.fieldDefinitionId === field.id)?.value ?? '',
+    }))
+  }
 
   function openEditor(asset?: AssetRecord) {
     setEditing(asset ?? null)
     setSaveError('')
     setFieldErrors({})
+    setSites([])
+
+    const assetCategoryId = asset?.assetCategoryId ?? null
+    const customFieldValues = asset
+      ? syncCustomFields(assetCategoryId, toCustomFieldInputs(asset.customFieldValues))
+      : []
+
     setForm({
       clientId: asset?.clientId ?? '',
       branchId: asset?.branchId ?? (selectedBranchId === 'all' ? null : selectedBranchId),
+      siteId: asset?.siteId ?? null,
+      assetCategoryId,
       assetName: asset?.assetName ?? '',
       assetCode: asset?.assetCode ?? '',
       assetType: asset?.assetType ?? '',
@@ -115,8 +223,18 @@ export function AssetsPage() {
       nextPmDate: asset?.nextPmDate?.slice(0, 10) ?? '',
       notes: asset?.notes ?? '',
       status: asset?.status ?? 'Active',
+      customFieldValues,
     })
     setEditorOpen(true)
+  }
+
+  function updateCustomFieldValue(fieldDefinitionId: string, value: string) {
+    setForm((current) => ({
+      ...current,
+      customFieldValues: (current.customFieldValues ?? []).map((item) =>
+        item.fieldDefinitionId === fieldDefinitionId ? { ...item, value } : item,
+      ),
+    }))
   }
 
   async function saveAsset() {
@@ -165,38 +283,39 @@ export function AssetsPage() {
 
   return (
     <PageScaffold
-        eyebrow="Assets"
-        title="Asset register"
-        description="Manage client assets, service details, and preventive maintenance dates."
-        actions={
-          <>
-            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => assetService.downloadImportTemplate()}>
-              <Download className="h-4 w-4" />
-              Import template
-            </button>
-            <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setImportOpen(true)}>
-              Bulk import
-            </button>
-            <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
-              <Plus className="h-4 w-4" />
-              Add asset
-            </button>
-          </>
-        }
-      >
+      eyebrow="Assets"
+      title="Asset register"
+      description="Manage client assets, categories, service details, and preventive maintenance dates."
+      actions={(
+        <>
+          <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => assetService.downloadImportTemplate()}>
+            <Download className="h-4 w-4" />
+            Import template
+          </button>
+          <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => setImportOpen(true)}>
+            Bulk import
+          </button>
+          <button type="button" className="button-primary w-full sm:w-auto" onClick={() => openEditor()}>
+            <Plus className="h-4 w-4" />
+            Add asset
+          </button>
+        </>
+      )}
+    >
       <MetricGrid className="xl:grid-cols-3">
         <MetricCard label="Assets in view" value={data.assets.length} meta={hasFilters ? 'Filtered asset register' : 'Current branch scope'} emphasis="accent" />
         <MetricCard label="Active assets" value={activeAssetsCount} meta={`${data.assets.length - activeAssetsCount} inactive`} />
         <MetricCard label="PM scheduled" value={nextPmCount} meta="Assets with next PM date" />
       </MetricGrid>
 
-      <SectionCard title="Asset list" description="Keep serviceable equipment aligned to the correct client, location, and PM schedule.">
+      <SectionCard title="Asset list" description="Keep serviceable equipment aligned to the correct client, site, category, and PM schedule.">
         <div className="space-y-4">
           <SearchToolbar
             searchSlot={(
               <label className="panel-subtle flex items-center gap-3 rounded-2xl px-4 py-3">
                 <Search className="h-4 w-4 text-muted" />
                 <input
+                  data-testid="asset-search-input"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
@@ -204,11 +323,33 @@ export function AssetsPage() {
                 />
               </label>
             )}
-            filters={<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field-input">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="all">All</option>
-            </select>}
+            filters={(
+              <>
+                <select data-testid="asset-client-filter" value={clientFilterId} onChange={(event) => setClientFilterId(event.target.value)} className="field-input">
+                  <option value="">All clients</option>
+                  {data.clients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.clientName}</option>
+                  ))}
+                </select>
+                <select data-testid="asset-site-filter" value={siteFilterId} onChange={(event) => setSiteFilterId(event.target.value)} className="field-input" disabled={!clientFilterId}>
+                  <option value="">{clientFilterId ? 'All sites' : 'Select client first'}</option>
+                  {filterSites.map((site) => (
+                    <option key={site.id} value={site.id}>{site.siteName}</option>
+                  ))}
+                </select>
+                <select data-testid="asset-category-filter" value={categoryFilterId} onChange={(event) => setCategoryFilterId(event.target.value)} className="field-input">
+                  <option value="">All categories</option>
+                  {data.categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+                <select data-testid="asset-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field-input">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="all">All</option>
+                </select>
+              </>
+            )}
             actions={(
               <button
                 type="button"
@@ -217,6 +358,9 @@ export function AssetsPage() {
                   setSearchInput('')
                   setDebouncedSearch('')
                   setStatusFilter('active')
+                  setClientFilterId('')
+                  setSiteFilterId('')
+                  setCategoryFilterId('')
                 }}
                 disabled={!hasFilters}
               >
@@ -230,62 +374,112 @@ export function AssetsPage() {
           {!loading && error ? <ErrorState title="Unable to load assets" description={error} /> : null}
           {!loading && !error ? (
             <DataTable
-            rows={data.assets}
-            rowKey={(row) => row.id}
-            pageSize={10}
-            emptyTitle="No assets found"
-            emptyDescription={hasFilters ? 'Try clearing search or changing status filters.' : 'Create an asset or import your asset list to get started.'}
-            mobileCard={(row) => (
-              <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-app">{row.assetName}</p>
-                    <p className="mt-1 text-xs text-muted">{row.assetCode}</p>
+              rows={data.assets}
+              rowKey={(row) => row.id}
+              pageSize={10}
+              emptyTitle="No assets found"
+              emptyDescription={hasFilters ? 'Try clearing search or changing filters.' : 'Create an asset or import your asset list to get started.'}
+              mobileCard={(row) => (
+                <div className="space-y-3 rounded-[24px] border border-app bg-subtle p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-app">{row.assetName}</p>
+                      <p className="mt-1 text-xs text-muted">{row.assetCode}</p>
+                    </div>
+                    <Badge tone={row.status === 'Active' ? 'success' : 'warning'}>{row.status}</Badge>
                   </div>
-                  <Badge tone={row.status === 'Active' ? 'success' : 'warning'}>{row.status}</Badge>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Detail label="Client" value={row.clientName || 'Not linked'} />
-                  <Detail label="Branch" value={row.branchName || 'Global'} />
-                  <Detail label="Type" value={row.assetType || 'Not set'} />
-                  <Detail label="Next PM" value={formatDateOnly(row.nextPmDate || undefined)} />
-                </div>
-                <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openEditor(row)}>Edit asset</button>
-              </div>
-            )}
-            columns={[
-              {
-                key: 'asset',
-                header: 'Asset',
-                cell: (row) => (
-                  <div className={row.status === 'Inactive' ? 'opacity-70' : ''}>
-                    <p className="font-semibold text-app">{row.assetName}</p>
-                    <p className="mt-1 text-xs text-muted">{row.assetCode}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Detail label="Client" value={row.clientName || 'Not linked'} />
+                    <Detail label="Site" value={row.siteName || 'Not linked'} />
+                    <Detail label="Category" value={row.assetCategoryName || 'Not set'} />
+                    <Detail label="Next PM" value={formatDateOnly(row.nextPmDate || undefined)} />
                   </div>
-                ),
-              },
-              { key: 'client', header: 'Client', cell: (row) => <span>{row.clientName || 'Not linked'}</span> },
-              { key: 'branch', header: 'Branch', cell: (row) => <span>{row.branchName || 'Global'}</span> },
-              { key: 'type', header: 'Type', cell: (row) => <span>{row.assetType || 'Not set'}</span> },
-              { key: 'status', header: 'Status', cell: (row) => <Badge tone={row.status === 'Active' ? 'success' : 'warning'}>{row.status}</Badge> },
-              { key: 'pm', header: 'Next PM', cell: (row) => <span>{formatDateOnly(row.nextPmDate || undefined)}</span> },
-              { key: 'actions', header: 'Actions', cell: (row) => <button type="button" className="button-secondary px-3 py-2" onClick={() => openEditor(row)}>Edit</button> },
-            ]}
+                  <button type="button" className="button-secondary w-full sm:w-auto" onClick={() => openEditor(row)}>Edit asset</button>
+                </div>
+              )}
+              columns={[
+                {
+                  key: 'asset',
+                  header: 'Asset',
+                  cell: (row) => (
+                    <div className={row.status === 'Inactive' ? 'opacity-70' : ''}>
+                      <p className="font-semibold text-app">{row.assetName}</p>
+                      <p className="mt-1 text-xs text-muted">{row.assetCode}</p>
+                    </div>
+                  ),
+                },
+                { key: 'client', header: 'Client', cell: (row) => <span>{row.clientName || 'Not linked'}</span> },
+                { key: 'site', header: 'Site', cell: (row) => <span>{row.siteName || '-'}</span> },
+                { key: 'category', header: 'Category', cell: (row) => <span>{row.assetCategoryName || '-'}</span> },
+                { key: 'type', header: 'Type', cell: (row) => <span>{row.assetType || 'Not set'}</span> },
+                { key: 'status', header: 'Status', cell: (row) => <Badge tone={row.status === 'Active' ? 'success' : 'warning'}>{row.status}</Badge> },
+                { key: 'pm', header: 'Next PM', cell: (row) => <span>{formatDateOnly(row.nextPmDate || undefined)}</span> },
+                {
+                  key: 'actions',
+                  header: 'Actions',
+                  cell: (row) => (
+                    <div className="flex gap-2">
+                      <button type="button" className="button-secondary px-3 py-2" onClick={() => openEditor(row)}>Edit</button>
+                      <button type="button" className="button-secondary px-3 py-2" title="Documents" onClick={() => setDocsAsset(row)} data-testid={`asset-docs-btn-${row.id}`}>
+                        <Paperclip className="size-4" />
+                      </button>
+                    </div>
+                  ),
+                },
+              ]}
             />
           ) : null}
         </div>
       </SectionCard>
 
-      <Modal open={editorOpen} title={editing ? 'Edit asset' : 'Add asset'} description="Capture the asset details needed for service and maintenance." onClose={() => setEditorOpen(false)} maxWidth="max-w-4xl">
+      <Modal open={editorOpen} title={editing ? 'Edit asset' : 'Add asset'} description="Capture the asset details needed for service, category-specific data, and maintenance." onClose={() => setEditorOpen(false)} maxWidth="max-w-5xl">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Client">
-            <select value={form.clientId} onChange={(event) => setForm((current) => ({ ...current, clientId: event.target.value }))} className="field-input">
+            <select
+              value={form.clientId}
+              onChange={(event) => setForm((current) => ({ ...current, clientId: event.target.value, siteId: null }))}
+              className="field-input"
+            >
               <option value="">Select client</option>
               {data.clients.map((client) => (
                 <option key={client.id} value={client.id}>{client.clientName}</option>
               ))}
             </select>
             {fieldErrors.clientId ? <FieldError message={fieldErrors.clientId} /> : null}
+          </Field>
+          <Field label="Site (optional)">
+            <select
+              value={form.siteId ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, siteId: event.target.value || null }))}
+              className="field-input"
+              disabled={!form.clientId}
+            >
+              <option value="">{form.clientId ? 'No site selected' : 'Select a client first'}</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>{site.siteName}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Asset category">
+            <select
+              data-testid="asset-category-select"
+              value={form.assetCategoryId ?? ''}
+              onChange={(event) => {
+                const nextCategoryId = event.target.value || null
+                setForm((current) => ({
+                  ...current,
+                  assetCategoryId: nextCategoryId,
+                  customFieldValues: syncCustomFields(nextCategoryId, current.customFieldValues),
+                }))
+              }}
+              className="field-input"
+            >
+              <option value="">No category selected</option>
+              {data.categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+            {fieldErrors.assetCategoryId ? <FieldError message={fieldErrors.assetCategoryId} /> : null}
           </Field>
           <Field label="Asset name">
             <input value={form.assetName} onChange={(event) => setForm((current) => ({ ...current, assetName: event.target.value }))} className="field-input" />
@@ -317,6 +511,30 @@ export function AssetsPage() {
             {fieldErrors.nextPmDate ? <FieldError message={fieldErrors.nextPmDate} /> : null}
           </Field>
         </div>
+
+        {selectedCategory ? (
+          <div className="mt-5 space-y-3 rounded-[24px] border border-app bg-subtle p-4" data-testid="asset-custom-fields-panel">
+            <div>
+              <p className="text-sm font-semibold text-app">Category-specific fields</p>
+              <p className="mt-1 text-sm text-muted">Capture the structured data defined for {selectedCategory.name}.</p>
+            </div>
+            {selectedCategory.fields.length === 0 ? (
+              <p className="text-sm text-muted">This category has no custom fields yet.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {selectedCategory.fields.map((field) => {
+                  const currentValue = form.customFieldValues?.find((item) => item.fieldDefinitionId === field.id)?.value ?? ''
+                  return (
+                    <Field key={field.id} label={`${field.fieldLabel}${field.isRequired ? ' *' : ''}`}>
+                      {renderCustomFieldInput(field, currentValue, (value) => updateCustomFieldValue(field.id, value))}
+                    </Field>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ) : null}
+
         <label className="panel-subtle mt-4 flex items-center justify-between rounded-2xl px-4 py-3">
           <span className="text-sm text-app">Auto-schedule preventive maintenance</span>
           <input type="checkbox" checked={form.autoSchedulePm} onChange={(event) => setForm((current) => ({ ...current, autoSchedulePm: event.target.checked }))} />
@@ -325,9 +543,7 @@ export function AssetsPage() {
         {saveError ? <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{saveError}</div> : null}
         <StickyActionFooter className="mt-6">
           <button type="button" className="button-secondary" onClick={() => setEditorOpen(false)} disabled={saving}>Cancel</button>
-          <button type="button" className="button-primary" onClick={() => void saveAsset()} disabled={saving}>{
-            saving ? 'Saving asset...' : 'Save asset'
-          }</button>
+          <button type="button" className="button-primary" onClick={() => void saveAsset()} disabled={saving}>{saving ? 'Saving asset...' : 'Save asset'}</button>
         </StickyActionFooter>
       </Modal>
 
@@ -347,7 +563,76 @@ export function AssetsPage() {
           await reload()
         }}
       />
+      <Modal
+        open={Boolean(docsAsset)}
+        title={`Documents - ${docsAsset?.assetName ?? ''}`}
+        description="Upload and manage files attached to this asset."
+        onClose={() => setDocsAsset(null)}
+        maxWidth="max-w-2xl"
+      >
+        {docsAsset ? (
+          <AttachmentPanel
+            entityType={ATTACHMENT_ENTITY_TYPES.Asset}
+            entityId={docsAsset.id}
+            attachments={assetAttachments}
+            onUploaded={(a) => setAssetAttachments((prev) => [...prev, a])}
+            onDeleted={(id) => setAssetAttachments((prev) => prev.filter((a) => a.id !== id))}
+          />
+        ) : null}
+      </Modal>
     </PageScaffold>
+  )
+}
+
+function renderCustomFieldInput(
+  field: AssetCategoryRecord['fields'][number],
+  value: string,
+  onChange: (value: string) => void,
+) {
+  if (field.fieldType === 'Dropdown') {
+    const options = (field.dropdownOptions ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    return (
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="field-input">
+        <option value="">Select option</option>
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    )
+  }
+
+  if (field.fieldType === 'Boolean') {
+    return (
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="field-input">
+        <option value="">Select</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    )
+  }
+
+  if (field.fieldType === 'Date') {
+    return <input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="field-input" />
+  }
+
+  if (field.fieldType === 'TextArea') {
+    return <textarea value={value} onChange={(event) => onChange(event.target.value)} className="field-input min-h-[110px]" />
+  }
+
+  return (
+    <div className="space-y-1">
+      <input
+        type={field.fieldType === 'Number' ? 'number' : 'text'}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="field-input"
+      />
+      {field.unit ? <p className="text-xs text-muted">Unit: {field.unit}</p> : null}
+    </div>
   )
 }
 
@@ -391,6 +676,7 @@ function extractAssetErrors(error: unknown): { formError: string; fieldErrors: A
 
     const normalizedKey = key.toLowerCase()
     if (normalizedKey.includes('clientid')) fieldErrors.clientId = firstMessage
+    else if (normalizedKey.includes('assetcategoryid')) fieldErrors.assetCategoryId = firstMessage
     else if (normalizedKey.includes('assetname')) fieldErrors.assetName = firstMessage
     else if (normalizedKey.includes('assetcode')) fieldErrors.assetCode = firstMessage
     else if (normalizedKey.includes('assettype')) fieldErrors.assetType = firstMessage

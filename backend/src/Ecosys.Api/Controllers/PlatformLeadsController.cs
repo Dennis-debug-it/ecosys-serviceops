@@ -291,17 +291,17 @@ public sealed class PlatformLeadsController(
 }
 
 public sealed record CreatePlatformLeadRequest(
-    [property: Required] string CompanyName,
-    [property: Required] string ContactPersonName,
-    [property: Required, EmailAddress] string Email,
-    [property: Required] string Phone,
+    [Required] string CompanyName,
+    [Required] string ContactPersonName,
+    [Required, EmailAddress] string Email,
+    [Required] string Phone,
     string? Country,
     string? Industry,
     string? CompanySize,
     string? Message,
     string? PreferredContactMethod);
 
-public sealed record UpdatePlatformLeadStatusRequest([property: Required] string Status);
+public sealed record UpdatePlatformLeadStatusRequest([Required] string Status);
 public sealed record UpdatePlatformLeadNotesRequest(string? Notes);
 
 public sealed record PublicLeadSubmissionResponse(bool Success, string Message);

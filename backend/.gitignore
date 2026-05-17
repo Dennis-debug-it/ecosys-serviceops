@@ -353,6 +353,10 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 
+# Ecosys: local storage uploads and dotnet tooling
+storage/uploads/
+.dotnet/
+
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
 

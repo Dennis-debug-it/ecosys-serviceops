@@ -102,7 +102,7 @@ export function SignupPage() {
 
           <section className="p-2 lg:p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Get Started</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-app">{title}</h2>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-app">{title}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{subtitle}</p>
 
             {successMessage ? (

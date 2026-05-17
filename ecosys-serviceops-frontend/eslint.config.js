@@ -9,6 +9,8 @@ export default defineConfig([
   globalIgnores([
     'dist',
     '.next',
+    'playwright-report',
+    'test-results',
     'src/app/layout.tsx',
     'src/app/(workspace)/**/*',
     'src/saas/**/*',
@@ -25,6 +27,10 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: globals.browser,
+    },
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

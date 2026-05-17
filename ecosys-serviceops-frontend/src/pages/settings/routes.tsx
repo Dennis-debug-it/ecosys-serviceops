@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import {
   Bell,
+  Boxes,
   Building2,
   FileDigit,
   History,
@@ -22,8 +23,10 @@ import {
   MonitoringToolIntakeSettingsPage,
   NumberingRulesAdminPage,
 } from '../../modules/settings/AdminSettingsPages'
+import { AssetCategoriesSettingsPage } from '../../modules/settings/AssetCategoriesSettingsPage'
 import { IntakeProtocolsPage } from '../../modules/settings/intake/IntakeProtocolsPage'
 import { SettingsUsersPage } from '../../modules/settings/UsersPage'
+import { SLAManagementPage } from '../../modules/sla/SLAManagementPage'
 import {
   AuditLogsSettingsPage,
   CompanyProfileSettingsPage,
@@ -65,6 +68,8 @@ export const settingsSections: SettingsSection[] = [
   section('users', 'Users & Roles', 'Users', 'User accounts, roles, and tenant permission controls.', Users),
   section('assignment-groups', 'Assignment Groups', 'Groups', 'Dispatch groups, members, and routing defaults.', Users),
   section('branches', 'Branches / Outlets', 'Branches', 'Branch structure, outlet details, and activation.', Workflow),
+  section('asset-categories', 'Asset Categories', 'Categories', 'Define asset categories and custom field schemas.', Boxes),
+  section('sla-plans', 'SLA Plans', 'SLA', 'Configure response and resolution targets by priority.', Workflow),
   section('numbering-rules', 'Numbering Rules', 'Numbers', 'Prefixes, counters, and document numbering behavior.', FileDigit),
   section('email-notifications', 'Email Notifications', 'Email', 'SMTP and outbound notification sender settings.', Mail),
   section('email-templates', 'Email Templates', 'Templates', 'Edit tenant override templates for invites, onboarding, and operational emails.', Mail),
@@ -82,6 +87,8 @@ export const settingsPageRoutes: SettingsRouteDefinition[] = [
   { path: 'users', element: <SettingsUsersPage /> },
   { path: 'assignment-groups', element: <SettingsUsersPage /> },
   { path: 'branches', element: <SettingsBranchesPage /> },
+  { path: 'asset-categories', element: <AssetCategoriesSettingsPage /> },
+  { path: 'sla-plans', element: <SLAManagementPage /> },
   { path: 'numbering-rules', element: <NumberingRulesAdminPage /> },
   { path: 'email-notifications', element: <EmailNotificationsSettingsPage /> },
   { path: 'email-templates', element: <EmailTemplatesSettingsPage /> },
@@ -99,7 +106,7 @@ export const settingsLegacyRedirects: Array<{ from: string; to: string }> = [
   { from: 'roles-permissions', to: 'users' },
   { from: 'permissions', to: 'users' },
   { from: 'branches-outlets', to: 'branches' },
-  { from: 'sla-contracts', to: 'company-profile' },
+  { from: 'sla-contracts', to: 'sla-plans' },
   { from: 'email-settings', to: 'email-notifications' },
   { from: 'monitoring-tool-intake', to: 'monitoring-intake' },
   { from: 'security', to: 'password-rules' },

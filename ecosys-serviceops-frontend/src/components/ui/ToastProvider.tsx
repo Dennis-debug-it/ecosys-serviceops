@@ -8,7 +8,7 @@ type ToastTone = 'success' | 'info' | 'warning' | 'danger'
 type Toast = {
   id: string
   title: string
-  description: string
+  description?: string
   tone: ToastTone
 }
 
@@ -53,7 +53,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-app">{toast.title}</p>
-                <p className="mt-1 text-sm text-muted">{toast.description}</p>
+                {toast.description ? <p className="mt-1 text-sm text-muted">{toast.description}</p> : null}
               </div>
               <button type="button" className="icon-button h-8 w-8" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}>
                 <X className="h-4 w-4" />

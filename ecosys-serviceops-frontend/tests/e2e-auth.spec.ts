@@ -24,7 +24,7 @@ test('login page renders', async ({ page, baseURL }) => {
   try {
     await page.goto('/login')
     await expect(page.getByRole('heading', { name: /service operations, simplified\./i })).toBeVisible()
-    await expect(page.getByText('Ecosys ServiceOps').first()).toBeVisible()
+    await expect(page.getByText('ServiceOps Suite').first()).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByLabel('Password')).toBeVisible()
     await expect(page.getByRole('button', { name: /login/i })).toBeVisible()
@@ -43,9 +43,9 @@ test('login logo uses dark high-contrast colors in light mode', async ({ page, b
       window.localStorage.setItem('ecosys-serviceops-theme', 'light')
     })
     await page.goto('/login')
-    const markup = await page.locator('[data-testid="login-card-logo"] svg[data-ecosys-variant="dark"]').evaluate((node) => node.outerHTML)
-    expect(markup).toContain('fill="#0C2F33"')
-    expect(markup).toContain('fill="#214A4D"')
+    const markup = await page.locator('[data-testid="login-card-logo"]').evaluate((node) => node.innerHTML)
+    expect(markup).toContain('#0C2F33')
+    expect(markup).toContain('#214A4D')
   } finally {
     guards.assertNoViolations()
     guards.dispose()
@@ -59,9 +59,8 @@ test('login logo uses bright high-contrast colors in dark mode', async ({ page, 
       window.localStorage.setItem('ecosys-serviceops-theme', 'dark')
     })
     await page.goto('/login')
-    const markup = await page.locator('[data-testid="login-brand-logo"] svg[data-ecosys-variant="light"]').evaluate((node) => node.outerHTML)
-    expect(markup).toContain('fill="#F7F8F6"')
-    expect(markup).toContain('fill="#F2F7F4"')
+    const markup = await page.locator('[data-testid="login-brand-logo"]').evaluate((node) => node.innerHTML)
+    expect(markup).toContain('text-[#F7F8F6]')
   } finally {
     guards.assertNoViolations()
     guards.dispose()

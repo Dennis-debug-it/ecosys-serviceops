@@ -19,22 +19,21 @@ export function InventoryPage() {
   const [adjustingId, setAdjustingId] = useState<string | null>(null)
   const [form, setForm] = useState({ name: '', sku: '', branchId: '', store: '', quantity: 0, reorderLevel: 0, unit: 'pcs' })
   const [adjustment, setAdjustment] = useState(0)
+  const items = useMemo(
+    () =>
+      (data?.inventoryItems ?? [])
+        .map((item) => ({ ...item, alert: deriveAlert(item.quantity, item.reorderLevel) }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [data?.inventoryItems],
+  )
+  const requisitions = useMemo(
+    () => [...(data?.requisitions ?? [])].sort((left, right) => right.requestedAt.localeCompare(left.requestedAt)),
+    [data?.requisitions],
+  )
 
   if (!data) {
     return <EmptyState title="No inventory" description="Tenant data is unavailable." actionLabel="Refresh" />
   }
-
-  const items = useMemo(
-    () =>
-      data.inventoryItems
-        .map((item) => ({ ...item, alert: deriveAlert(item.quantity, item.reorderLevel) }))
-        .sort((left, right) => left.name.localeCompare(right.name)),
-    [data.inventoryItems],
-  )
-  const requisitions = useMemo(
-    () => [...data.requisitions].sort((left, right) => right.requestedAt.localeCompare(left.requestedAt)),
-    [data.requisitions],
-  )
 
   const openEditor = (itemId?: string) => {
     const item = itemId ? data.inventoryItems.find((entry) => entry.id === itemId) : undefined

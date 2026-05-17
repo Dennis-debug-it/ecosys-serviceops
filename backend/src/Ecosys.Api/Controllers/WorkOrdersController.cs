@@ -23,12 +23,14 @@ public sealed class WorkOrdersController(
     ILicenseGuardService licenseGuardService,
     IWorkOrderLifecycleService workOrderLifecycleService,
     IWorkOrderAssignmentWorkflowService assignmentWorkflowService,
-    IPmWorkOrderChecklistService pmWorkOrderChecklistService) : TenantAwareControllerBase(tenantContext)
+    IPmWorkOrderChecklistService pmWorkOrderChecklistService,
+    ISlaService slaService) : TenantAwareControllerBase(tenantContext)
 {
     private static readonly HashSet<string> EditableStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
         "Open",
         "In Progress",
+        "Paused",
         "Awaiting Parts",
         "Awaiting Client",
         "Cancelled"
@@ -184,11 +186,21 @@ public sealed class WorkOrdersController(
         var branchId = await ResolveWorkOrderBranchIdAsync(request.BranchId, asset?.BranchId, cancellationToken);
 
         var normalizedAssignmentType = NormalizeAssignmentType(request.AssignmentType, request.AssignmentGroupId, request.AssignedTechnicianId, request.AssignedTechnicianIds);
+        string? siteAccessNotes = null;
+        if (request.SiteId.HasValue)
+        {
+            siteAccessNotes = await dbContext.Sites
+                .Where(x => x.TenantId == TenantId && x.Id == request.SiteId.Value)
+                .Select(x => x.AccessNotes)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         var workOrder = new WorkOrder
         {
             TenantId = TenantId,
             BranchId = branchId,
             ClientId = request.ClientId,
+            SiteId = request.SiteId,
             AssetId = request.AssetId,
             AssignmentGroupId = normalizedAssignmentType == AssignmentTypes.AssignmentGroup ? request.AssignmentGroupId : null,
             AssignmentType = normalizedAssignmentType,
@@ -202,8 +214,11 @@ public sealed class WorkOrdersController(
             LeadTechnicianId = request.LeadTechnicianId,
             AssignedTechnicianIdsJson = SerializeAssignedTechnicianIds(request.AssignedTechnicianIds),
             IsPreventiveMaintenance = request.IsPreventiveMaintenance,
-            PmTemplateId = request.PmTemplateId
+            PmTemplateId = request.PmTemplateId,
+            JobCardNotes = !string.IsNullOrWhiteSpace(siteAccessNotes) ? siteAccessNotes : null
         };
+
+        await slaService.ApplyDefinitionAsync(workOrder, cancellationToken);
 
         dbContext.WorkOrders.Add(workOrder);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -253,7 +268,7 @@ public sealed class WorkOrdersController(
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Work order was not found.");
 
-        ValidateCreate(new CreateWorkOrderRequest(request.ClientId, request.BranchId, request.AssetId, request.AssignmentGroupId, request.AssignmentType, request.AssignedTechnicianId, request.AssignedTechnicianIds, request.LeadTechnicianId, request.AssignmentNotes, request.Title, request.Description, request.Priority, request.DueDate, workOrder.IsPreventiveMaintenance, request.PmTemplateId));
+        ValidateCreate(new CreateWorkOrderRequest(request.ClientId, request.BranchId, request.SiteId, request.AssetId, request.AssignmentGroupId, request.AssignmentType, request.AssignedTechnicianId, request.AssignedTechnicianIds, request.LeadTechnicianId, request.AssignmentNotes, request.Title, request.Description, request.Priority, request.DueDate, workOrder.IsPreventiveMaintenance, request.PmTemplateId));
         await EnsureClientExistsAsync(request.ClientId, cancellationToken);
         var asset = await EnsureAssetExistsAsync(request.AssetId, request.ClientId, cancellationToken);
         await EnsurePmTemplateIsValidAsync(workOrder.IsPreventiveMaintenance, request.PmTemplateId, cancellationToken);
@@ -271,6 +286,7 @@ public sealed class WorkOrdersController(
 
         workOrder.BranchId = branchId;
         workOrder.ClientId = request.ClientId;
+        workOrder.SiteId = request.SiteId;
         workOrder.AssetId = request.AssetId;
         var normalizedUpdateAssignmentType = NormalizeAssignmentType(request.AssignmentType, request.AssignmentGroupId, request.AssignedTechnicianId, request.AssignedTechnicianIds);
         workOrder.AssignmentType = normalizedUpdateAssignmentType;
@@ -283,6 +299,7 @@ public sealed class WorkOrdersController(
         workOrder.Priority = NormalizePriority(request.Priority);
         workOrder.DueDate = request.DueDate;
         workOrder.PmTemplateId = workOrder.IsPreventiveMaintenance ? request.PmTemplateId : null;
+        await slaService.ApplyDefinitionAsync(workOrder, cancellationToken);
 
         await assignmentWorkflowService.ApplyAssignmentsAsync(
             TenantId,
@@ -466,6 +483,21 @@ public sealed class WorkOrdersController(
             await pmWorkOrderChecklistService.EnsureRequiredChecklistCompletedAsync(workOrder.Id, TenantId, cancellationToken);
         }
 
+        var signatureTypes = await dbContext.WorkOrderSignatures
+            .Where(x => x.TenantId == TenantId && x.WorkOrderId == workOrder.Id)
+            .Select(x => x.SignatureType)
+            .ToListAsync(cancellationToken);
+
+        if (!signatureTypes.Contains("Technician", StringComparer.OrdinalIgnoreCase))
+        {
+            throw new BusinessRuleException("Capture the technician signature before completing the work order.");
+        }
+
+        if (!signatureTypes.Contains("Client", StringComparer.OrdinalIgnoreCase))
+        {
+            throw new BusinessRuleException("Capture the client signature before completing the work order.");
+        }
+
         await workOrderLifecycleService.CompleteAsync(
             TenantId,
             workOrder.Id,
@@ -528,10 +560,86 @@ public sealed class WorkOrdersController(
         return Ok(Map(persisted));
     }
 
+    [HttpGet("{id:guid}/job-card")]
+    public async Task<IActionResult> GetJobCard(Guid id, CancellationToken cancellationToken)
+    {
+        userAccessService.EnsureAdminOrPermission(PermissionNames.CanViewWorkOrders);
+        var scope = await branchAccessService.GetQueryScopeAsync(TenantId, null, cancellationToken);
+
+        var wo = await QueryWorkOrders(scope)
+            .Include(x => x.Site)
+            .Include(x => x.ChecklistItems)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NotFoundException("Work order was not found.");
+
+        var tenantSetting = await dbContext.EmailSettings
+            .Where(x => x.TenantId == TenantId)
+            .Select(x => new { x.SenderName })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return Ok(new
+        {
+            wo.Id,
+            wo.WorkOrderNumber,
+            wo.Title,
+            wo.Description,
+            wo.Priority,
+            wo.Status,
+            wo.ServiceType,
+            wo.DueDate,
+            wo.JobCardNotes,
+            wo.IsPreventiveMaintenance,
+            wo.ArrivalAt,
+            wo.DepartureAt,
+            Client = new { wo.Client?.ClientName, wo.Client?.ContactPerson, wo.Client?.Phone },
+            Site = wo.Site == null ? null : new
+            {
+                wo.Site.SiteName,
+                wo.Site.SiteCode,
+                wo.Site.StreetAddress,
+                wo.Site.TownCity,
+                wo.Site.County,
+                wo.Site.ContactPerson,
+                wo.Site.ContactPhone,
+                wo.Site.AccessNotes,
+                wo.Site.OperatingHours
+            },
+            Asset = wo.Asset == null ? null : new
+            {
+                wo.Asset.AssetName,
+                wo.Asset.AssetCode,
+                wo.Asset.AssetType,
+                wo.Asset.SerialNumber,
+                wo.Asset.Manufacturer,
+                wo.Asset.Model,
+                wo.Asset.Location
+            },
+            AssignedTechnician = wo.AssignedTechnician == null ? null : new
+            {
+                wo.AssignedTechnician.FullName,
+                wo.AssignedTechnician.Phone,
+                wo.AssignedTechnician.Email
+            },
+            Checklist = wo.ChecklistItems
+                .OrderBy(x => x.SortOrder)
+                .Select(c => new
+                {
+                    c.SectionName,
+                    c.QuestionText,
+                    c.InputType,
+                    c.IsRequired,
+                    c.ResponseValue,
+                    c.IsCompleted
+                }),
+            CompanyName = tenantSetting?.SenderName
+        });
+    }
+
     private IQueryable<WorkOrder> QueryWorkOrders(BranchQueryScope scope) =>
         dbContext.WorkOrders
             .Include(x => x.Client)
             .Include(x => x.Asset)
+            .Include(x => x.Site)
             .Include(x => x.AssignedTechnician)
             .Include(x => x.LeadTechnician)
             .Include(x => x.AssignmentGroup)
@@ -647,7 +755,7 @@ public sealed class WorkOrdersController(
             "Awaiting User" => "Awaiting Client",
             "Acknowledged" => "Closed",
             "Assigned" => "Open",
-            "Open" or "In Progress" or "Awaiting Parts" or "Awaiting Client" or "Completed" or "Closed" or "Cancelled" => value,
+            "Open" or "In Progress" or "Paused" or "Awaiting Parts" or "Awaiting Client" or "Completed" or "Closed" or "Cancelled" => value,
             _ => throw new BusinessRuleException("Invalid work order status.")
         };
     }
@@ -800,6 +908,8 @@ public sealed class WorkOrdersController(
             workOrder.Branch?.Name,
             workOrder.ClientId,
             workOrder.Client?.ClientName,
+            workOrder.SiteId,
+            workOrder.Site?.SiteName,
             workOrder.AssetId,
             workOrder.Asset?.AssetName,
             workOrder.AssignmentGroupId,
@@ -809,6 +919,7 @@ public sealed class WorkOrdersController(
             workOrder.Description,
             workOrder.Priority,
             NormalizeStatus(workOrder.Status),
+            ResolveSlaStatus(workOrder),
             workOrder.AssignmentType,
             workOrder.AssignedTechnicianId,
             workOrder.AssignedTechnician?.FullName,
@@ -822,6 +933,13 @@ public sealed class WorkOrdersController(
             workOrder.DepartureAt,
             workOrder.CompletedAt,
             workOrder.WorkDoneNotes,
+            workOrder.JobCardNotes,
+            workOrder.SlaResponseDeadline,
+            workOrder.SlaResolutionDeadline,
+            workOrder.SlaResponseBreached,
+            workOrder.SlaResolutionBreached,
+            workOrder.SlaResponseBreachedAt,
+            workOrder.SlaResolutionBreachedAt,
             workOrder.AcknowledgedByName,
             workOrder.AcknowledgementComments,
             workOrder.AcknowledgementDate,
@@ -855,6 +973,26 @@ public sealed class WorkOrdersController(
                 .ToList());
     }
 
+    private static string ResolveSlaStatus(WorkOrder workOrder)
+    {
+        if (workOrder.SlaResolutionBreached)
+        {
+            return "Resolution Breached";
+        }
+
+        if (workOrder.SlaResponseBreached)
+        {
+            return "Response Breached";
+        }
+
+        if (workOrder.SlaResolutionDeadline.HasValue)
+        {
+            return "On Track";
+        }
+
+        return "Not Configured";
+    }
+
     private async Task EnsurePmTemplateIsValidAsync(bool isPreventiveMaintenance, Guid? pmTemplateId, CancellationToken cancellationToken)
     {
         if (!isPreventiveMaintenance || !pmTemplateId.HasValue)
@@ -886,6 +1024,7 @@ public sealed class WorkOrdersController(
 public sealed record CreateWorkOrderRequest(
     Guid ClientId,
     Guid? BranchId,
+    Guid? SiteId,
     Guid? AssetId,
     Guid? AssignmentGroupId,
     string? AssignmentType,
@@ -903,6 +1042,7 @@ public sealed record CreateWorkOrderRequest(
 public sealed record UpdateWorkOrderRequest(
     Guid ClientId,
     Guid? BranchId,
+    Guid? SiteId,
     Guid? AssetId,
     Guid? AssignmentGroupId,
     string? AssignmentType,
@@ -933,6 +1073,8 @@ public sealed record WorkOrderResponse(
     string? BranchName,
     Guid ClientId,
     string? ClientName,
+    Guid? SiteId,
+    string? SiteName,
     Guid? AssetId,
     string? AssetName,
     Guid? AssignmentGroupId,
@@ -942,6 +1084,7 @@ public sealed record WorkOrderResponse(
     string? Description,
     string Priority,
     string Status,
+    string SlaStatus,
     string AssignmentType,
     Guid? AssignedTechnicianId,
     string? AssignedTechnicianName,
@@ -955,6 +1098,13 @@ public sealed record WorkOrderResponse(
     DateTime? DepartureAt,
     DateTime? CompletedAt,
     string? WorkDoneNotes,
+    string? JobCardNotes,
+    DateTime? SlaResponseDeadline,
+    DateTime? SlaResolutionDeadline,
+    bool SlaResponseBreached,
+    bool SlaResolutionBreached,
+    DateTime? SlaResponseBreachedAt,
+    DateTime? SlaResolutionBreachedAt,
     string? AcknowledgedByName,
     string? AcknowledgementComments,
     DateTime? AcknowledgementDate,

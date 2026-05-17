@@ -1,7 +1,12 @@
 import { ArrowLeft, CheckCircle2, ClipboardCheck, MessageSquarePlus, PackagePlus, Play, Square } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { AttachmentPanel } from '../../components/ui/AttachmentPanel'
+import { attachmentService, ATTACHMENT_ENTITY_TYPES } from '../../services/attachmentService'
+import type { AttachmentRecord } from '../../types/api'
 import { useAuth } from '../../auth/AuthContext'
+import { KipButton } from '../../components/kip/KipButton'
+import { KipPanel } from '../../components/kip/KipPanel'
 import { Badge } from '../../components/ui/Badge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
@@ -10,19 +15,22 @@ import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/ToastProvider'
 import { MetricCard, MetricGrid, PageScaffold, PageTabs, SectionCard, StickyActionFooter } from '../../components/ui/Workspace'
 import { useAsyncData } from '../../hooks/useAsyncData'
+import { knowledgeService } from '../../services/knowledgeService'
 import { materialService } from '../../services/materialService'
 import { pmTemplateService } from '../../services/pmTemplateService'
 import { settingsService } from '../../services/settingsService'
 import { technicianService } from '../../services/technicianService'
 import { workOrderService } from '../../services/workOrderService'
-import type { AssignmentGroupRecord, MaterialItem, MaterialRequestRecord, PmTemplateRecord, TechnicianRecord, WorkOrder, WorkOrderAssignmentHistoryRecord, WorkOrderChecklistItemRecord, WorkOrderEventRecord } from '../../types/api'
+import type { AssignmentGroupRecord, KnowledgeArticleListItem, MaterialItem, MaterialRequestRecord, PmTemplateRecord, TechnicianRecord, WorkOrder, WorkOrderAssignmentHistoryRecord, WorkOrderChecklistItemRecord, WorkOrderEventRecord, WorkOrderExecutionBundle } from '../../types/api'
 import { formatDateOnly, formatDateTime } from '../../utils/date'
 import { priorityTone, statusTone } from '../../utils/format'
+import { WorkOrderExecutionWorkspace } from './WorkOrderExecutionWorkspace'
 
-type DetailTab = 'overview' | 'timeline' | 'materials' | 'attachments' | 'checklist' | 'audit'
+type DetailTab = 'overview' | 'timeline' | 'materials' | 'attachments' | 'documents' | 'checklist' | 'audit'
 
 type WorkOrderDetailPayload = {
   workOrder: WorkOrder | null
+  execution: WorkOrderExecutionBundle | null
   materials: MaterialItem[]
   technicians: TechnicianRecord[]
   materialRequests: MaterialRequestRecord[]
@@ -51,13 +59,15 @@ const detailTabs: Array<{ id: DetailTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'timeline', label: 'Updates / Timeline' },
   { id: 'materials', label: 'Materials' },
-  { id: 'attachments', label: 'Photos / Attachments' },
+  { id: 'attachments', label: 'Execution / Evidence / Report' },
+  { id: 'documents', label: 'Documents' },
   { id: 'checklist', label: 'PM Checklist' },
   { id: 'audit', label: 'Audit Trail' },
 ]
 
 const emptyPayload: WorkOrderDetailPayload = {
   workOrder: null,
+  execution: null,
   materials: [],
   technicians: [],
   materialRequests: [],
@@ -95,11 +105,17 @@ export function WorkOrderDetailPage() {
   const [checklistDrafts, setChecklistDrafts] = useState<Record<string, ChecklistDraft>>({})
   const [savingChecklistItemId, setSavingChecklistItemId] = useState<string | null>(null)
   const [attachingTemplate, setAttachingTemplate] = useState(false)
+  const [kipOpen, setKipOpen] = useState(false)
+  const [woAttachments, setWoAttachments] = useState<AttachmentRecord[]>([])
+  const [knowledgeSuggestions, setKnowledgeSuggestions] = useState<KnowledgeArticleListItem[]>([])
+  const [knowledgeLoading, setKnowledgeLoading] = useState(false)
+  const [draftingKnowledge, setDraftingKnowledge] = useState(false)
 
   const { data, loading, error, reload } = useAsyncData<WorkOrderDetailPayload>(
     async (signal) => {
       const workOrder = await workOrderService.get(id, signal)
-      const [materials, technicians, materialRequests, events, assignmentHistory, assignmentGroups, pmTemplates] = await Promise.all([
+      const [execution, materials, technicians, materialRequests, events, assignmentHistory, assignmentGroups, pmTemplates] = await Promise.all([
+        workOrderService.getExecution(workOrder.id, signal),
         materialService.list({ branchId: workOrder.branchId, signal }),
         technicianService.list(workOrder.branchId, signal),
         workOrderService.listMaterialRequests(workOrder.branchId, signal),
@@ -111,6 +127,7 @@ export function WorkOrderDetailPage() {
 
       return {
         workOrder,
+        execution,
         materials,
         technicians,
         materialRequests: materialRequests.filter((request) => request.workOrderId === workOrder.id),
@@ -184,6 +201,41 @@ export function WorkOrderDetailPage() {
     setSelectedPmTemplateId(data.workOrder?.pmTemplateId ?? '')
   }, [data.workOrder])
 
+  useEffect(() => {
+    if (!id || activeTab !== 'documents') return
+    let active = true
+    attachmentService.list(ATTACHMENT_ENTITY_TYPES.WorkOrder, id)
+      .then((result) => { if (active) setWoAttachments(result) })
+      .catch(() => { if (active) setWoAttachments([]) })
+    return () => { active = false }
+  }, [id, activeTab])
+
+  useEffect(() => {
+    if (!id) return
+    let active = true
+    setKnowledgeLoading(true)
+    knowledgeService.getSuggestionsForWorkOrder(id)
+      .then((result) => {
+        if (active) {
+          setKnowledgeSuggestions(result)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setKnowledgeSuggestions([])
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setKnowledgeLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [id])
+
   async function getCurrentPosition() {
     if (!('geolocation' in navigator)) {
       return { latitude: null, longitude: null }
@@ -213,7 +265,7 @@ export function WorkOrderDetailPage() {
   const workOrder = data.workOrder
   const assignedGroupLabel = resolveAssignedGroupName(workOrder)
   const assignedToLabel = resolveAssignedToName(workOrder)
-  const locationLabel = workOrder.branchName || workOrder.assetName || 'No site linked'
+  const locationLabel = workOrder.siteName || workOrder.branchName || workOrder.assetName || 'No site linked'
   const activityFeed = buildTimelineEntries(data.assignmentHistory, data.events)
   const latestUpdate = activityFeed[0] ?? null
   const checklistItems = workOrder.checklistItems ?? []
@@ -227,6 +279,23 @@ export function WorkOrderDetailPage() {
   ]
   const completedChecklistCount = checklistItems.filter((item) => item.isCompleted).length
   const openMaterialRequests = data.materialRequests.filter((request) => !stringEquals(request.status, 'Closed')).length
+  const kipContext = {
+    screen: 'work-order-detail',
+    entityType: 'WorkOrder',
+    entityId: workOrder.id,
+    entitySummary: {
+      workOrderNumber: workOrder.workOrderNumber,
+      title: workOrder.title,
+      status: workOrder.status,
+      priority: workOrder.priority,
+      clientName: workOrder.clientName,
+      slaStatus: workOrder.slaStatus,
+    },
+    tenantId: session?.tenantId || '',
+    userId: session?.userId || '',
+    userRole: session?.role || 'unknown',
+    timestamp: new Date().toISOString(),
+  }
 
   async function updateStatus(status: string) {
     try {
@@ -343,6 +412,19 @@ export function WorkOrderDetailPage() {
       await reload()
     } catch (nextError) {
       pushToast({ title: 'Acknowledgement failed', description: nextError instanceof Error ? nextError.message : 'Unable to acknowledge work order.', tone: 'danger' })
+    }
+  }
+
+  async function draftKnowledgeArticle() {
+    setDraftingKnowledge(true)
+    try {
+      const article = await knowledgeService.draftFromWorkOrder(workOrder.id)
+      pushToast({ title: 'Draft article created', description: 'A knowledge draft was generated from the completed work order.', tone: 'success' })
+      navigate(`/knowledge/${article.id}/edit`)
+    } catch (nextError) {
+      pushToast({ title: 'Draft failed', description: nextError instanceof Error ? nextError.message : 'Unable to draft knowledge article.', tone: 'danger' })
+    } finally {
+      setDraftingKnowledge(false)
     }
   }
 
@@ -577,7 +659,10 @@ export function WorkOrderDetailPage() {
                       </select>
                     </Field>
                     <div className="grid gap-3 sm:grid-cols-2">
+                      <KeyValue label="SLA status" value={<Badge tone={(workOrder.slaResponseBreached || workOrder.slaResolutionBreached) ? 'danger' : workOrder.slaResolutionDeadline ? 'success' : 'neutral'}>{workOrder.slaStatus}</Badge>} />
                       <KeyValue label="Due date" value={formatDateOnly(workOrder.dueDate || undefined)} />
+                      <KeyValue label="Response SLA" value={formatDateTime(workOrder.slaResponseDeadline || undefined)} />
+                      <KeyValue label="Resolution SLA" value={formatDateTime(workOrder.slaResolutionDeadline || undefined)} />
                       <KeyValue label="Created date" value={formatDateTime(workOrder.createdAt)} />
                       <KeyValue label="Started" value={formatDateTime(workOrder.workStartedAt || undefined)} />
                       <KeyValue label="Completed" value={formatDateTime(workOrder.completedAt || undefined)} />
@@ -587,7 +672,7 @@ export function WorkOrderDetailPage() {
                   <Block title="Client & asset">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <KeyValue label="Client" value={workOrder.clientName || 'Not set'} />
-                      <KeyValue label="Site / branch" value={workOrder.branchName || 'Not set'} />
+                      <KeyValue label="Site / branch" value={workOrder.siteName || workOrder.branchName || 'Not set'} />
                       <KeyValue label="Asset" value={workOrder.assetName || 'No linked asset'} />
                       <KeyValue label="Work order" value={workOrder.workOrderNumber} />
                     </div>
@@ -596,6 +681,41 @@ export function WorkOrderDetailPage() {
                         This work order is not linked to a registered asset.
                       </div>
                     ) : null}
+                  </Block>
+
+                  <Block title="Suggested knowledge">
+                    {knowledgeLoading ? (
+                      <EmptyPanel message="Loading related guides..." />
+                    ) : knowledgeSuggestions.length === 0 ? (
+                      <EmptyPanel message="No suggested guides yet. Publish an article or draft one from this work order." />
+                    ) : (
+                      <div className="space-y-3">
+                        {knowledgeSuggestions.map((article) => (
+                          <button
+                            key={article.id}
+                            type="button"
+                            className="w-full rounded-2xl border border-app bg-[var(--app-surface)] px-4 py-3 text-left"
+                            onClick={() => navigate(`/knowledge/${article.id}`)}
+                          >
+                            <p className="text-sm font-semibold text-app">{article.title}</p>
+                            <p className="mt-2 text-sm text-muted">{article.summary || 'Open this guide to review the troubleshooting steps.'}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="button-secondary" onClick={() => navigate('/knowledge')}>
+                        Open library
+                      </button>
+                      <button
+                        type="button"
+                        className="button-primary"
+                        disabled={draftingKnowledge || !stringEquals(workOrder.status, 'Completed')}
+                        onClick={() => void draftKnowledgeArticle()}
+                      >
+                        {draftingKnowledge ? 'Drafting...' : 'Draft from work order'}
+                      </button>
+                    </div>
                   </Block>
 
                   <Block title="Quick actions">
@@ -776,8 +896,26 @@ export function WorkOrderDetailPage() {
           ) : null}
 
           {activeTab === 'attachments' ? (
-            <Block title="Photos / Attachments">
-              <EmptyPanel message="No photos or attachments have been added to this work order yet." />
+            <Block title="Execution / Evidence / Report">
+              <WorkOrderExecutionWorkspace
+                workOrder={workOrder}
+                execution={data.execution}
+                materials={data.materials}
+                onReload={reload}
+                pushToast={pushToast}
+              />
+            </Block>
+          ) : null}
+
+          {activeTab === 'documents' ? (
+            <Block title="Documents & Attachments">
+              <AttachmentPanel
+                entityType={ATTACHMENT_ENTITY_TYPES.WorkOrder}
+                entityId={id}
+                attachments={woAttachments}
+                onUploaded={(a) => setWoAttachments((prev) => [...prev, a])}
+                onDeleted={(deletedId) => setWoAttachments((prev) => prev.filter((a) => a.id !== deletedId))}
+              />
             </Block>
           ) : null}
 
@@ -901,6 +1039,9 @@ export function WorkOrderDetailPage() {
           </div>
         </SectionCard>
       </PageScaffold>
+
+      <KipButton onClick={() => setKipOpen(true)} />
+      <KipPanel open={kipOpen} onClose={() => setKipOpen(false)} title={`KIP • ${workOrder.workOrderNumber}`} context={kipContext} />
 
       <Modal open={assignmentModal === 'group'} title="Select assignment group" description="Choose the group that should own this work order." onClose={() => setAssignmentModal(null)}>
         <div className="space-y-4">

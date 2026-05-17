@@ -8,4 +8,5 @@ public static class TenantClaimTypes
     public const string SessionId = "session_id";
     public const string JobTitle = "job_title";
     public const string Department = "department";
+    public const string Scope = "scope";
 }

@@ -1,6 +1,7 @@
 using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Infrastructure.Integrations;
+using Ecosys.Infrastructure.Options;
 using Ecosys.Infrastructure.Security;
 using Ecosys.Infrastructure.Services;
 using Ecosys.Shared.Auth;
@@ -18,6 +19,9 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' was not found.");
+
+        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
+        services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 
         services.AddHttpContextAccessor();
         services.AddDataProtection();
@@ -54,7 +58,12 @@ public static class DependencyInjection
         services.AddScoped<IWorkOrderLifecycleService, WorkOrderLifecycleService>();
         services.AddScoped<IWorkOrderAssignmentWorkflowService, WorkOrderAssignmentWorkflowService>();
         services.AddScoped<IPmWorkOrderChecklistService, PmWorkOrderChecklistService>();
+        services.AddScoped<ISlaService, SlaService>();
+        services.AddSingleton<IPdfRenderer, QuestPdfRenderer>();
         services.AddHostedService<EmailOutboxWorker>();
+        services.AddHostedService<TrialLifecycleWorker>();
+        services.AddHostedService<PmSchedulerWorker>();
+        services.AddHostedService<SlaEnforcementWorker>();
 
         return services;
     }

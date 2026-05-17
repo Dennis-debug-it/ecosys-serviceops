@@ -17,8 +17,9 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=ecosys_serviceops;Username=postgres;Password=postgres";
+        var connectionString = Environment.GetEnvironmentVariable("ECOSYS_DB_CONNECTION")
+            ?? configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Database connection string was not configured. Set ECOSYS_DB_CONNECTION or ConnectionStrings__DefaultConnection.");
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

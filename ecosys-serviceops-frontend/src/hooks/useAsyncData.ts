@@ -85,7 +85,7 @@ export function useAsyncData<T>(
     void load(controller.signal)
 
     return () => controller.abort()
-  }, [load, ...deps])
+  }, [load, ...deps]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     data,

@@ -3,6 +3,7 @@ using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Shared.Errors;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Ecosys.Infrastructure.Services;
 
@@ -13,6 +14,7 @@ public sealed record WorkOrderAssignmentUpdateRequest(
     string? Notes);
 
 public sealed record TechnicianDispatchResponseRequest(Guid TechnicianId, string Response, string? Notes);
+public sealed record TechnicianInTransitRequest(Guid TechnicianId, decimal? Latitude, decimal? Longitude, DateTime? DepartedForSiteAt, string? Notes);
 public sealed record TechnicianArrivalRequest(Guid TechnicianId, decimal? Latitude, decimal? Longitude, DateTime? ArrivedAt, string? Notes);
 public sealed record TechnicianDepartureRequest(Guid TechnicianId, decimal? Latitude, decimal? Longitude, DateTime? DepartedAt, string? Notes);
 
@@ -20,6 +22,7 @@ public interface IWorkOrderAssignmentWorkflowService
 {
     Task ApplyAssignmentsAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, WorkOrderAssignmentUpdateRequest request, bool isReassignment, CancellationToken cancellationToken = default);
     Task RecordTechnicianResponseAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, TechnicianDispatchResponseRequest request, CancellationToken cancellationToken = default);
+    Task RecordInTransitAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, TechnicianInTransitRequest request, CancellationToken cancellationToken = default);
     Task RecordArrivalAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, TechnicianArrivalRequest request, CancellationToken cancellationToken = default);
     Task RecordDepartureAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, TechnicianDepartureRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<WorkOrderAssignmentHistory>> GetHistoryAsync(Guid tenantId, Guid workOrderId, CancellationToken cancellationToken = default);
@@ -29,7 +32,12 @@ public interface IWorkOrderAssignmentWorkflowService
 
 internal sealed class WorkOrderAssignmentWorkflowService(
     AppDbContext dbContext,
-    IAuditLogService auditLogService) : IWorkOrderAssignmentWorkflowService
+    IAuditLogService auditLogService,
+    IEmailOutboxService emailOutboxService,
+    IEmailTemplateService emailTemplateService,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    ISlaService slaService,
+    ILogger<WorkOrderAssignmentWorkflowService> logger) : IWorkOrderAssignmentWorkflowService
 {
     public async Task ApplyAssignmentsAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, WorkOrderAssignmentUpdateRequest request, bool isReassignment, CancellationToken cancellationToken = default)
     {
@@ -83,6 +91,7 @@ internal sealed class WorkOrderAssignmentWorkflowService(
         }
 
         var currentByTechnician = currentTechnicianAssignments.ToDictionary(x => x.TechnicianId);
+        var newlyAssignedTechnicians = new List<Technician>();
         foreach (var removed in currentTechnicianAssignments.Where(x => !technicianIds.Contains(x.TechnicianId)).ToList())
         {
             dbContext.WorkOrderTechnicianAssignments.Remove(removed);
@@ -106,6 +115,7 @@ internal sealed class WorkOrderAssignmentWorkflowService(
                 };
                 dbContext.WorkOrderTechnicianAssignments.Add(assignment);
                 currentTechnicianAssignments.Add(assignment);
+                newlyAssignedTechnicians.Add(technician);
                 await AddHistoryAsync(tenantId, workOrderId, isReassignment ? "TechnicianReassigned" : "TechnicianAssigned", previousGroupId, request.AssignmentGroupId, null, technician.Id, actorUserId, request.Notes, cancellationToken);
                 await AddEventAsync(tenantId, workOrderId, actorUserId, "TechnicianAssigned", ResolveAssignmentStatus(workOrder.Status, request.AssignmentGroupId, currentTechnicianAssignments), $"{technician.FullName} was assigned to the work order.", cancellationToken: cancellationToken);
             }
@@ -150,6 +160,69 @@ internal sealed class WorkOrderAssignmentWorkflowService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await SyncLegacyFieldsAsync(workOrder, request.AssignmentGroupId, cancellationToken);
+        await slaService.RefreshWorkOrderAsync(workOrder.Id, DateTime.UtcNow, cancellationToken);
+
+        if (newlyAssignedTechnicians.Count > 0)
+        {
+            await TryQueueAssignmentEmailsAsync(tenantId, workOrder, newlyAssignedTechnicians, cancellationToken);
+        }
+    }
+
+    private async Task TryQueueAssignmentEmailsAsync(Guid tenantId, WorkOrder workOrder, IReadOnlyList<Technician> technicians, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var assetName = workOrder.AssetId.HasValue
+                ? (await dbContext.Assets.SingleOrDefaultAsync(x => x.Id == workOrder.AssetId.Value, cancellationToken))?.AssetName
+                : null;
+
+            var dueDate = workOrder.DueDate?.ToString("yyyy-MM-dd") ?? "Not set";
+
+            foreach (var technician in technicians)
+            {
+                if (string.IsNullOrWhiteSpace(technician.Email))
+                    continue;
+
+                var template = await emailTemplateService.RenderTenantTemplateAsync(
+                    tenantId,
+                    "work-order.assigned",
+                    new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["AssignedTo"] = technician.FullName,
+                        ["WorkOrderNumber"] = workOrder.WorkOrderNumber,
+                        ["Priority"] = workOrder.Priority,
+                        ["DueDate"] = dueDate,
+                        ["AssetName"] = assetName ?? "N/A"
+                    },
+                    cancellationToken);
+
+                if (!template.Enabled)
+                    continue;
+
+                var subject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+                    tenantId, "work-order.assigned", template.Subject, cancellationToken: cancellationToken);
+
+                await emailOutboxService.QueueEmailAsync(
+                    new QueueEmailRequest(
+                        tenantId,
+                        "work-order.assigned",
+                        "work-order-assigned",
+                        technician.Email,
+                        technician.FullName,
+                        template.SenderNameOverride,
+                        null,
+                        null,
+                        subject,
+                        template.HtmlBody,
+                        template.TextBody,
+                        null),
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to queue work-order.assigned emails for work order {WorkOrderId}.", workOrder.Id);
+        }
     }
 
     public async Task RecordTechnicianResponseAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, TechnicianDispatchResponseRequest request, CancellationToken cancellationToken = default)
@@ -170,6 +243,23 @@ internal sealed class WorkOrderAssignmentWorkflowService(
 
         await AddHistoryAsync(tenantId, workOrderId, assignment.Status == "Accepted" ? "TechnicianAccepted" : "TechnicianDeclined", null, null, request.TechnicianId, request.TechnicianId, actorUserId, request.Notes, cancellationToken);
         await AddEventAsync(tenantId, workOrderId, actorUserId, assignment.Status == "Accepted" ? "TechnicianAccepted" : "TechnicianDeclined", assignment.Status == "Accepted" ? "Accepted" : "AssignedToTechnician", $"{assignment.Technician?.FullName ?? "Technician"} {assignment.Status.ToLowerInvariant()} the job.", cancellationToken: cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await RefreshAssignmentStatusAsync(tenantId, workOrderId, cancellationToken);
+    }
+
+    public async Task RecordInTransitAsync(Guid tenantId, Guid workOrderId, Guid? actorUserId, TechnicianInTransitRequest request, CancellationToken cancellationToken = default)
+    {
+        var assignment = await dbContext.WorkOrderTechnicianAssignments
+            .Include(x => x.Technician)
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.WorkOrderId == workOrderId && x.TechnicianId == request.TechnicianId, cancellationToken)
+            ?? throw new BusinessRuleException("Technician is not currently assigned to this work order.");
+
+        assignment.Status = "InTransit";
+        assignment.AcceptedAt ??= request.DepartedForSiteAt ?? DateTime.UtcNow;
+
+        await UpdateTechnicianTrackingAsync(tenantId, request.TechnicianId, workOrderId, request.Latitude, request.Longitude, true, cancellationToken);
+        await AddHistoryAsync(tenantId, workOrderId, "TechnicianInTransit", null, null, request.TechnicianId, request.TechnicianId, actorUserId, request.Notes, cancellationToken);
+        await AddEventAsync(tenantId, workOrderId, actorUserId, "InTransit", "Accepted", $"{assignment.Technician?.FullName ?? "Technician"} is in transit to site.", request.Latitude, request.Longitude, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await RefreshAssignmentStatusAsync(tenantId, workOrderId, cancellationToken);
     }
@@ -218,7 +308,7 @@ internal sealed class WorkOrderAssignmentWorkflowService(
 
     public Task<bool> HasAcceptedTechnicianAsync(Guid tenantId, Guid workOrderId, CancellationToken cancellationToken = default) =>
         dbContext.WorkOrderTechnicianAssignments.AnyAsync(
-            x => x.TenantId == tenantId && x.WorkOrderId == workOrderId && (x.Status == "Accepted" || x.Status == "Arrived" || x.Status == "InProgress" || x.Status == "Completed"),
+            x => x.TenantId == tenantId && x.WorkOrderId == workOrderId && (x.Status == "Accepted" || x.Status == "InTransit" || x.Status == "Arrived" || x.Status == "InProgress" || x.Status == "Completed"),
             cancellationToken);
 
     public Task<bool> HasArrivalAsync(Guid tenantId, Guid workOrderId, CancellationToken cancellationToken = default) =>
@@ -241,6 +331,7 @@ internal sealed class WorkOrderAssignmentWorkflowService(
             "Awaiting Client" => "AwaitingClient",
             "In Progress" => "InProgress",
             _ when technicianAssignments.Any(x => x.Status is "Accepted" or "Arrived" or "InProgress" or "Completed") => "Accepted",
+            _ when technicianAssignments.Any(x => x.Status == "InTransit") => "Accepted",
             _ when technicianAssignments.Count > 0 => "AssignedToTechnician",
             _ when assignmentGroupId.HasValue => "AssignedToGroup",
             _ => "Unassigned"

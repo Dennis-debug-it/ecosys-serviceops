@@ -33,8 +33,15 @@ public sealed class SettingsController(
         DocumentTypes.WorkOrder,
         DocumentTypes.PreventiveMaintenance,
         DocumentTypes.MaterialRequest,
+        DocumentTypes.Asset,
+        DocumentTypes.Site,
+        DocumentTypes.Contract,
         DocumentTypes.Quotation,
+        DocumentTypes.ProformaInvoice,
         DocumentTypes.Invoice,
+        DocumentTypes.CreditNote,
+        DocumentTypes.DebitNote,
+        DocumentTypes.Receipt,
         DocumentTypes.Payment,
         DocumentTypes.Expense
     ];
@@ -442,10 +449,13 @@ public sealed class SettingsController(
             request.NextNumber,
             request.PaddingLength,
             request.ResetPeriod,
-            false,
-            false,
+            request.IncludeYear,
+            request.IncludeMonth,
             request.IsActive,
-            cancellationToken);
+            cancellationToken,
+            request.Suffix,
+            request.YearFormat ?? "YYYY",
+            request.Separator ?? "-");
 
         await AuditSettingsChangeAsync("Numbering rule updated", nameof(NumberingSetting), updated.Id, cancellationToken);
         return Ok(MapNumberingRule(updated));
@@ -768,43 +778,44 @@ public sealed class SettingsController(
             DocumentTypes.WorkOrder => "WO",
             DocumentTypes.PreventiveMaintenance => "PM",
             DocumentTypes.MaterialRequest => "MR",
-            DocumentTypes.Quotation => "QUO",
+            DocumentTypes.Asset => "ASSET",
+            DocumentTypes.Site => "SITE",
+            DocumentTypes.Contract => "CON",
+            DocumentTypes.Quotation => "QT",
+            DocumentTypes.ProformaInvoice => "PI",
             DocumentTypes.Invoice => "INV",
-            DocumentTypes.Payment => "RCT",
+            DocumentTypes.CreditNote => "CN",
+            DocumentTypes.DebitNote => "DN",
+            DocumentTypes.Receipt => "REC",
+            DocumentTypes.Payment => "PAY",
             DocumentTypes.Expense => "EXP",
             _ => "DOC"
         };
 
     private static string BuildPreview(NumberingSetting setting)
     {
+        var sep = string.IsNullOrEmpty(setting.Separator) ? "-" : setting.Separator;
+        var now = DateTime.UtcNow;
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(setting.Prefix))
-        {
             parts.Add(setting.Prefix.Trim().ToUpperInvariant());
-        }
-
+        if (setting.IncludeYear)
+            parts.Add(string.Equals(setting.YearFormat, "YY", StringComparison.OrdinalIgnoreCase)
+                ? now.Year.ToString()[2..] : now.Year.ToString("0000"));
+        if (setting.IncludeMonth)
+            parts.Add(now.Month.ToString("00"));
         parts.Add(setting.NextNumber.ToString().PadLeft(setting.PaddingLength, '0'));
-        return string.Join("-", parts);
+        if (!string.IsNullOrWhiteSpace(setting.Suffix))
+            parts.Add(setting.Suffix.Trim().ToUpperInvariant());
+        return string.Join(sep, parts);
     }
 
     private static string NormalizeNumberingDocumentType(string? documentType)
     {
         if (string.IsNullOrWhiteSpace(documentType))
-        {
             throw new BusinessRuleException("Document type is required.");
-        }
 
-        return documentType.Trim() switch
-        {
-            var value when string.Equals(value, DocumentTypes.WorkOrder, StringComparison.OrdinalIgnoreCase) => DocumentTypes.WorkOrder,
-            var value when string.Equals(value, DocumentTypes.PreventiveMaintenance, StringComparison.OrdinalIgnoreCase) => DocumentTypes.PreventiveMaintenance,
-            var value when string.Equals(value, DocumentTypes.MaterialRequest, StringComparison.OrdinalIgnoreCase) => DocumentTypes.MaterialRequest,
-            var value when string.Equals(value, DocumentTypes.Quotation, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Quotation,
-            var value when string.Equals(value, DocumentTypes.Invoice, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Invoice,
-            var value when string.Equals(value, DocumentTypes.Payment, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Payment,
-            var value when string.Equals(value, DocumentTypes.Expense, StringComparison.OrdinalIgnoreCase) => DocumentTypes.Expense,
-            _ => throw new BusinessRuleException("Unsupported document type.")
-        };
+        return DocumentTypes.Normalize(documentType.Trim());
     }
 
     private async Task<string> GenerateUniqueEndpointSlugAsync(string name, CancellationToken cancellationToken)
@@ -953,11 +964,15 @@ public sealed class SettingsController(
             settings.Branch?.Name,
             settings.DocumentType,
             settings.Prefix,
+            settings.Suffix,
             settings.NextNumber,
             settings.PaddingLength,
             settings.ResetFrequency,
             settings.IncludeYear,
+            settings.YearFormat,
             settings.IncludeMonth,
+            settings.Separator,
+            settings.IsLocked,
             settings.IsActive);
 
     private static NumberingRuleResponse MapNumberingRule(NumberingSetting settings) =>
@@ -965,9 +980,15 @@ public sealed class SettingsController(
             settings.Id,
             settings.DocumentType,
             settings.Prefix,
+            settings.Suffix,
             settings.NextNumber,
             settings.PaddingLength,
             settings.ResetFrequency,
+            settings.YearFormat,
+            settings.IncludeYear,
+            settings.IncludeMonth,
+            settings.Separator,
+            settings.IsLocked,
             BuildPreview(settings),
             settings.IsActive,
             settings.CreatedAt,

@@ -1,0 +1,569 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/ClientsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/DevController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/PlatformLeadsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/PreventiveMaintenanceController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/SettingsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/SettingsModels.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/WorkOrderAssignmentsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Controllers/WorkOrdersController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/Program.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/appsettings.Development.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Api/appsettings.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/Asset.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/Client.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/NumberingSetting.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/PmTemplate.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/PmTemplateQuestion.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/PreventiveMaintenancePlan.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/Tenant.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/WorkOrder.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Domain/Entities/WorkOrderChecklistItem.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Data/AppDbContext.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Data/AppDbContextFactory.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Integrations/QuestPdfRenderer.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/EmailNotificationRegistry.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/LicenseAndSecurityServices.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/MvpAuthService.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/SessionServices.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/WorkOrderAssignmentWorkflowService.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/WorkOrderLifecycleServices.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Infrastructure/Services/WorkOrderNumberService.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Shared/Auth/TenantClaimTypes.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/Ecosys.Shared/Contracts/Integration/IPdfRenderer.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/tests/Ecosys.Tests/Ecosys.Tests.csproj', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/eslint.config.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/playwright-report/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/components/layout/AppShell.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/components/ui/DataTable.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/components/ui/ErrorState.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/components/ui/ToastProvider.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/hooks/useAsyncData.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/jsx.d.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/assets/AssetsPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/auth/LoginPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/inventory/InventoryPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/platform-v2/PlatformOverviewAndLicensesPages.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/platform-v2/PlatformTenantsPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/platform-v2/TenantCommunicationSettingsPanel.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/reports/ReportsPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/settings/intake/EmailIntakePage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/sla/SLAManagementPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/modules/work-orders/WorkOrderDetailPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/pages/platform/settings/PlatformSettingsPage.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/pages/platform/settings/components/EmailNotificationRulesPanel.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/pages/platform/settings/components/EmailNotificationSettingsPanel.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/pages/platform/settings/components/settingsSections.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/pages/settings/routes.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/services/assetService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/services/reportService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/services/slaService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/services/workOrderService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/types/api.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/src/utils/roles.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e-auth.spec.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e-tenant-pages.spec.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e/auth-clickability.spec.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e/auth-password-flows.spec.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e/client-tenant-details.spec.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e/helpers/auth.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e/helpers/navigation.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/tests/e2e/helpers/test-data.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ecosys-serviceops-frontend/vite.config.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 756b582..cbcdcd2 100644[m
+Binary files a/.gitignore and b/.gitignore differ
+[1mdiff --git a/backend/.gitignore b/backend/.gitignore[m
+[1mindex 9491a2f..1fe7e5d 100644[m
+[1m--- a/backend/.gitignore[m
+[1m+++ b/backend/.gitignore[m
+[36m@@ -353,6 +353,10 @@[m [mASALocalRun/[m
+ # BeatPulse healthcheck temp database[m
+ healthchecksdb[m
+ [m
+[32m+[m[32m# Ecosys: local storage uploads and dotnet tooling[m
+[32m+[m[32mstorage/uploads/[m
+[32m+[m[32m.dotnet/[m
+[32m+[m
+ # Backup folder for Package Reference Convert tool in Visual Studio 2017[m
+ MigrationBackup/[m
+ [m
+[1mdiff --git a/backend/src/Ecosys.Api/Controllers/AssetsController.cs b/backend/src/Ecosys.Api/Controllers/AssetsController.cs[m
+[1mindex e408951..9faaf9d 100644[m
+[1m--- a/backend/src/Ecosys.Api/Controllers/AssetsController.cs[m
+[1m+++ b/backend/src/Ecosys.Api/Controllers/AssetsController.cs[m
+[36m@@ -32,6 +32,8 @@[m [mpublic sealed class AssetsController([m
+     public async Task<ActionResult<IReadOnlyCollection<AssetResponse>>> GetAll([m
+         [FromQuery] Guid? branchId,[m
+         [FromQuery] Guid? clientId,[m
+[32m+[m[32m        [FromQuery] Guid? siteId,[m
+[32m+[m[32m        [FromQuery] Guid? categoryId,[m
+         [FromQuery] string? search,[m
+         [FromQuery] string? status,[m
+         CancellationToken cancellationToken)[m
+[36m@@ -44,6 +46,10 @@[m [mpublic sealed class AssetsController([m
+         var query = dbContext.Assets[m
+             .Include(x => x.Client)[m
+             .Include(x => x.Branch)[m
+[32m+[m[32m            .Include(x => x.Site)[m
+[32m+[m[32m            .Include(x => x.AssetCategory)[m
+[32m+[m[32m            .Include(x => x.CustomFieldValues)[m
+[32m+[m[32m                .ThenInclude(x => x.FieldDefinition)[m
+             .Where(x => x.TenantId == TenantId)[m
+             .WhereAccessible(scope, x => x.BranchId)[m
+             .AsQueryable();[m
+[36m@@ -53,6 +59,16 @@[m [mpublic sealed class AssetsController([m
+             query = query.Where(x => x.ClientId == clientId.Value);[m
+         }[m
+ [m
+[32m+[m[32m        if (siteId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            query = query.Where(x => x.SiteId == siteId.Value);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        if (categoryId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            query = query.Where(x => x.AssetCategoryId == categoryId.Value);[m
+[32m+[m[32m        }[m
+[32m+[m
+         if (normalizedStatus == "active")[m
+         {[m
+             query = query.Where(x => x.Status != "Inactive");[m
+[36m@@ -91,6 +107,10 @@[m [mpublic sealed class AssetsController([m
+         var asset = await dbContext.Assets[m
+             .Include(x => x.Client)[m
+             .Include(x => x.Branch)[m
+[32m+[m[32m            .Include(x => x.Site)[m
+[32m+[m[32m            .Include(x => x.AssetCategory)[m
+[32m+[m[32m            .Include(x => x.CustomFieldValues)[m
+[32m+[m[32m                .ThenInclude(x => x.FieldDefinition)[m
+             .Where(x => x.TenantId == TenantId && x.Status != "Inactive" && x.Id == id)[m
+             .WhereAccessible(scope, x => x.BranchId)[m
+             .SingleOrDefaultAsync(cancellationToken)[m
+[36m@@ -106,6 +126,7 @@[m [mpublic sealed class AssetsController([m
+         await licenseGuardService.EnsureCanCreateAssetAsync(TenantId, cancellationToken);[m
+         Validate(request);[m
+         await EnsureClientExistsAsync(request.ClientId, cancellationToken);[m
+[32m+[m[32m        await EnsureCategoryRequestIsValidAsync(request.AssetCategoryId, request.CustomFieldValues, cancellationToken);[m
+         if (!string.IsNullOrWhiteSpace(request.AssetCode))[m
+         {[m
+             await EnsureUniqueAssetCodeAsync(request.AssetCode, null, cancellationToken);[m
+[36m@@ -118,6 +139,8 @@[m [mpublic sealed class AssetsController([m
+             TenantId = TenantId,[m
+             BranchId = branchId,[m
+             ClientId = request.ClientId,[m
+[32m+[m[32m            SiteId = request.SiteId,[m
+[32m+[m[32m            AssetCategoryId = request.AssetCategoryId,[m
+             AssetName = request.AssetName.Trim(),[m
+             AssetCode = string.IsNullOrWhiteSpace(request.AssetCode)[m
+                 ? await documentNumberingService.GenerateAsync(TenantId, branchId, DocumentTypes.Asset, cancellationToken)[m
+[36m@@ -139,6 +162,8 @@[m [mpublic sealed class AssetsController([m
+ [m
+         dbContext.Assets.Add(asset);[m
+         await dbContext.SaveChangesAsync(cancellationToken);[m
+[32m+[m[32m        await SaveCustomFieldValuesAsync(asset, request.CustomFieldValues, cancellationToken);[m
+[32m+[m[32m        await dbContext.SaveChangesAsync(cancellationToken);[m
+         await preventiveMaintenancePlanService.SyncForAssetAsync(asset, cancellationToken);[m
+ [m
+         await auditLogService.LogAsync([m
+[36m@@ -155,6 +180,15 @@[m [mpublic sealed class AssetsController([m
+         {[m
+             await dbContext.Entry(asset).Reference(x => x.Branch).LoadAsync(cancellationToken);[m
+         }[m
+[32m+[m[32m        if (asset.SiteId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            await dbContext.Entry(asset).Reference(x => x.Site).LoadAsync(cancellationToken);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        if (asset.AssetCategoryId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            await dbContext.Entry(asset).Reference(x => x.AssetCategory).LoadAsync(cancellationToken);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        await dbContext.Entry(asset).Collection(x => x.CustomFieldValues).Query().Include(x => x.FieldDefinition).LoadAsync(cancellationToken);[m
+ [m
+         return CreatedAtAction(nameof(Get), new { id = asset.Id }, Map(asset));[m
+     }[m
+[36m@@ -167,10 +201,14 @@[m [mpublic sealed class AssetsController([m
+         var asset = await dbContext.Assets[m
+             .Include(x => x.Client)[m
+             .Include(x => x.Branch)[m
+[32m+[m[32m            .Include(x => x.Site)[m
+[32m+[m[32m            .Include(x => x.AssetCategory)[m
+[32m+[m[32m            .Include(x => x.CustomFieldValues)[m
+             .SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == id, cancellationToken)[m
+             ?? throw new NotFoundException("Asset was not found.");[m
+ [m
+         await EnsureClientExistsAsync(request.ClientId, cancellationToken);[m
+[32m+[m[32m        await EnsureCategoryRequestIsValidAsync(request.AssetCategoryId, request.CustomFieldValues, cancellationToken);[m
+         if (!string.IsNullOrWhiteSpace(request.AssetCode))[m
+         {[m
+             await EnsureUniqueAssetCodeAsync(request.AssetCode, asset.Id, cancellationToken);[m
+[36m@@ -180,6 +218,8 @@[m [mpublic sealed class AssetsController([m
+ [m
+         asset.BranchId = branchId;[m
+         asset.ClientId = request.ClientId;[m
+[32m+[m[32m        asset.SiteId = request.SiteId;[m
+[32m+[m[32m        asset.AssetCategoryId = request.AssetCategoryId;[m
+         asset.AssetName = request.AssetName.Trim();[m
+         asset.AssetCode = string.IsNullOrWhiteSpace(request.AssetCode) ? asset.AssetCode : request.AssetCode.Trim();[m
+         asset.AssetType = request.AssetType?.Trim();[m
+[36m@@ -196,6 +236,7 @@[m [mpublic sealed class AssetsController([m
+         asset.Notes = request.Notes?.Trim();[m
+         asset.Status = string.IsNullOrWhiteSpace(request.Status) ? asset.Status : request.Status.Trim();[m
+ [m
+[32m+[m[32m        await SaveCustomFieldValuesAsync(asset, request.CustomFieldValues, cancellationToken);[m
+         await dbContext.SaveChangesAsync(cancellationToken);[m
+         await preventiveMaintenancePlanService.SyncForAssetAsync(asset, cancellationToken);[m
+ [m
+[36m@@ -213,6 +254,15 @@[m [mpublic sealed class AssetsController([m
+         {[m
+             await dbContext.Entry(asset).Reference(x => x.Branch).LoadAsync(cancellationToken);[m
+         }[m
+[32m+[m[32m        if (asset.SiteId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            await dbContext.Entry(asset).Reference(x => x.Site).LoadAsync(cancellationToken);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        if (asset.AssetCategoryId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            await dbContext.Entry(asset).Reference(x => x.AssetCategory).LoadAsync(cancellationToken);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        await dbContext.Entry(asset).Collection(x => x.CustomFieldValues).Query().Include(x => x.FieldDefinition).LoadAsync(cancellationToken);[m
+ [m
+         return Ok(Map(asset));[m
+     }[m
+[36m@@ -284,6 +334,82 @@[m [mpublic sealed class AssetsController([m
+         }[m
+     }[m
+ [m
+[32m+[m[32m    private async Task EnsureCategoryRequestIsValidAsync([m
+[32m+[m[32m        Guid? assetCategoryId,[m
+[32m+[m[32m        IReadOnlyCollection<UpsertAssetCustomFieldValueRequest>? customFieldValues,[m
+[32m+[m[32m        CancellationToken cancellationToken)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        if (!assetCategoryId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            if (customFieldValues is { Count: > 0 })[m
+[32m+[m[32m            {[m
+[32m+[m[32m                throw new BusinessRuleException("Asset category is required when custom field values are provided.");[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            return;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        var category = await dbContext.AssetCategories[m
+[32m+[m[32m            .Include(x => x.Fields)[m
+[32m+[m[32m            .SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == assetCategoryId.Value && x.IsActive, cancellationToken)[m
+[32m+[m[32m            ?? throw new BusinessRuleException("Asset category does not exist for this tenant.");[m
+[32m+[m
+[32m+[m[32m        var requestedValues = customFieldValues ?? [];[m
+[32m+[m[32m        var fieldDefinitions = category.Fields.ToDictionary(x => x.Id, x => x);[m
+[32m+[m
+[32m+[m[32m        foreach (var item in requestedValues)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            if (!fieldDefinitions.TryGetValue(item.FieldDefinitionId, out var definition))[m
+[32m+[m[32m            {[m
+[32m+[m[32m                throw new BusinessRuleException("One or more custom fields do not belong to the selected asset category.");[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            var normalizedValue = item.Value?.Trim() ?? string.Empty;[m
+[32m+[m[32m            if (definition.IsRequired && string.IsNullOrWhiteSpace(normalizedValue))[m
+[32m+[m[32m            {[m
+[32m+[m[32m                throw new BusinessRuleException($"Custom field '{definition.FieldLabel}' is required.");[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        foreach (var requiredDefinition in fieldDefinitions.Values.Where(x => x.IsRequired))[m
+[32m+[m[32m        {[m
+[32m+[m[32m            var provided = requestedValues.Any(x => x.FieldDefinitionId == requiredDefinition.Id && !string.IsNullOrWhiteSpace(x.Value));[m
+[32m+[m[32m            if (!provided)[m
+[32m+[m[32m            {[m
+[32m+[m[32m                throw new BusinessRuleException($"Custom field '{requiredDefinition.FieldLabel}' is required.");[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private async Task SaveCustomFieldValuesAsync([m
+[32m+[m[32m        Asset asset,[m
+[32m+[m[32m        IReadOnlyCollection<UpsertAssetCustomFieldValueRequest>? customFieldValues,[m
+[32m+[m[32m        CancellationToken cancellationToken)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        var existingValues = await dbContext.AssetCustomFieldValues[m
+[32m+[m[32m            .Where(x => x.TenantId == TenantId && x.AssetId == asset.Id)[m
+[32m+[m[32m            .ToListAsync(cancellationToken);[m
+[32m+[m
+[32m+[m[32m        dbContext.AssetCustomFieldValues.RemoveRange(existingValues);[m
+[32m+[m
+[32m+[m[32m        foreach (var item in customFieldValues ?? [])[m
+[32m+[m[32m        {[m
+[32m+[m[32m            var normalizedValue = item.Value?.Trim();[m
+[32m+[m[32m            if (string.IsNullOrWhiteSpace(normalizedValue))[m
+[32m+[m[32m            {[m
+[32m+[m[32m                continue;[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            dbContext.AssetCustomFieldValues.Add(new AssetCustomFieldValue[m
+[32m+[m[32m            {[m
+[32m+[m[32m                TenantId = TenantId,[m
+[32m+[m[32m                AssetId = asset.Id,[m
+[32m+[m[32m                FieldDefinitionId = item.FieldDefinitionId,[m
+[32m+[m[32m                Value = normalizedValue[m
+[32m+[m[32m            });[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+     private static AssetResponse Map(Asset asset) =>[m
+         new([m
+             asset.Id,[m
+[36m@@ -291,6 +417,10 @@[m [mpublic sealed class AssetsController([m
+             asset.Branch?.Name,[m
+             asset.ClientId,[m
+             asset.Client?.ClientName,[m
+[32m+[m[32m            asset.SiteId,[m
+[32m+[m[32m            asset.Site?.SiteName,[m
+[32m+[m[32m            asset.AssetCategoryId,[m
+[32m+[m[32m            asset.AssetCategory?.Name,[m
+             asset.AssetName,[m
+             asset.AssetCode,[m
+             asset.AssetType,[m
+[36m@@ -306,7 +436,18 @@[m [mpublic sealed class AssetsController([m
+             asset.NextPmDate,[m
+             asset.Notes,[m
+             asset.Status,[m
+[31m-            asset.CreatedAt);[m
+[32m+[m[32m            asset.CreatedAt,[m
+[32m+[m[32m            asset.CustomFieldValues[m
+[32m+[m[32m                .OrderBy(x => x.FieldDefinition?.DisplayOrder ?? int.MaxValue)[m
+[32m+[m[32m                .ThenBy(x => x.FieldDefinition?.FieldLabel)[m
+[32m+[m[32m                .Select(x => new AssetCustomFieldValueResponse([m
+[32m+[m[32m                    x.FieldDefinitionId,[m
+[32m+[m[32m                    x.FieldDefinition?.FieldName ?? string.Empty,[m
+[32m+[m[32m                    x.FieldDefinition?.FieldLabel ?? string.Empty,[m
+[32m+[m[32m                    x.FieldDefinition?.FieldType ?? "Text",[m
+[32m+[m[32m                    x.FieldDefinition?.Unit,[m
+[32m+[m[32m                    x.Value))[m
+[32m+[m[32m                .ToList());[m
+ [m
+     private static string NormalizeStatusFilter(string? status)[m
+     {[m
+[36m@@ -331,6 +472,8 @@[m [mpublic sealed class AssetsController([m
+ public sealed record UpsertAssetRequest([m
+     Guid ClientId,[m
+     Guid? BranchId,[m
+[32m+[m[32m    Guid? SiteId,[m
+[32m+[m[32m    Guid? AssetCategoryId,[m
+     string AssetName,[m
+     string AssetCode,[m
+     string? AssetType,[m
+[36m@@ -345,7 +488,8 @@[m [mpublic sealed record UpsertAssetRequest([m
+     DateTime? LastPmDate,[m
+     DateTime? NextPmDate,[m
+     string? Notes,[m
+[31m-    string? Status);[m
+[32m+[m[32m    string? Status,[m
+[32m+[m[32m    IReadOnlyCollection<UpsertAssetCustomFieldValueRequest>? CustomFieldValues);[m
+ [m
+ public sealed record AssetResponse([m
+     Guid Id,[m
+[36m@@ -353,6 +497,10 @@[m [mpublic sealed record AssetResponse([m
+     string? BranchName,[m
+     Guid ClientId,[m
+     string? ClientName,[m
+[32m+[m[32m    Guid? SiteId,[m
+[32m+[m[32m    string? SiteName,[m
+[32m+[m[32m    Guid? AssetCategoryId,[m
+[32m+[m[32m    string? AssetCategoryName,[m
+     string AssetName,[m
+     string AssetCode,[m
+     string? AssetType,[m
+[36m@@ -368,4 +516,17 @@[m [mpublic sealed record AssetResponse([m
+     DateTime? NextPmDate,[m
+     string? Notes,[m
+     string Status,[m
+[31m-    DateTime CreatedAt);[m
+[32m+[m[32m    DateTime CreatedAt,[m
+[32m+[m[32m    IReadOnlyCollection<AssetCustomFieldValueResponse> CustomFieldValues);[m
+[32m+[m
+[32m+[m[32mpublic sealed record UpsertAssetCustomFieldValueRequest([m
+[32m+[m[32m    Guid FieldDefinitionId,[m
+[32m+[m[32m    string? Value);[m
+[32m+[m
+[32m+[m[32mpublic sealed record AssetCustomFieldValueResponse([m
+[32m+[m[32m    Guid FieldDefinitionId,[m
+[32m+[m[32m    string FieldName,[m
+[32m+[m[32m    string FieldLabel,[m
+[32m+[m[32m    string FieldType,[m
+[32m+[m[32m    string? Unit,[m
+[32m+[m[32m    string Value);[m
+[1mdiff --git a/backend/src/Ecosys.Api/Controllers/ClientsController.cs b/backend/src/Ecosys.Api/Controllers/ClientsController.cs[m
+[1mindex c33f5da..3d60ccc 100644[m
+[1m--- a/backend/src/Ecosys.Api/Controllers/ClientsController.cs[m
+[1m+++ b/backend/src/Ecosys.Api/Controllers/ClientsController.cs[m
+[36m@@ -27,6 +27,7 @@[m [mpublic sealed class ClientsController([m
+         var normalizedSearch = NormalizeSearch(search);[m
+ [m
+         var query = dbContext.Clients[m
+[32m+[m[32m            .Include(x => x.SlaDefinition)[m
+             .Where(x => x.TenantId == TenantId);[m
+ [m
+         if (normalizedStatus == "active")[m
+[36m@@ -52,22 +53,20 @@[m [mpublic sealed class ClientsController([m
+ [m
+         var clients = await query[m
+             .OrderBy(x => x.ClientName)[m
+[31m-            .Select(x => Map(x))[m
+             .ToListAsync(cancellationToken);[m
+ [m
+[31m-        return Ok(clients);[m
+[32m+[m[32m        return Ok(clients.Select(Map).ToList());[m
+     }[m
+ [m
+     [HttpGet("{id:guid}")][m
+     public async Task<ActionResult<ClientResponse>> Get(Guid id, CancellationToken cancellationToken)[m
+     {[m
+         var client = await dbContext.Clients[m
+[31m-            .Where(x => x.TenantId == TenantId && x.Id == id)[m
+[31m-            .Select(x => Map(x))[m
+[31m-            .SingleOrDefaultAsync(cancellationToken)[m
+[32m+[m[32m            .Include(x => x.SlaDefinition)[m
+[32m+[m[32m            .SingleOrDefaultAsync(x => x.TenantId == TenantId && x.Id == id, cancellationToken)[m
+             ?? throw new NotFoundException("Client was not found.");[m
+ [m
+[31m-        return Ok(client);[m
+[32m+[m[32m        return Ok(Map(client));[m
+     }[m
+ [m
+     [HttpPost][m
+[36m@@ -86,11 +85,13 @@[m [mpublic sealed class ClientsController([m
+             Location = request.Location?.Trim(),[m
+             ContactPerson = request.ContactPerson?.Trim(),[m
+             ContactPhone = request.ContactPhone?.Trim(),[m
+[31m-            SlaPlan = request.SlaPlan?.Trim(),[m
+[32m+[m[32m            SlaDefinitionId = request.SlaDefinitionId,[m
+             Notes = request.Notes?.Trim(),[m
+             IsActive = true[m
+         };[m
+ [m
+[32m+[m[32m        await EnsureSlaDefinitionExistsAsync(client.SlaDefinitionId, cancellationToken);[m
+[32m+[m
+         dbContext.Clients.Add(client);[m
+         await dbContext.SaveChangesAsync(cancellationToken);[m
+ [m
+[36m@@ -122,9 +123,11 @@[m [mpublic sealed class ClientsController([m
+         client.Location = request.Location?.Trim();[m
+         client.ContactPerson = request.ContactPerson?.Trim();[m
+         client.ContactPhone = request.ContactPhone?.Trim();[m
+[31m-        client.SlaPlan = request.SlaPlan?.Trim();[m
+[32m+[m[32m        client.SlaDefinitionId = request.SlaDefinitionId;[m
+         client.Notes = request.Notes?.Trim();[m
+ [m
+[32m+[m[32m        await EnsureSlaDefinitionExistsAsync(client.SlaDefinitionId, cancellationToken);[m
+[32m+[m
+         await dbContext.SaveChangesAsync(cancellationToken);[m
+ [m
+         await auditLogService.LogAsync([m
+[36m@@ -249,6 +252,23 @@[m [mpublic sealed class ClientsController([m
+         }[m
+     }[m
+ [m
+[32m+[m[32m    private async Task EnsureSlaDefinitionExistsAsync(Guid? slaDefinitionId, CancellationToken cancellationToken)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        if (!slaDefinitionId.HasValue)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            return;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        var exists = await dbContext.SlaDefinitions.AnyAsync([m
+[32m+[m[32m            x => x.TenantId == TenantId && x.IsActive && x.Id == slaDefinitionId.Value,[m
+[32m+[m[32m            cancellationToken);[m
+[32m+[m
+[32m+[m[32m        if (!exists)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            throw new BusinessRuleException("SLA definition was not found for this tenant.");[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+     private static ClientResponse Map(Client client) =>[m
+         new([m
+             client.Id,[m
+[36m@@ -259,7 +279,8 @@[m [mpublic sealed class ClientsController([m
+             client.Location,[m
+             client.ContactPerson,[m
+             client.ContactPhone,[m
+[31m-            client.SlaPlan,[m
+[32m+[m[32m            client.SlaDefinitionId,[m
+[32m+[m[32m            client.SlaDefinition?.PlanName,[m
+             client.Notes,[m
+             client.IsActive,[m
+             client.CreatedAt);[m
+[36m@@ -292,7 +313,7 @@[m [mpublic sealed record UpsertClientRequest([m
+     string? Location,[m
+     string? ContactPerson,[m
+     string? ContactPhone,[m
+[31m-    string? SlaPlan,[m
+[32m+[m[32m    Guid? SlaDefinitionId,[m
+     string? Notes);[m
+ [m
+ public sealed record ClientResponse([m
+[36m@@ -304,7 +325,8 @@[m [mpublic sealed record ClientResponse([m
+     string? Location,[m
+     string? ContactPerson,[m
+     string? ContactPhone,[m
+[31m-    string? SlaPlan,[m
+[32m+[m[32m    Guid? SlaDefinitionId,[m
+[32m+[m[32m    string? SlaDefinitionName,[m
+     string? Notes,[m
+     bool IsActive,[m
+     DateTime CreatedAt);[m
+[1mdiff --git a/backend/src/Ecosys.Api/Controllers/DevController.cs b/backend/src/Ecosys.Api/Controllers/DevController.cs[m
+[1mindex 12d7d1a..94729be 100644[m
+[1m--- a/backend/src/Ecosys.Api/Controllers/DevController.cs[m
+[1m+++ b/backend/src/Ecosys.Api/Controllers/DevController.cs[m
+[36m@@ -11,6 +11,7 @@[m [mnamespace Ecosys.Api.Controllers;[m
+ [m
+ [ApiController][m
+ [Authorize][m
+[32m+[m[32m[ApiExplorerSettings(IgnoreApi = true)][m
+ [Route("api/dev")][m
+ public sealed class DevController([m
+     AppDbContext dbContext,[m
+[1mdiff --git a/backend/src/Ecosys.Api/Controllers/PlatformLeadsController.cs b/backend/src/Ecosys.Api/Controllers/PlatformLeadsController.cs[m
+[1mindex fbc8a1d..f1bac4d 100644[m
+[1m--- a/backend/src/Ecosys.Api/Controllers/PlatformLeadsController.cs[m
+[1m+++ b/backend/src/Ecosys.Api/Controllers/PlatformLeadsController.cs[m
+[36m@@ -291,17 +291,17 @@[m [mpublic sealed class PlatformLeadsController([m
+ }[m
+ [m
+ public sealed record CreatePlatformLeadRequest([m
+[31m-    [property: Required] string CompanyName,[m
+[31m-    [property: Required] string ContactPersonName,[m
+[31m-    [property: Required, EmailAddress] string Email,[m
+[31m-    [property: Required] string Phone,[m
+[32m+[m[32m    [Required] string CompanyName,[m
+[32m+[m[32m    [Required] string ContactPersonName,[m
+[32m+[m[32m    [Required, EmailAddress] string Email,[m
+[32m+[m[32m    [Required] string Phone,[m
+     string? Country,[m
+     string? Industry,[m
+     string? CompanySize,[m
+     string? Message,[m
+     string? PreferredContactMethod);[m
+ [m
+[31m-public sealed record UpdatePlatformLeadStatusRequest([property: Required] string Status);[m
+[32m+[m[32mpublic sealed record UpdatePlatformLeadStatusRequest([Required] string Status);[m
+ public sealed record UpdatePlatformLeadNotesRequest(string? Notes);[m
+ [m
+ public sealed record PublicLeadSubmissionResponse(bool Success, string Message);[m
+[1mdiff --git a/backend/src/Ecosys.Api/Controllers/PlatformTenantsController.cs b/backend/src/Ecosys.Api/Controllers/PlatformTenantsController.cs[m
+[1mindex ea71243..a02fc77 100644[m
+[1m--- a/backend/src/Ecosys.Api/Controllers/PlatformTenantsController.cs[m
+[1m+++ b/backend/src/Ecosys.Api/Controllers/PlatformTenantsController.cs[m
+[36m@@ -847,6 +847,9 @@[m [mpublic sealed class PlatformTenantsController([m
+             return PlatformTenantLicenseStatuses.Expired;[m
+         }[m
+ [m
+[32m+[m[32m        if (string.Equals(license.Status, PlatformTenantLicenseStatuses.TrialExpiringSoon, StringComparison.OrdinalIgnoreCase))[m
+[32m+[m[32m            return PlatformTenantLicenseStatuses.TrialExpiringSoon

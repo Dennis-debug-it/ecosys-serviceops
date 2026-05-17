@@ -145,7 +145,7 @@ test.describe('Client/Tenant details and communication settings', () => {
     await expect(page.getByText(/connection verified/i)).toBeVisible()
 
     await page.getByTestId('tenant-send-test-email-button').click()
-    await expect(page.getByText(/test email sent/i).count()).resolves.toBeGreaterThan(0)
+    await expect(page.getByText(/test email sent/i).first()).toBeVisible()
 
     await page.getByTestId('tenant-reset-email-defaults-button').click()
 

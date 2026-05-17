@@ -4,11 +4,11 @@ export const E2E_API_URL = process.env.E2E_API_URL || process.env.E2E_API_BASE_U
 export const E2E_PLATFORM_EMAIL =
   process.env.E2E_PLATFORM_EMAIL ||
   process.env.E2E_SUPERADMIN_EMAIL ||
-  'superadmin@ecosys.io'
+  'superadmin@ecosys.local'
 export const E2E_PLATFORM_PASSWORD =
   process.env.E2E_PLATFORM_PASSWORD ||
   process.env.E2E_SUPERADMIN_PASSWORD ||
-  'Ecosys123!'
+  'SuperAdmin123!'
 
 export const E2E_TENANT_EMAIL = process.env.E2E_TENANT_EMAIL || ''
 export const E2E_TENANT_PASSWORD = process.env.E2E_TENANT_PASSWORD || ''

@@ -1,12 +1,14 @@
-import { lazy, Suspense, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react'
 import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation, useOutletContext } from 'react-router-dom'
 import {
   Activity,
+  BookOpen,
   Boxes,
   Building2,
   ClipboardList,
   FileText,
   LayoutDashboard,
+  MapPin,
   Package,
   Settings2,
   ShieldCheck,
@@ -41,11 +43,18 @@ const DashboardPage = lazy(async () => ({ default: (await import('./modules/dash
 const WorkOrdersPage = lazy(async () => ({ default: (await import('./modules/work-orders/WorkOrdersPage')).WorkOrdersPage }))
 const WorkOrderDetailPage = lazy(async () => ({ default: (await import('./modules/work-orders/WorkOrderDetailPage')).WorkOrderDetailPage }))
 const ClientsPage = lazy(async () => ({ default: (await import('./modules/clients/ClientsPage')).ClientsPage }))
+const SitesPage = lazy(async () => ({ default: (await import('./modules/sites/SitesPage')).SitesPage }))
 const AssetsPage = lazy(async () => ({ default: (await import('./modules/assets/AssetsPage')).AssetsPage }))
 const MaterialsPage = lazy(async () => ({ default: (await import('./modules/materials/MaterialsPage')).MaterialsPage }))
 const PreventiveMaintenancePage = lazy(async () => ({ default: (await import('./modules/preventive-maintenance/PreventiveMaintenancePage')).PreventiveMaintenancePage }))
 const TemplatesPage = lazy(async () => ({ default: (await import('./modules/templates/TemplatesPage')).TemplatesPage }))
 const ReportsPage = lazy(async () => ({ default: (await import('./modules/reports/ReportsPage')).ReportsPage }))
+const KnowledgeCentrePage = lazy(async () => ({ default: (await import('./modules/knowledge/KnowledgeCentrePage')).KnowledgeCentrePage }))
+const KnowledgeArticleEditorPage = lazy(async () => ({ default: (await import('./modules/knowledge/KnowledgeArticleEditorPage')).KnowledgeArticleEditorPage }))
+const KnowledgeArticleDetailPage = lazy(async () => ({ default: (await import('./modules/knowledge/KnowledgeArticleDetailPage')).KnowledgeArticleDetailPage }))
+const TechLayout = lazy(async () => ({ default: (await import('./modules/tech/TechLayout')).TechLayout }))
+const TechJobsPage = lazy(async () => ({ default: (await import('./modules/tech/TechJobsPage')).TechJobsPage }))
+const TechJobPage = lazy(async () => ({ default: (await import('./modules/tech/TechJobPage')).TechJobPage }))
 const PlatformLayout = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformLayout')).PlatformLayout }))
 const PlatformOverviewPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformOverviewAndLicensesPages')).PlatformOverviewPage }))
 const PlatformLicensesPage = lazy(async () => ({ default: (await import('./modules/platform-v2/PlatformOverviewAndLicensesPages')).PlatformLicensesPage }))
@@ -65,10 +74,12 @@ const routeCatalog = [
   { label: 'Dashboard', path: '/dashboard', roles: TENANT_USER_ROLES, permission: null, icon: LayoutDashboard },
   { label: 'Work Orders', path: '/work-orders', roles: TENANT_USER_ROLES, permission: 'canViewWorkOrders' as const, icon: ClipboardList },
   { label: 'Clients', path: '/clients', roles: TENANT_USER_ROLES, permission: null, icon: Building2 },
+  { label: 'Sites', path: '/sites', roles: TENANT_USER_ROLES, permission: null, icon: MapPin },
   { label: 'Assets', path: '/assets', roles: TENANT_USER_ROLES, permission: 'canManageAssets' as const, icon: Boxes },
   { label: 'Materials', path: '/materials', roles: TENANT_USER_ROLES, permission: null, icon: Package },
   { label: 'Preventive Maintenance', path: '/preventive-maintenance', roles: TENANT_USER_ROLES, permission: null, icon: Wrench },
   { label: 'Templates', path: '/templates', roles: TENANT_USER_ROLES, permission: null, icon: Activity },
+  { label: 'Knowledge', path: '/knowledge', roles: TENANT_USER_ROLES, permission: null, icon: BookOpen },
   { label: 'Reports', path: '/reports', roles: TENANT_USER_ROLES, permission: 'canViewReports' as const, icon: Activity },
   { label: 'Settings', path: '/settings', roles: ['tenantadmin', 'admin'] as const, permission: 'canManageSettings' as const, icon: Settings2 },
   { label: 'Overview', path: '/platform', roles: PLATFORM_ROLES, permission: 'canViewPlatformTenants' as const, icon: ShieldCheck },
@@ -208,7 +219,7 @@ function UnsupportedRoleRoute() {
 function AuthenticatedShell() {
   const { isReady, session } = useAuth()
 
-  const routeAllowedForSession = (roles: readonly string[], permission: string | null) => {
+  const canAccessRoute = useCallback((roles: readonly string[], permission: string | null) => {
     if (!session) return false
     if (roles === PLATFORM_ROLES) {
       if (!isPlatformRole(session.role)) return false
@@ -219,13 +230,13 @@ function AuthenticatedShell() {
     }
     if (!permission) return true
     return Boolean(session.permissions?.[permission as keyof NonNullable<typeof session.permissions>])
-  }
+  }, [session])
 
   const searchItems = useMemo<SearchItem[]>(() => {
     if (!session) return []
 
     return routeCatalog
-      .filter((item) => routeAllowedForSession(item.roles, item.permission))
+      .filter((item) => canAccessRoute(item.roles, item.permission))
       .map((item) => ({
         id: item.path,
         title: item.label,
@@ -233,15 +244,15 @@ function AuthenticatedShell() {
         path: item.path,
         roles: [session.role],
       }))
-  }, [session])
+  }, [canAccessRoute, session])
 
   const navItems = useMemo(() => {
     if (!session) return []
 
     return routeCatalog
-      .filter((item) => routeAllowedForSession(item.roles, item.permission))
+      .filter((item) => canAccessRoute(item.roles, item.permission))
       .map(({ label, path, icon }) => ({ label, path, icon }))
-  }, [session])
+  }, [canAccessRoute, session])
 
   const notifications = useMemo<NotificationItem[]>(() => [], [])
 
@@ -306,16 +317,28 @@ function AppRoutes() {
           <Route element={<AuthenticatedRouteBoundary />}>
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/unsupported-role" element={<UnsupportedRoleRoute />} />
+            <Route path="/tech" element={<TechLayout />}>
+              <Route index element={<TechJobsPage />} />
+              <Route path="jobs/:id" element={<TechJobPage />} />
+              <Route path="jobs/:id/checklist" element={<TechJobPage />} />
+              <Route path="jobs/:id/photos" element={<TechJobPage />} />
+              <Route path="jobs/:id/complete" element={<TechJobPage />} />
+            </Route>
             <Route element={<AuthenticatedShell />}>
               <Route element={<TenantOnlyRoute />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/work-orders" element={<WorkOrdersPage />} />
                 <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
                 <Route path="/clients" element={<ClientsPage />} />
+                <Route path="/sites" element={<SitesPage />} />
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/materials" element={<MaterialsPage />} />
                 <Route path="/preventive-maintenance" element={<PreventiveMaintenancePage />} />
                 <Route path="/templates" element={<TemplatesPage />} />
+                <Route path="/knowledge" element={<KnowledgeCentrePage />} />
+                <Route path="/knowledge/new" element={<KnowledgeArticleEditorPage />} />
+                <Route path="/knowledge/:id" element={<KnowledgeArticleDetailPage />} />
+                <Route path="/knowledge/:id/edit" element={<KnowledgeArticleEditorPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
               </Route>
 

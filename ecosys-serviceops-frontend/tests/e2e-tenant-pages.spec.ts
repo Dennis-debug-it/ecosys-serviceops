@@ -77,7 +77,7 @@ test('tenant smoke: assignment groups page loads', async ({ page, baseURL }) => 
     await page.goto('/settings/assignment-groups')
     await expect(page).toHaveURL(/\/settings\/assignment-groups/)
     await expect(page.getByRole('heading', { name: /assignment groups/i }).first()).toBeVisible()
-    await expect(page.getByRole('heading', { name: /users & groups/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /users & roles/i })).toBeVisible()
   } finally {
     guards.assertNoViolations()
     guards.dispose()

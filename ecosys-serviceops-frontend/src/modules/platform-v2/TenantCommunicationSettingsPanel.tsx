@@ -166,12 +166,6 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
       }
     }
 
-    if (form.emailSettings.overrideSmtpSettings && !form.emailSettings.usePlatformDefaults && form.emailSettings.deliveryMode === 'Api') {
-      if (!form.emailSettings.apiEndpoint.trim()) {
-        return 'A delivery endpoint is required when alternative delivery settings are enabled.'
-      }
-    }
-
     if (!form.emailSettings.usePlatformDefaults && form.emailSettings.enableTenantEmailNotifications && !form.emailSettings.senderEmail.trim()) {
       return 'Sender email is required when tenant email notifications are enabled.'
     }
@@ -260,7 +254,7 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
     setVerifying(true)
     try {
       const response = await platformService.tenantsApi.verifyCommunicationSmtp(tenant.tenantId)
-      const message = response.data.success ? 'Delivery connection verified successfully.' : response.data.lastError || 'Unable to verify delivery connection.'
+      const message = response.data.success ? 'SMTP delivery check completed successfully.' : response.data.lastError || 'Unable to verify delivery connection.'
       setLastResult({ success: response.data.success, message })
       onToast({ title: response.data.success ? 'Connection verified' : 'Connection verification failed', description: message, tone: response.data.success ? 'success' : 'danger' })
       await reload()
@@ -303,15 +297,13 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
   if (error) return <InfoAlert title="Unable to load tenant communication settings" description={error} tone="danger" />
 
   const smtpFieldsDisabled = form.emailSettings.usePlatformDefaults || !form.emailSettings.overrideSmtpSettings || form.emailSettings.deliveryMode !== 'Smtp'
-  const apiFieldsDisabled = form.emailSettings.usePlatformDefaults || !form.emailSettings.overrideSmtpSettings || form.emailSettings.deliveryMode !== 'Api'
-
   return (
     <div data-testid="tenant-email-notifications-section" className="space-y-4">
       <SectionTitle title="Email & Notifications" description="Tenant-specific delivery settings, module notification rules, and recipient routing." />
 
       <section data-testid="tenant-email-delivery-card" className="surface-card space-y-4">
         <InfoAlert title="Outbound delivery only" description="This panel manages tenant SMTP delivery and notification routing. IMAP mailbox intake for work order creation and email thread processing is configured separately under Email Intake." tone="info" />
-        <InfoAlert title="Tenant notification rollout status" description="User credentials, resend credentials, onboarding, and template test emails are active. Work order, PM, material, escalation, and security alert lists can be configured here, but some event dispatch automation is still staged and should be treated as pending until the backend hooks are completed." tone="warning" />
+        <InfoAlert title="SMTP-only delivery" description="Pilot tenants use SMTP for outbound mail. Alternative delivery options are hidden until backend support is completed end-to-end." tone="warning" />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-lg font-semibold text-app">Email Delivery</p>
@@ -399,7 +391,6 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
               className="field-input"
             >
               <option value="Smtp">SMTP</option>
-              <option value="Api">Alternative Delivery</option>
               <option value="Disabled">Disabled</option>
             </select>
           </Field>
@@ -421,9 +412,6 @@ export function TenantCommunicationSettingsPanel({ tenant, onToast }: Props) {
           <Field label="SMTP port"><input data-testid="tenant-smtp-port-input" type="number" min={1} value={form.emailSettings.smtpPort} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => applyRecommendedTenantPort(current, Number(event.target.value) || 0))} className="field-input" /></Field>
           <Field label="SMTP username"><input value={form.emailSettings.smtpUsername} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, smtpUsername: event.target.value } }))} className="field-input" /></Field>
           <Field label="SMTP password / masked secret"><input type="password" placeholder={form.emailSettings.smtpPasswordMasked || '********'} value={form.emailSettings.smtpPasswordSecret || ''} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, smtpPasswordSecret: event.target.value } }))} className="field-input" /></Field>
-          <Field label="Delivery endpoint"><input value={form.emailSettings.apiEndpoint || ''} disabled={apiFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, apiEndpoint: event.target.value } }))} className="field-input" /></Field>
-          <Field label="Access key / secret"><input type="password" placeholder={form.emailSettings.apiKeyMasked || '********'} value={form.emailSettings.apiKeySecret || ''} disabled={apiFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, apiKeySecret: event.target.value } }))} className="field-input" /></Field>
-          <Field label="Provider name"><input value={form.emailSettings.apiProviderName || ''} disabled={apiFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, apiProviderName: event.target.value } }))} className="field-input" /></Field>
           <Field label="Timeout seconds"><input type="number" min={5} value={form.emailSettings.timeoutSeconds || 30} disabled={form.emailSettings.usePlatformDefaults} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, timeoutSeconds: Number(event.target.value) || 30 } }))} className="field-input" /></Field>
           <Field label="Max retries"><input type="number" min={0} value={form.emailSettings.maxRetries || 0} disabled={form.emailSettings.usePlatformDefaults} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, maxRetries: Number(event.target.value) || 0 } }))} className="field-input" /></Field>
           <Field label="Sender name"><input value={form.emailSettings.senderName} disabled={smtpFieldsDisabled} onChange={(event) => setForm((current) => ({ ...current, emailSettings: { ...current.emailSettings, senderName: event.target.value } }))} className="field-input" /></Field>

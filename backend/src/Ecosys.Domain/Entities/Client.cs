@@ -13,10 +13,12 @@ public sealed class Client : AuditableEntity
     public string? ContactPerson { get; set; }
     public string? ContactPhone { get; set; }
     public string? SlaPlan { get; set; }
+    public Guid? SlaDefinitionId { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
 
     public Tenant? Tenant { get; set; }
+    public SlaDefinition? SlaDefinition { get; set; }
     public ICollection<Asset> Assets { get; set; } = new List<Asset>();
     public ICollection<WorkOrder> WorkOrders { get; set; } = new List<WorkOrder>();
 }

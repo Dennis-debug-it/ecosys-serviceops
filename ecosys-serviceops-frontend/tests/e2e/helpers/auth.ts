@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, request, type Page, type Route } from '@playwright/test'
 import {
   E2E_API_URL,
   E2E_PLATFORM_EMAIL,
@@ -6,6 +6,51 @@ import {
   E2E_TENANT_EMAIL,
   E2E_TENANT_PASSWORD,
 } from './test-data'
+
+const AUTH_STORAGE_KEY = 'ecosys.serviceops.auth'
+
+export const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+}
+
+type MockRole = 'platformOwner' | 'tenantAdmin' | 'technician'
+
+type MockAuthOptions = {
+  role: MockRole
+  mustChangePassword?: boolean
+  email?: string
+  fullName?: string
+  tenantName?: string
+  tenantId?: string
+}
+
+type LoginExpectation = {
+  expectedUrl: RegExp
+  visibleTestId?: string
+  visibleHeading?: RegExp
+  visibleText?: RegExp
+}
+
+type MockSession = {
+  token: string
+  loginEmail: string
+  loginPassword: string
+  me: {
+    user: Record<string, unknown>
+    tenant: Record<string, unknown>
+    branches: Array<Record<string, unknown>>
+    role?: string
+    permissions?: Record<string, boolean>
+  }
+  loginResponse: {
+    token: string
+    user: Record<string, unknown>
+    tenant: Record<string, unknown>
+  }
+  expectation: LoginExpectation
+}
 
 function requireCredentials(email: string, password: string, label: string) {
   if (!email || !password) {
@@ -15,53 +60,286 @@ function requireCredentials(email: string, password: string, label: string) {
   }
 }
 
-async function login(page: Page, email: string, password: string, expectedUrl: RegExp, expectedVisible: { testId?: string; heading?: RegExp }) {
+export function json(body: unknown, status = 200) {
+  return {
+    status,
+    contentType: 'application/json',
+    body: JSON.stringify(body),
+    headers: CORS_HEADERS,
+  }
+}
+
+export async function fulfillJson(route: Route, body: unknown, status = 200) {
+  if (route.request().method() === 'OPTIONS') {
+    await route.fulfill({ status: 204, headers: CORS_HEADERS })
+    return
+  }
+
+  await route.fulfill(json(body, status))
+}
+
+export async function registerApiCatchAll(page: Page) {
+  await page.route(`${E2E_API_URL}/api/**`, async (route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: CORS_HEADERS })
+      return
+    }
+
+    await route.fulfill(json({}))
+  })
+}
+
+function platformPermissions() {
+  return {
+    canViewPlatformTenants: true,
+    canCreatePlatformTenants: true,
+    canEditPlatformTenants: true,
+    canUpdatePlatformTenantStatus: true,
+    canDeactivatePlatformTenants: true,
+  }
+}
+
+function tenantPermissions() {
+  return {
+    canViewWorkOrders: true,
+    canCreateWorkOrders: true,
+    canAssignWorkOrders: true,
+    canCompleteWorkOrders: true,
+    canApproveMaterials: true,
+    canIssueMaterials: true,
+    canManageAssets: true,
+    canManageSettings: true,
+    canViewReports: true,
+  }
+}
+
+function technicianPermissions() {
+  return {
+    canViewWorkOrders: true,
+    canCompleteWorkOrders: true,
+    canManageAssets: false,
+    canManageSettings: false,
+    canViewReports: false,
+  }
+}
+
+function buildMockSession(options: MockAuthOptions): MockSession {
+  const mustChangePassword = options.mustChangePassword ?? false
+
+  if (options.role === 'platformOwner') {
+    const permissions = platformPermissions()
+    const user = {
+      id: 'platform-owner-1',
+      userId: 'platform-owner-1',
+      fullName: options.fullName ?? 'Platform Owner',
+      email: options.email ?? 'superadmin@ecosys.local',
+      role: 'SuperAdmin',
+      mustChangePassword,
+      permissions,
+    }
+
+    return {
+      token: mustChangePassword ? 'platform-temporary-token' : 'platform-token',
+      loginEmail: user.email,
+      loginPassword: 'SuperAdmin123!',
+      me: {
+        user,
+        tenant: {
+          tenantId: 'platform-root',
+          companyName: 'Ecosys Platform',
+          country: 'Kenya',
+        },
+        branches: [],
+        role: 'SuperAdmin',
+        permissions,
+      },
+      loginResponse: {
+        token: mustChangePassword ? 'platform-temporary-token' : 'platform-token',
+        user: {
+          role: 'SuperAdmin',
+          mustChangePassword,
+          permissions,
+        },
+        tenant: {
+          companyName: 'Ecosys Platform',
+        },
+      },
+      expectation: mustChangePassword
+        ? { expectedUrl: /\/change-password$/, visibleHeading: /change your temporary password/i }
+        : {
+            expectedUrl: /\/(platform|command-centre)/,
+            visibleTestId: 'command-centre-sidebar',
+          },
+    }
+  }
+
+  if (options.role === 'technician') {
+    const permissions = technicianPermissions()
+    const user = {
+      id: 'technician-1',
+      userId: 'technician-1',
+      fullName: options.fullName ?? 'Field Technician',
+      email: options.email ?? 'tech@tenant.test',
+      role: 'Technician',
+      mustChangePassword,
+      hasAllBranchAccess: false,
+      permissions,
+    }
+
+    return {
+      token: mustChangePassword ? 'technician-temporary-token' : 'technician-token',
+      loginEmail: user.email,
+      loginPassword: 'Password123!',
+      me: {
+        user,
+        tenant: {
+          tenantId: options.tenantId ?? 'tenant-1',
+          companyName: options.tenantName ?? 'Acme Facilities',
+          country: 'Kenya',
+        },
+        branches: [{ id: 'branch-1', name: 'Nairobi Service Hub', code: 'NRB', location: 'Nairobi', isActive: true }],
+      },
+      loginResponse: {
+        token: mustChangePassword ? 'technician-temporary-token' : 'technician-token',
+        user: {
+          role: 'Technician',
+          mustChangePassword,
+          permissions,
+        },
+        tenant: {
+          companyName: options.tenantName ?? 'Acme Facilities',
+        },
+      },
+      expectation: mustChangePassword
+        ? { expectedUrl: /\/change-password$/, visibleHeading: /change your temporary password/i }
+        : {
+            expectedUrl: /\/dashboard/,
+            visibleText: /operational overview/i,
+          },
+    }
+  }
+
+  const permissions = tenantPermissions()
+  const user = {
+    id: 'tenant-admin-1',
+    userId: 'tenant-admin-1',
+    fullName: options.fullName ?? 'Tenant Admin',
+    email: options.email ?? 'admin@acme.test',
+    role: 'Admin',
+    mustChangePassword,
+    hasAllBranchAccess: true,
+    permissions,
+  }
+
+  return {
+    token: mustChangePassword ? 'tenant-temporary-token' : 'tenant-token',
+    loginEmail: user.email,
+    loginPassword: 'TenantAdmin123!',
+    me: {
+      user,
+      tenant: {
+        tenantId: options.tenantId ?? 'tenant-1',
+        companyName: options.tenantName ?? 'Acme Facilities',
+        country: 'Kenya',
+      },
+      branches: [{ id: 'branch-1', name: 'Nairobi Service Hub', code: 'NRB', location: 'Nairobi', isActive: true }],
+    },
+    loginResponse: {
+      token: mustChangePassword ? 'tenant-temporary-token' : 'tenant-token',
+      user: {
+        role: 'Admin',
+        mustChangePassword,
+        permissions,
+      },
+      tenant: {
+        companyName: options.tenantName ?? 'Acme Facilities',
+      },
+    },
+    expectation: mustChangePassword
+      ? { expectedUrl: /\/change-password$/, visibleHeading: /change your temporary password/i }
+      : {
+          expectedUrl: /\/dashboard/,
+          visibleText: /operational overview/i,
+        },
+  }
+}
+
+export async function mockAuthSession(page: Page, options: MockAuthOptions) {
+  const session = buildMockSession(options)
+
+  await page.route(`${E2E_API_URL}/api/auth/login`, async (route) => {
+    await fulfillJson(route, session.loginResponse)
+  })
+
+  await page.route(`${E2E_API_URL}/api/auth/me`, async (route) => {
+    await fulfillJson(route, session.me)
+  })
+
+  await page.route(`${E2E_API_URL}/api/auth/logout`, async (route) => {
+    await fulfillJson(route, { success: true })
+  })
+
+  if (options.role !== 'platformOwner' && !options.mustChangePassword) {
+    await page.route(`${E2E_API_URL}/api/dashboard/summary**`, async (route) => {
+      await fulfillJson(route, {
+        openWorkOrders: 0,
+        closedWorkOrders: 0,
+        overdueWorkOrders: 0,
+        assets: 0,
+        clients: 0,
+        materialsLowStock: 0,
+        unassignedWorkOrders: 0,
+        assignedToGroup: 0,
+        assignedToTechnicians: 0,
+        awaitingAcceptance: 0,
+        techniciansOnSite: 0,
+        workOrdersByGroup: [],
+        technicianWorkload: [],
+      })
+    })
+  }
+
+  return session
+}
+
+async function performLogin(page: Page, email: string, password: string, expectation: LoginExpectation) {
   await page.goto('/login')
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: /^login$/i }).click()
 
-  const errorBanner = page.locator('text=/login failed|enter your email and password/i').first()
+  await page.waitForURL(expectation.expectedUrl, { timeout: 20000 })
 
-  await expect
-    .poll(
-      async () => {
-        if (await errorBanner.isVisible().catch(() => false)) {
-          return 'LOGIN_ERROR'
-        }
-        const url = page.url()
-        if (expectedUrl.test(url)) {
-          return 'OK'
-        }
-        return url
-      },
-      {
-        message: `Login did not reach expected route: ${expectedUrl}`,
-        timeout: 20000,
-      },
-    )
-    .toBe('OK')
+  if (expectation.visibleTestId) {
+    await expect(page.getByTestId(expectation.visibleTestId)).toBeVisible()
+  }
+  if (expectation.visibleHeading) {
+    await expect(page.getByRole('heading', { name: expectation.visibleHeading })).toBeVisible()
+  }
+  if (expectation.visibleText) {
+    await expect(page.getByText(expectation.visibleText)).toBeVisible()
+  }
+}
 
-  if (expectedVisible.testId) {
-    await expect(page.getByTestId(expectedVisible.testId)).toBeVisible()
-  }
-  if (expectedVisible.heading) {
-    await expect(page.getByRole('heading', { name: expectedVisible.heading })).toBeVisible()
-  }
+export async function loginWithMockSession(page: Page, options: MockAuthOptions) {
+  const session = await mockAuthSession(page, options)
+  await performLogin(page, session.loginEmail, session.loginPassword, session.expectation)
+  return session
 }
 
 export async function loginAsPlatformOwner(page: Page) {
   requireCredentials(E2E_PLATFORM_EMAIL, E2E_PLATFORM_PASSWORD, 'Platform owner')
-  await login(page, E2E_PLATFORM_EMAIL, E2E_PLATFORM_PASSWORD, /\/(platform|command-centre)/, {
-    testId: 'command-centre-sidebar',
-    heading: /overview|settings|tenants|finance|licenses/i,
+  await performLogin(page, E2E_PLATFORM_EMAIL, E2E_PLATFORM_PASSWORD, {
+    expectedUrl: /\/(platform|command-centre)/,
+    visibleTestId: 'command-centre-sidebar',
   })
 }
 
 export async function loginAsTenantAdmin(page: Page) {
   if (E2E_TENANT_EMAIL && E2E_TENANT_PASSWORD) {
-    await login(page, E2E_TENANT_EMAIL, E2E_TENANT_PASSWORD, /\/(dashboard|settings)/, {
-      heading: /dashboard|settings/i,
+    await performLogin(page, E2E_TENANT_EMAIL, E2E_TENANT_PASSWORD, {
+      expectedUrl: /\/(dashboard|settings)/,
+      visibleText: /operational overview|settings/i,
     })
     return
   }
@@ -70,46 +348,40 @@ export async function loginAsTenantAdmin(page: Page) {
   const signupEmail = `e2e.tenant.${suffix}@example.com`
   const signupPassword = `E2E!Tenant${suffix}`
 
-  const token = await page.evaluate(
-    async ({ apiUrl, email, password, companyName, fullName }) => {
-      const response = await fetch(`${apiUrl}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyName,
-          fullName,
-          email,
-          password,
-          industry: 'Facilities',
-          country: 'Kenya',
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Signup failed with status ${response.status}`)
-      }
-
-      const data = await response.json() as { token?: string }
-      if (!data.token) {
-        throw new Error('Signup response did not include a token.')
-      }
-
-      return data.token
-    },
-    {
-      apiUrl: E2E_API_URL,
-      email: signupEmail,
-      password: signupPassword,
+  const apiContext = await request.newContext({ baseURL: E2E_API_URL })
+  const signupRes = await apiContext.post('/api/auth/signup', {
+    data: {
       companyName: `E2E Tenant ${suffix}`,
       fullName: `E2E Admin ${suffix}`,
+      email: signupEmail,
+      password: signupPassword,
+      industry: 'Facilities',
+      country: 'Kenya',
     },
-  )
+  })
+  if (!signupRes.ok()) {
+    throw new Error(`Signup failed with status ${signupRes.status()}: ${await signupRes.text()}`)
+  }
 
-  await page.addInitScript((authToken) => {
-    window.localStorage.setItem('ecosys.serviceops.auth', JSON.stringify({ token: authToken, mode: 'local' }))
-  }, token)
-
+  const signupBody = await signupRes.json() as { token: string }
+  await seedAuthenticatedStorage(page, signupBody.token)
   await page.goto('/dashboard')
-  await expect(page).toHaveURL(/\/dashboard/)
-  await expect(page.getByRole('link', { name: /settings/i })).toBeVisible()
+  await expect(page.getByText(/operational overview/i)).toBeVisible()
+}
+
+export async function loginAsTechnician(page: Page, credentials?: { email: string; password: string }) {
+  const email = credentials?.email ?? process.env.E2E_TECHNICIAN_EMAIL ?? ''
+  const password = credentials?.password ?? process.env.E2E_TECHNICIAN_PASSWORD ?? ''
+  requireCredentials(email, password, 'Technician')
+  await performLogin(page, email, password, {
+    expectedUrl: /\/dashboard/,
+    visibleText: /operational overview/i,
+  })
+}
+
+export async function seedAuthenticatedStorage(page: Page, token: string) {
+  await page.goto('/login')
+  await page.evaluate(([storageKey, authToken]) => {
+    window.localStorage.setItem(storageKey, JSON.stringify({ token: authToken, mode: 'local' }))
+  }, [AUTH_STORAGE_KEY, token])
 }

@@ -17,6 +17,8 @@ function normalizeAssetPayload(input: UpsertAssetInput) {
   const payload = {
     clientId: input.clientId.trim(),
     branchId: input.branchId && input.branchId !== 'all' ? input.branchId : null,
+    siteId: input.siteId || null,
+    assetCategoryId: input.assetCategoryId || null,
     assetName: input.assetName.trim(),
     assetCode: input.assetCode?.trim() ?? '',
     assetType: normalizeText(input.assetType),
@@ -32,6 +34,10 @@ function normalizeAssetPayload(input: UpsertAssetInput) {
     nextPmDate: normalizeDate(input.nextPmDate),
     notes: normalizeText(input.notes),
     status: input.status?.trim() || 'Active',
+    customFieldValues: (input.customFieldValues ?? []).map((item) => ({
+      fieldDefinitionId: item.fieldDefinitionId,
+      value: normalizeText(item.value) ?? '',
+    })),
   }
 
   if (import.meta.env.DEV) {
@@ -45,7 +51,7 @@ export const assetService = {
   async list(
     branchId?: string | null,
     signal?: AbortSignal,
-    options?: { search?: string; status?: 'active' | 'inactive' | 'all'; clientId?: string | null },
+    options?: { search?: string; status?: 'active' | 'inactive' | 'all'; clientId?: string | null; siteId?: string | null; categoryId?: string | null },
   ): Promise<AssetRecord[]> {
     const response = await api.get<unknown>('/api/assets', {
       query: {
@@ -53,6 +59,8 @@ export const assetService = {
         search: options?.search?.trim() || undefined,
         status: options?.status || undefined,
         clientId: options?.clientId || undefined,
+        siteId: options?.siteId || undefined,
+        categoryId: options?.categoryId || undefined,
       },
       signal,
     })

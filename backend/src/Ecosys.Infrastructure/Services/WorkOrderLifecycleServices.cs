@@ -2,6 +2,7 @@ using Ecosys.Domain.Entities;
 using Ecosys.Infrastructure.Data;
 using Ecosys.Shared.Errors;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace Ecosys.Infrastructure.Services;
@@ -26,14 +27,20 @@ public interface IWorkOrderLifecycleService
 
 internal sealed class WorkOrderLifecycleService(
     AppDbContext dbContext,
-    IAuditLogService auditLogService) : IWorkOrderLifecycleService
+    IAuditLogService auditLogService,
+    IEmailOutboxService emailOutboxService,
+    IEmailTemplateService emailTemplateService,
+    IEmailSubjectRuleService emailSubjectRuleService,
+    ISlaService slaService,
+    ILogger<WorkOrderLifecycleService> logger) : IWorkOrderLifecycleService
 {
     private static readonly Dictionary<string, string[]> AllowedTransitions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Open"] = ["In Progress", "Awaiting Parts", "Awaiting Client", "Completed", "Cancelled"],
-        ["In Progress"] = ["Awaiting Parts", "Awaiting Client", "Completed", "Cancelled"],
-        ["Awaiting Parts"] = ["In Progress", "Awaiting Client", "Completed", "Cancelled"],
-        ["Awaiting Client"] = ["In Progress", "Awaiting Parts", "Completed", "Cancelled"],
+        ["Open"] = ["In Progress", "Paused", "Awaiting Parts", "Awaiting Client", "Completed", "Cancelled"],
+        ["In Progress"] = ["Paused", "Awaiting Parts", "Awaiting Client", "Completed", "Cancelled"],
+        ["Paused"] = ["In Progress", "Awaiting Parts", "Awaiting Client", "Completed", "Cancelled"],
+        ["Awaiting Parts"] = ["In Progress", "Paused", "Awaiting Client", "Completed", "Cancelled"],
+        ["Awaiting Client"] = ["In Progress", "Paused", "Awaiting Parts", "Completed", "Cancelled"],
         ["Completed"] = ["Closed"],
         ["Closed"] = [],
         ["Cancelled"] = []
@@ -48,7 +55,7 @@ internal sealed class WorkOrderLifecycleService(
             "Awaiting User" => "Awaiting Client",
             "Acknowledged" => "Closed",
             "Assigned" => "Open",
-            "Open" or "In Progress" or "Awaiting Parts" or "Awaiting Client" or "Completed" or "Closed" or "Cancelled" => normalized,
+            "Open" or "In Progress" or "Paused" or "Awaiting Parts" or "Awaiting Client" or "Completed" or "Closed" or "Cancelled" => normalized,
             _ => throw new BusinessRuleException("Invalid work order status.")
         };
     }
@@ -232,10 +239,183 @@ internal sealed class WorkOrderLifecycleService(
                     : request.AnswersJson.Trim()
             };
             dbContext.PmReports.Add(report);
+
+            await UpdatePmAssetAndPlanAsync(tenantId, workOrder, checklistSnapshot, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await slaService.RefreshWorkOrderAsync(workOrder.Id, DateTime.UtcNow, cancellationToken);
+        await TryQueueCompletionEmailAsync(tenantId, workOrder, cancellationToken);
         return workOrder;
+    }
+
+    private async Task UpdatePmAssetAndPlanAsync(
+        Guid tenantId,
+        WorkOrder workOrder,
+        IReadOnlyCollection<dynamic> checklistSnapshot,
+        CancellationToken cancellationToken)
+    {
+        if (!workOrder.CompletedAt.HasValue || !workOrder.AssetId.HasValue)
+        {
+            return;
+        }
+
+        var asset = await dbContext.Assets
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == workOrder.AssetId.Value, cancellationToken);
+
+        if (asset is null)
+        {
+            return;
+        }
+
+        asset.LastPmDate = workOrder.CompletedAt.Value;
+
+        var meterReading = TryExtractMeterReading(checklistSnapshot);
+        if (meterReading.HasValue)
+        {
+            asset.CurrentMeterReading = meterReading.Value;
+        }
+
+        if (!workOrder.PreventiveMaintenancePlanId.HasValue)
+        {
+            return;
+        }
+
+        var plan = await dbContext.PreventiveMaintenancePlans
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == workOrder.PreventiveMaintenancePlanId.Value, cancellationToken);
+
+        if (plan is null)
+        {
+            return;
+        }
+
+        plan.LastPmDate = workOrder.CompletedAt.Value;
+        plan.LastGeneratedAt ??= workOrder.CreatedAt;
+        plan.LastPmWorkOrderId = workOrder.Id;
+
+        var intervalMonths = ResolvePmIntervalMonths(plan);
+        if (!intervalMonths.HasValue)
+        {
+            return;
+        }
+
+        var nextSeed = plan.NextPmDate?.Date ?? workOrder.CompletedAt.Value.Date;
+        plan.NextPmDate = nextSeed.AddMonths(intervalMonths.Value);
+        asset.NextPmDate = plan.NextPmDate;
+    }
+
+    private async Task TryQueueCompletionEmailAsync(Guid tenantId, WorkOrder workOrder, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var tenant = await dbContext.Tenants.SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+            var contactEmail = tenant?.ContactEmail ?? tenant?.Email;
+            if (string.IsNullOrWhiteSpace(contactEmail))
+                return;
+
+            var technicianName = workOrder.AssignedTechnicianId.HasValue
+                ? (await dbContext.Technicians.SingleOrDefaultAsync(x => x.Id == workOrder.AssignedTechnicianId.Value, cancellationToken))?.FullName
+                : null;
+
+            var assetName = workOrder.AssetId.HasValue
+                ? (await dbContext.Assets.SingleOrDefaultAsync(x => x.Id == workOrder.AssetId.Value, cancellationToken))?.AssetName
+                : null;
+
+            var template = await emailTemplateService.RenderTenantTemplateAsync(
+                tenantId,
+                "work-order.completed",
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["WorkOrderNumber"] = workOrder.WorkOrderNumber,
+                    ["AssignedTo"] = technicianName ?? "Unassigned",
+                    ["AssetName"] = assetName ?? "N/A"
+                },
+                cancellationToken);
+
+            if (!template.Enabled)
+                return;
+
+            var subject = await emailSubjectRuleService.BuildFinalSubjectAsync(
+                tenantId, "work-order.completed", template.Subject, tenant?.Name, cancellationToken);
+
+            await emailOutboxService.QueueEmailAsync(
+                new QueueEmailRequest(
+                    tenantId,
+                    "work-order.completed",
+                    "work-order-completed",
+                    contactEmail,
+                    tenant?.Name,
+                    template.SenderNameOverride,
+                    null,
+                    null,
+                    subject,
+                    template.HtmlBody,
+                    template.TextBody,
+                    null),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to queue work-order.completed email for work order {WorkOrderId}.", workOrder.Id);
+        }
+    }
+
+    private static int? ResolvePmIntervalMonths(PreventiveMaintenancePlan plan)
+    {
+        if (plan.FrequencyInterval > 0)
+        {
+            if (string.Equals(plan.FrequencyUnit, "Monthly", StringComparison.OrdinalIgnoreCase))
+            {
+                return plan.FrequencyInterval;
+            }
+
+            if (string.Equals(plan.FrequencyUnit, "Annual", StringComparison.OrdinalIgnoreCase))
+            {
+                return plan.FrequencyInterval * 12;
+            }
+        }
+
+        return (plan.Frequency ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "monthly" => 1,
+            "quarterly" => 3,
+            "semi-annual" => 6,
+            "semi annual" => 6,
+            "semiannual" => 6,
+            "annual" => 12,
+            _ => null
+        };
+    }
+
+    private static decimal? TryExtractMeterReading(IReadOnlyCollection<dynamic> checklistSnapshot)
+    {
+        foreach (var item in checklistSnapshot)
+        {
+            string questionText = item.QuestionText;
+            string inputType = item.InputType;
+            string? responseValue = item.ResponseValue;
+
+            if (!string.Equals(inputType, "number", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var normalizedQuestion = questionText.Trim().ToLowerInvariant();
+            if (!normalizedQuestion.Contains("meter")
+                && !normalizedQuestion.Contains("reading")
+                && !normalizedQuestion.Contains("runtime")
+                && !normalizedQuestion.Contains("hours"))
+            {
+                continue;
+            }
+
+            if (decimal.TryParse(responseValue, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return null;
     }
 
     public async Task<IReadOnlyCollection<WorkOrderEvent>> GetEventsAsync(Guid tenantId, Guid workOrderId, CancellationToken cancellationToken = default) =>
